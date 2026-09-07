@@ -158,6 +158,36 @@ h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;let
 .acctMenu button svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acctMenu button .lbl{flex:1}
+
+/* ---- Phone nav: a menu instead of a scrolling strip of every tab ----
+   Above 760px the tabs sit inline as before; below it they collapse behind
+   the hamburger and the bar shows only where you currently are. */
+.navToggle{display:none;flex:0 0 auto;width:44px;height:44px;margin-left:8px;border:0;
+  border-radius:12px;background:none;color:var(--navTx);align-items:center;justify-content:center;
+  cursor:pointer;transition:background .13s var(--ease)}
+.navToggle svg{width:26px;height:26px}
+.navToggle:hover,.navToggle[aria-expanded="true"]{background:rgba(255,255,255,.16)}
+.navNow{display:none;flex:1;min-width:0;color:var(--navTx);font-size:18px;font-weight:700;
+  padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navMenu{position:absolute;top:calc(100% - 4px);left:10px;right:10px;
+  background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 18px 44px -12px rgba(9,20,38,.38);padding:6px;z-index:70;
+  transform-origin:top left;animation:acctIn .16s var(--ease) both}
+.navMenu button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;
+  border-radius:10px;padding:13px 12px;font-family:inherit;font-size:18px;font-weight:600;
+  color:var(--tx);cursor:pointer;text-align:left;transition:background .13s var(--ease)}
+.navMenu button:hover,.navMenu button:focus-visible{background:rgba(19,41,75,.08);outline:none}
+.navMenu button.on{font-weight:800}
+.navMenu button.on::before{content:'';width:4px;align-self:stretch;border-radius:3px;
+  background:#3ECF74;margin:-2px 2px -2px -4px}
+.navMenu button:not(.on)::before{content:'';width:4px;flex:none;margin:0 2px 0 -4px}
+.navMenu .nmDot{width:9px;height:9px;border-radius:99px;background:#FFB020;flex:none}
+
+@media (max-width:759px){
+  .topnav .tabs{display:none}
+  .navToggle{display:flex}
+  .navNow{display:block}
+}
 .tab{display:none} .tab.on{display:block}
 button.b{background:var(--acc);color:#ffffff;border:0;border-radius:999px;padding:15px;
   font-size:18px;font-weight:700;width:100%;font-family:inherit}
@@ -419,6 +449,12 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <body>
 
 <header class="topnav">
+  <button class="navToggle" id="navBtn" onclick="toggleNavMenu(event)" aria-label="Menu"
+          aria-haspopup="menu" aria-expanded="false" aria-controls="navMenu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+  </button>
+  <div class="navNow" id="navNow"></div>
+  <div class="navMenu" id="navMenu" role="menu" aria-labelledby="navBtn" hidden></div>
   <div class="tabs">
     <button class="on" data-t="today">Home</button>
     <button data-t="snap">Record a Transaction</button>
@@ -2898,6 +2934,7 @@ function go(t){
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   document.querySelectorAll('.topnav .tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
   document.body.classList.toggle('zh-home', t==='today');
+  if(typeof syncNavNow === 'function') syncNavNow();
   window.scrollTo(0,0);
 }
 /* Home is the landing tab, so the light theme must be on before the first go(). */
@@ -3470,6 +3507,50 @@ document.getElementById('impJson').onchange = e =>{
   };
   r.readAsText(f);
 };
+/* ============================================================
+   Phone nav menu. The items are generated from the real tab buttons and
+   selecting one clicks that button, so the existing handlers still run -
+   the "back to this month" reset on Home, and the Tax sheet.
+   ============================================================ */
+function navTabButtons(){ return [...document.querySelectorAll('.topnav .tabs button')]; }
+
+function syncNavNow(){
+  const el = document.getElementById('navNow'); if(!el) return;
+  const on = navTabButtons().find(b=>b.classList.contains('on'));
+  el.textContent = on ? on.textContent.trim() : '';
+}
+
+function navMenuHtml(){
+  return navTabButtons().map((b,i)=>{
+    const dot = b.querySelector('.dot');
+    return '<button role="menuitem" onclick="navPick('+i+')"'
+      + (b.classList.contains('on') ? ' class="on" aria-current="page"' : '') + '>'
+      + '<span style="flex:1">'+esc(b.textContent.trim())+'</span>'
+      + (dot && dot.classList.contains('on') ? '<span class="nmDot"></span>' : '')
+      + '</button>';
+  }).join('');
+}
+
+function toggleNavMenu(ev){
+  if(ev) ev.stopPropagation();
+  const m = document.getElementById('navMenu'), b = document.getElementById('navBtn');
+  const open = m.hidden;
+  if(open) m.innerHTML = navMenuHtml();
+  m.hidden = !open;
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(open){ closeAcctMenu(); m.querySelector('button')?.focus(); }
+}
+function closeNavMenu(){
+  const m = document.getElementById('navMenu'), b = document.getElementById('navBtn');
+  if(!m || m.hidden) return;
+  m.hidden = true; b.setAttribute('aria-expanded','false');
+}
+function navPick(i){
+  closeNavMenu();
+  navTabButtons()[i]?.click();
+  syncNavNow();
+}
+
 /* ---- Account dropdown (the avatar in the top right) ---- */
 const ICO = {
   profile:'<circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/>',
@@ -3527,9 +3608,11 @@ async function acctLogout(){
 document.addEventListener('click', e=>{
   const m = document.getElementById('acctMenu');
   if(m && !m.hidden && !m.contains(e.target) && !e.target.closest('#acctBtn')) closeAcctMenu();
+  const n = document.getElementById('navMenu');
+  if(n && !n.hidden && !n.contains(e.target) && !e.target.closest('#navBtn')) closeNavMenu();
 });
 document.addEventListener('keydown', e=>{
-  if(e.key === 'Escape') closeAcctMenu();
+  if(e.key === 'Escape'){ closeAcctMenu(); closeNavMenu(); }
 });
 
 function openMoreMenu(){
@@ -3895,6 +3978,7 @@ if('serviceWorker' in navigator){
 document.getElementById('mDate').value = iso(new Date());
 if(lockCfg.on && lockCfg.hash) showLock();
 render();
+syncNavNow();          /* seed the phone nav's current-tab label on first paint */
 startPolling();
 if(syncCfg.auto && syncCfg.url) syncNow(true);
 if(!S.tx.length && !S.income){
