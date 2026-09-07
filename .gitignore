@@ -1,0 +1,11 @@
+# Local snapshots taken before large edits - git history replaces these
+*.bak
+*.pre18
+*.predark
+
+# Never commit personal setup data
+budget-setup-PRIVATE.json
+
+# OS noise
+Thumbs.db
+.DS_Store
