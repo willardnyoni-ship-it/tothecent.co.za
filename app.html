@@ -159,6 +159,12 @@ h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;let
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acctMenu button .lbl{flex:1}
 
+/* Checkbox row for the manual-entry form */
+.chk{display:flex;align-items:center;gap:10px;margin:14px 0 4px;cursor:pointer;
+  text-transform:none;letter-spacing:0;color:var(--tx);font-weight:600}
+.chk input{width:22px;height:22px;flex:none;accent-color:var(--acc);margin:0;cursor:pointer}
+.chk span{font-size:18px}
+
 /* ---- Phone nav: a menu instead of a scrolling strip of every tab ----
    Above 760px the tabs sit inline as before; below it they collapse behind
    the hamburger and the bar shows only where you currently are. */
@@ -560,13 +566,18 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   <h2>Manual entry</h2>
   <div class="card">
     <label>Amount (R)</label>
-    <input id="mAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+    <input id="mAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00" oninput="mTotal()">
+    <label>Tip (R)</label>
+    <input id="mTip" type="number" inputmode="decimal" step="0.01" placeholder="0.00" oninput="mTotal()">
     <label>Category</label>
     <select id="mCat"></select>
     <label>Where / what</label>
     <input id="mNote" placeholder="e.g. Coffee Craft">
     <label>Date</label>
     <input id="mDate" type="date">
+    <label class="chk"><input type="checkbox" id="mVat" checked onchange="mTotal()">
+      <span>Price includes 15% VAT</span></label>
+    <div class="mini" id="mSum"></div>
     <div style="height:14px"></div>
     <button class="b" onclick="addManual()">Add spend</button>
     <div class="msg" id="addMsg"></div>
@@ -2201,7 +2212,9 @@ function render(){
         +(t.rec ? '<span class="tag ok">matched</span>'
                 : t.src==='pdf' ? '<span class="tag wn">no receipt</span>'
                 : '<span class="tag bl">receipt only</span>')
-        +(t.items&&t.items.length?' <span class="tag">'+t.items.length+' items</span>':'')+'</td>'
+        +(t.items&&t.items.length?' <span class="tag">'+t.items.length+' items</span>':'')
+        +(t.tip?' <span class="tag">tip '+R2(t.tip)+'</span>':'')
+        +(t.vat?' <span class="tag">VAT '+R2(t.vat)+'</span>':'')+'</td>'
         +'<td class="r">'+R2(t.a)+'<div class="mini" style="font-weight:400;color:var(--blue)">edit &rsaquo;</div></td></tr>').join('')
     : '<tr><td class="mini">Nothing logged yet. Snap a slip or import a statement.</td></tr>';
 
@@ -2740,13 +2753,46 @@ function add(o){
   S.tx.push(Object.assign({id:uid(), mod:Date.now()}, o));
   save(); render();
 }
+/* South African standard rate. Prices here are quoted VAT-inclusive, so the
+   VAT sitting inside a total is total x 15/115, not total x 15%. */
+const VAT_RATE = 0.15;
+const vatOf = total => total * VAT_RATE / (1 + VAT_RATE);
+
+/* The bank sees one debit for bill + tip, and reconciliation matches on the
+   exact amount, so `a` has to be the combined total. The split is kept
+   alongside it for the tax record rather than encoded into `a`. */
+function manualParts(){
+  const amt = parseFloat(document.getElementById('mAmt').value) || 0;
+  const tip = parseFloat(document.getElementById('mTip').value) || 0;
+  const total = Math.round((amt + tip) * 100) / 100;
+  /* VAT is charged on the bill only. A voluntary tip is not consideration for
+     a supply, so it carries no VAT - charging it on the total would overstate
+     what you could claim. */
+  const vat = document.getElementById('mVat').checked ? Math.round(vatOf(amt) * 100) / 100 : 0;
+  return {amt, tip, total, vat};
+}
+function mTotal(){
+  const el = document.getElementById('mSum'); if(!el) return;
+  const p = manualParts();
+  if(!p.total){ el.textContent = ''; return; }
+  el.textContent = 'Total ' + R2(p.total)
+    + (p.tip ? '  ·  tip ' + R2(p.tip) : '')
+    + (p.vat ? '  ·  includes ' + R2(p.vat) + ' VAT' : '');
+}
 function addManual(){
-  const a = parseFloat(document.getElementById('mAmt').value);
-  if(!a || a<=0) return flash('addMsg','e','Enter an amount greater than zero.');
-  add({a, c:document.getElementById('mCat').value, note:document.getElementById('mNote').value,
-       d:document.getElementById('mDate').value || iso(new Date()), src:'manual'});
+  const p = manualParts();
+  if(!p.total || p.total<=0) return flash('addMsg','e','Enter an amount greater than zero.');
+  const rec = {a:p.total, c:document.getElementById('mCat').value,
+       note:document.getElementById('mNote').value,
+       d:document.getElementById('mDate').value || iso(new Date()), src:'manual'};
+  if(p.tip) rec.tip = p.tip;
+  if(p.vat) rec.vat = p.vat;
+  add(rec);
   document.getElementById('mAmt').value=''; document.getElementById('mNote').value='';
-  flash('addMsg','s','Logged '+R2(a));
+  document.getElementById('mTip').value='';
+  mTotal();
+  flash('addMsg','s','Logged '+R2(p.total)
+    + (p.tip ? ' (incl. '+R2(p.tip)+' tip)' : ''));
 }
 async function del(id){
   const t = S.tx.find(x=>String(x.id)===String(id));
