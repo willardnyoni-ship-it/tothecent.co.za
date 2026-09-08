@@ -45,7 +45,13 @@
   --ease:cubic-bezier(.22,1,.36,1);
   --pop:cubic-bezier(.34,1.56,.64,1);
 }
-html{scroll-behavior:smooth}
+/* overflow-x:hidden on body alone doesn't stop the page itself scrolling
+   sideways - the .glow effect bleeds intentionally past the right edge for
+   its visual effect, and the viewport's own horizontal scroll is governed
+   by the root element, not body's. Confirmed live: without this, the page
+   was 160px wider than the viewport on a phone, meaning a stray sideways
+   swipe revealed a strip of dead grey past the actual content. */
+html{scroll-behavior:smooth;overflow-x:hidden}
 body{background:var(--bg);color:var(--tx);
   font-family:'Matt','Matt Trial','Helvetica Neue',Helvetica,Arial,sans-serif;
   font-size:18px;line-height:1.55;-webkit-font-smoothing:antialiased;
