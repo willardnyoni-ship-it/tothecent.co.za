@@ -1,7 +1,10 @@
 # Budget
 
 A private, offline-first budget tracker. Receipt scanning and bank-statement parsing
-both run in the browser and are never uploaded.
+both run in the browser first, always. Signing in is optional and adds account sync
+on top: Claude reads receipts more accurately than on-device OCR, and slip photos and
+confirmed statement imports back up to your account. Signed out, nothing changes -
+everything stays exactly as local as before either existed.
 
 **Two pages, one site:**
 

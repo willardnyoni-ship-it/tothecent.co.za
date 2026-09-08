@@ -634,8 +634,9 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   <button class="b g" onclick="document.getElementById('csvIn').click()">Import a CSV instead</button>
   <input type="file" id="csvIn" accept=".csv,.txt,text/csv,text/plain" style="display:none">
   <div class="mini" style="margin-top:9px">Capitec · FNB · Standard Bank · Absa · Nedbank.
-  The file is read in your phone's memory and discarded the moment it is parsed &mdash;
-  it is never uploaded and never written to storage.</div>
+  Read in your phone's memory either way. Signed out, discarded the moment it's parsed and never
+  uploaded. Signed in, once you confirm the import the file itself is also kept in your account,
+  visible only to you &mdash; useful for tax time or a bookkeeper, so nothing here expires automatically.</div>
   <div class="msg" id="impMsg"></div>
   <div id="impResult"></div>
   </div>
@@ -719,14 +720,17 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
     <div style="font-weight:700;margin-bottom:8px">&#128274; Private by default, synced if you choose</div>
     <div class="mini" style="line-height:1.6">
       &bull; <b>No bank login, ever.</b> At any tier. This app cannot see your accounts and never asks to.<br>
-      &bull; <b>Statements are never uploaded.</b> Parsed in your phone's memory and discarded
-      the moment they're read, whether or not you're signed in.<br>
+      &bull; <b>Statements are read in your phone's memory either way.</b> Signed out, discarded
+      the moment they're parsed, never uploaded. Signed in, the file itself is kept in your account
+      once you confirm the import &mdash; on purpose, since a statement is often the record you'd
+      want for tax time or a bookkeeper, so it doesn't expire automatically the way a slip photo does.<br>
       &bull; <b>Slip photos read on-device when signed out.</b> Signed in, they're read by Claude
       for better accuracy instead, falling back to on-device reading if that's ever unavailable.<br>
       &bull; <b>Signing in is optional.</b> Skip it, and everything stays on this device only.
-      Do it, and your categories, transactions and slip photos sync to your account &mdash;
-      visible only to you, never analysed or sold.<br>
-      &bull; <b>Slip photos expire after 45 days</b>, on this device and in your account either way.<br>
+      Do it, and your categories, transactions, slip photos and imported statements sync to your
+      account &mdash; visible only to you, never analysed or sold.<br>
+      &bull; <b>Slip photos expire after 45 days</b>, on this device and in your account either way.
+      Imported statements don't expire automatically.<br>
       &bull; <b>You can take it with you.</b> Export a full backup or a plain CSV at any time.<br>
       &bull; <b>The trade-off:</b> signed out, losing this phone loses the data &mdash; back it up.
       Signed in, your account is the backup.
@@ -802,17 +806,25 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <script>
 /* ============================================================
    Budget - single file, works fully offline, no account required, no
-   analytics. Statement parsing and receipt OCR both run locally in the
-   browser regardless of sign-in state - never uploaded, always local.
+   analytics. Statement parsing always happens locally in the browser
+   first, regardless of sign-in state - reading a slip or a statement
+   never requires a connection and never depends on a server existing.
 
-   Signing in is optional and adds account sync on top: budget data
-   (categories, transactions, rules...) and slip photos are then backed up
-   to Supabase, scoped to that user by RLS. Sign out and everything keeps
-   working from what is already on this device.
+   Signing in is optional and adds two things on top: account sync (budget
+   data, slip photos, imported statement files, all scoped to that user by
+   RLS) and Haiku 4.5 reading receipts more accurately than on-device OCR
+   can, with on-device OCR as the fallback if that's ever unavailable.
+   Sign out and everything keeps working from what is already on this
+   device, exactly as before either feature existed.
 
    Storage: settings + transactions -> localStorage (+ Supabase when synced)
             slip photos            -> IndexedDB (+ Supabase Storage when
                                        signed in; see photoUpload/Download)
+            statement files        -> nowhere by default (+ Supabase Storage
+                                       once you confirm an import, signed in;
+                                       see uploadStatement) - no expiry, unlike
+                                       slip photos, since a statement is often
+                                       the record you keep on purpose
    ============================================================ */
 
 const KEY = 'wnBudget_v3';
@@ -1185,6 +1197,51 @@ async function photoRemoteDelete(id){
     const token = await ensureToken();
     const url = syncCfg.url.replace(/\/+$/,'') + '/storage/v1/object/receipts/' + receiptPath(id);
     await fetch(url, {method:'DELETE', headers:{apikey:syncCfg.key, Authorization:'Bearer '+token}});
+  }catch(e){}
+}
+
+/* ============================================================
+   Statement file backup (Supabase Storage + a "statements" table),
+   signed-in users only.
+
+   Deliberately different from receipts: there is no expiry here. A slip
+   photo is a scan of something you already have a bank record of; a bank
+   statement often IS the record, kept for exactly the reason people keep
+   any financial document - tax time, a dispute, a bookkeeper. Nothing
+   times it out automatically.
+
+   Signed out, this is never called and no file ever leaves the device -
+   same boundary as every other account-only feature in this app. Not
+   awaited from commit() - the import already finished before this runs,
+   so a slow or failed upload must never look like a failed import.
+   ============================================================ */
+function statementPath(id, ext){ return syncCfg.userId + '/' + id + '.' + ext; }
+
+async function uploadStatement(file, meta){
+  if(!syncCfg.token || !syncCfg.userId || !file) return;
+  try{
+    const token = await ensureToken();
+    const id = uid();
+    const ext = meta.kind === 'pdf' ? 'pdf' : 'csv';
+    const mime = meta.kind === 'pdf' ? 'application/pdf' : 'text/csv';
+    const putUrl = syncCfg.url.replace(/\/+$/,'') + '/storage/v1/object/statements/' + statementPath(id, ext);
+    const putRes = await fetch(putUrl, {method:'POST',
+      headers:{apikey:syncCfg.key, Authorization:'Bearer '+token, 'Content-Type':mime, 'x-upsert':'true'},
+      body: file});
+    if(!putRes.ok) return;
+
+    /* `id` here is the app's short local id, fine as a storage filename but
+       not a valid value for the table's uuid primary key - left out of the
+       row so Postgres's own gen_random_uuid() default fills it. storage_path
+       is what actually links the row back to the uploaded file. */
+    const row = {
+      storage_path: statementPath(id, ext), filename: (file.name||'').slice(0,200),
+      bank: (meta.bank||'').slice(0,60), kind: meta.kind, tx_count: meta.txCount||0,
+      period_start: meta.periodStart||null, period_end: meta.periodEnd||null
+    };
+    await fetch(syncCfg.url.replace(/\/+$/,'') + '/rest/v1/statements', {method:'POST',
+      headers:{apikey:syncCfg.key, Authorization:'Bearer '+token, 'Content-Type':'application/json', Prefer:'return=minimal'},
+      body: JSON.stringify(row)});
   }catch(e){}
 }
 
@@ -3514,17 +3571,19 @@ async function handleCsv(f){
     const r = parseCsv(text);
     if(r.error) return flash('impMsg','e', r.error);
     if(!r.tx.length) return flash('impMsg','e','No spending rows found in that CSV.');
+    pendingFile = {file:f, bank: r.bank||'CSV', kind:'csv'};
     showImport(r, (r.bank||'CSV') + ' · ' + f.name);
   }catch(err){ console.error(err); flash('impMsg','e','Could not read that file: ' + err.message); }
 }
 
-let pending = null, pendingFlows = null, lastStatement = null;
+let pending = null, pendingFlows = null, lastStatement = null, pendingFile = null;
 async function handle(f){
   flash('impMsg','i','Reading ' + f.name + ' …');
   document.getElementById('impResult').innerHTML = '';
   try{
     const r = await parsePdf(f);
     if(!r.tx.length) return flash('impMsg','e','No spending transactions found. Is this an FNB statement PDF rather than a screenshot?');
+    pendingFile = {file:f, bank:'FNB', kind:'pdf'};
 
     const seen = new Set(S.tx.filter(isStmt).map(t=>t.d+'|'+t.a.toFixed(2)+'|'+(t.note||'')));
     const fresh = r.tx.filter(t => !seen.has(t.d+'|'+t.a.toFixed(2)+'|'+t.desc));
@@ -3595,9 +3654,20 @@ function commit(){
     S.tx.push(t);
   });
   if(pendingFlows && pendingFlows.length){ S.flows = (S.flows||[]).concat(pendingFlows); }
-  const n = pending.length; pending = null; pendingFlows = null;
-  /* The statement file itself is never stored - it is parsed in memory and the
-     reference dropped here. Nothing of it survives on disk or leaves the device. */
+  /* Signed out, the file is parsed in memory and dropped here - nothing of
+     it survives on disk or leaves the device, same as always. Signed in,
+     this is the point the import is actually confirmed (not just
+     previewed), so it's the right moment to keep the file itself too -
+     not awaited, so a slow upload can never make a finished import look
+     like it failed. */
+  if(pendingFile){
+    const dates = pending.map(t=>t.d).sort();
+    uploadStatement(pendingFile.file, {
+      bank: pendingFile.bank, kind: pendingFile.kind, txCount: pending.length,
+      periodStart: dates[0], periodEnd: dates[dates.length-1]
+    });
+  }
+  const n = pending.length; pending = null; pendingFlows = null; pendingFile = null;
   lastStatement = null;
   const fin = document.getElementById('file'); if(fin) fin.value = '';
   const cin = document.getElementById('csvIn'); if(cin) cin.value = '';
