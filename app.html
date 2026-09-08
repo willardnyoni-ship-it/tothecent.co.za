@@ -554,7 +554,9 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <!-- ================= SNAP ================= -->
 <section class="tab" id="t-snap">
   <h1>Capture a slip</h1>
-  <div class="sub">Photograph the till slip. It is read on your phone &mdash; the image never leaves the device.</div>
+  <div class="sub">Photograph the till slip. It is read on your phone. If you are signed in, a private copy
+    is also kept in your account, visible only to you, so it is there on your other devices &mdash; deleted
+    automatically 45 days after it is taken, on every device and in your account either way.</div>
 
   <div style="height:12px"></div>
   <div class="cap">
@@ -780,13 +782,18 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 /* ============================================================
-   Budget - single file, offline, no accounts, no tracking.
-   Your data stays on this device. Nothing is uploaded, there is
-   no account, and no analytics. Statement parsing and receipt OCR
-   both run locally in the browser.
+   Budget - single file, works fully offline, no account required, no
+   analytics. Statement parsing and receipt OCR both run locally in the
+   browser regardless of sign-in state - never uploaded, always local.
 
-   Storage: settings + transactions -> localStorage
-            slip photos            -> IndexedDB (much larger quota)
+   Signing in is optional and adds account sync on top: budget data
+   (categories, transactions, rules...) and slip photos are then backed up
+   to Supabase, scoped to that user by RLS. Sign out and everything keeps
+   working from what is already on this device.
+
+   Storage: settings + transactions -> localStorage (+ Supabase when synced)
+            slip photos            -> IndexedDB (+ Supabase Storage when
+                                       signed in; see photoUpload/Download)
    ============================================================ */
 
 const KEY = 'wnBudget_v3';
@@ -1097,8 +1104,69 @@ async function photoDel(id){
 const _urls = new Map();
 async function photoUrl(id){
   if(_urls.has(id)) return _urls.get(id);
-  const b = await photoGet(id); if(!b) return null;
+  let b = await photoGet(id);
+  if(!b){
+    /* Not on this device - if signed in, the account may hold a backup
+       (taken on another device, or this one before local storage was
+       cleared). Cache it locally on success so it works offline next time. */
+    b = await photoDownload(id);
+    if(b) try{ await photoPut(id, b); }catch(e){}
+  }
+  if(!b) return null;
   const u = URL.createObjectURL(b); _urls.set(id,u); return u;
+}
+
+/* ============================================================
+   Server-side receipt backup (Supabase Storage), signed-in users only.
+
+   Photos always live locally in IndexedDB first - this backup is
+   best-effort on top of that, not a replacement. It exists so a slip
+   photographed on one device is visible on another, and so it survives
+   a device being lost or its storage cleared. Every call swallows its
+   own errors: a flaky connection must never block capturing a slip or
+   break the offline-first path.
+
+   Path convention: {auth.uid()}/{photo_id}.jpg - the storage RLS policies
+   key on the first path segment matching the caller's own uid.
+   ============================================================ */
+function receiptPath(pid){ return syncCfg.userId + '/' + pid + '.jpg'; }
+
+async function photoUpload(id, blob){
+  if(!syncCfg.token || !syncCfg.userId) return false;
+  try{
+    const token = await ensureToken();
+    const url = syncCfg.url.replace(/\/+$/,'') + '/storage/v1/object/receipts/' + receiptPath(id);
+    const r = await fetch(url, {method:'POST',
+      headers:{apikey:syncCfg.key, Authorization:'Bearer '+token,
+               'Content-Type':'image/jpeg', 'x-upsert':'true'},
+      body: blob});
+    return r.ok;
+  }catch(e){ return false; }
+}
+async function photoDownload(id){
+  if(!syncCfg.token || !syncCfg.userId) return null;
+  try{
+    const token = await ensureToken();
+    const url = syncCfg.url.replace(/\/+$/,'') + '/storage/v1/object/receipts/' + receiptPath(id);
+    /* no-store: this app promises deletion, and this same URL is genuinely
+       re-requested after a delete (autoPurgePhotos clears the local copy,
+       then something re-opens the transaction before the tx record itself
+       is dropped). A browser-cached 200 would silently serve back a photo
+       that is supposed to be gone - verified live against this project:
+       without no-store, a deleted object was still served from cache. */
+    const r = await fetch(url, {cache:'no-store',
+      headers:{apikey:syncCfg.key, Authorization:'Bearer '+token}});
+    if(!r.ok) return null;
+    return await r.blob();
+  }catch(e){ return null; }
+}
+async function photoRemoteDelete(id){
+  if(!syncCfg.token || !syncCfg.userId) return;
+  try{
+    const token = await ensureToken();
+    const url = syncCfg.url.replace(/\/+$/,'') + '/storage/v1/object/receipts/' + receiptPath(id);
+    await fetch(url, {method:'DELETE', headers:{apikey:syncCfg.key, Authorization:'Bearer '+token}});
+  }catch(e){}
 }
 
 /* ============================================================
@@ -1130,6 +1198,11 @@ async function autoPurgePhotos(){
   if(!due.length) return 0;
   for(const t of due){
     await photoDel(t.photo);
+    /* Best-effort - not awaited, so an offline purge still completes.
+       A server-side cron job deletes anything this misses, so the account
+       copy never outlives PHOTO_TTL_DAYS by more than that job's own
+       schedule (see the expire-receipt-photos migration). */
+    photoRemoteDelete(t.photo);
     delete t.photo; delete t.photoAt;
     t.photoGone = 1;
   }
@@ -1688,7 +1761,14 @@ function syncPayload(){
   const {flows, tx, cats, rules, shortcuts, members, splits, memory,
          achievements, windfall, income, cycleDay, weekly, method, savingsGoal,
          deleted, syncedAt} = S;
-  return {flows, tx:(tx||[]).map(({photo, ...rest})=>rest), cats, rules, shortcuts, members,
+  /* `photo` used to be stripped here because it was only ever a local
+     IndexedDB key - meaningless, and possibly confusing, on another device.
+     Now that a signed-in capture also backs the image up to Supabase
+     Storage under this user's own folder, the id (and photoAt, which
+     photoDaysLeft needs) are exactly what another device needs to find and
+     display that same backup. Still just an id and a timestamp - never the
+     image bytes - so this stays well under the payload's 2MB row limit. */
+  return {flows, tx, cats, rules, shortcuts, members,
           splits, memory, achievements, windfall, income, cycleDay, weekly, method,
           savingsGoal, deleted, syncedAt};
 }
@@ -3294,6 +3374,11 @@ async function storeSlip(r, thumb, override){
   const o = override || {};
   const pid = uid();
   try{ if(thumb) await photoPut(pid, thumb); }catch(e){ console.warn('photo not stored', e); }
+  /* Not awaited on purpose - the backup upload must never make capturing a
+     slip wait on the network. It happens in the background; if it fails,
+     the photo simply exists on this device only, same as before this backup
+     existed. */
+  if(thumb) photoUpload(pid, thumb);
   S.tx.push({ id:uid(), a:o.a ?? r.total, c:o.c ?? r.cat, note:(o.note ?? r.merchant) || '',
               d:o.d ?? r.date, src:'slip', photo:pid, photoAt:Date.now(),
               items:(o.items ?? r.items ?? []).map(i=>({d:i.d, a:i.a})) });
@@ -3886,8 +3971,10 @@ function openDataSheet(){
     +   '<div style="height:8px"></div>'
     +   '<button class="b d" onclick="wipe()">Erase everything</button>'
     +   '<div class="mini" style="margin-top:10px">Slip photos are deleted automatically '
-    +   PHOTO_TTL_DAYS + ' days after each is taken; the transaction is kept. '
-    +   'Data lives only in this browser. The JSON backup does not include photos &mdash; those stay on the device.</div>'
+    +   PHOTO_TTL_DAYS + ' days after each is taken &mdash; from this device, and from your account too '
+    +   'if you are signed in. The transaction itself is kept either way. '
+    +   'The JSON export below never includes photos; those live in browser storage'
+    +   (syncCfg.token ? ' and, while signed in, a private backup in your account.' : ' only.') + '</div>'
     + '</div>');
   render();
 }
@@ -3937,7 +4024,7 @@ async function purgePhotos(){
   if(!confirm('Delete all ' + held.length + ' slip photo(s) now?\n\n'
     + 'They would otherwise be deleted automatically ' + PHOTO_TTL_DAYS
     + ' days after each was taken. The transactions themselves stay.')) return;
-  for(const t of held){ await photoDel(t.photo); delete t.photo; delete t.photoAt; t.photoGone = 1; }
+  for(const t of held){ await photoDel(t.photo); photoRemoteDelete(t.photo); delete t.photo; delete t.photoAt; t.photoGone = 1; }
   save(); render(); alert('Deleted ' + held.length + ' photo(s).');
 }
 async function wipe(){
