@@ -99,7 +99,15 @@ tr[onclick]:active{transform:scale(.99)}
    underneath it, unreachable. Confirmed live: Record a Transaction's last
    button landed 32px inside the button's own footprint before this. */
 body{padding-top:calc(54px + var(--safeTop));padding-bottom:calc(84px + var(--safe))}
+/* Home gets its own wider, multi-column treatment below (body.zh-home
+   overrides this - more specific selector wins regardless of order).
+   Every other tab is a stacked list of forms/cards, not a dashboard, so
+   it earns a wider comfortable reading column rather than a full-bleed
+   layout - a single form stretched to fill an ultrawide monitor looks
+   worse than the narrow column it replaces, not better. */
 .wrap{max-width:520px;margin:0 auto;padding:14px 14px 0}
+@media (min-width:640px){ .wrap{max-width:640px} }
+@media (min-width:1024px){ .wrap{max-width:760px} }
 h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.3px}
 h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;letter-spacing:.9px;font-weight:800}
 .sub{color:var(--dim);font-size:18px;margin-top:2px}
@@ -245,6 +253,8 @@ td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-
 .sheet.on{display:flex}
 .sheet>div{background:var(--card);width:100%;max-width:520px;margin:0 auto;
   border-radius:28px 28px 0 0;padding:18px 16px calc(20px + var(--safe));max-height:90vh;overflow:auto}
+@media (min-width:640px){ .sheet>div{max-width:600px} }
+@media (min-width:1024px){ .sheet>div{max-width:680px} }
 .grab{width:38px;height:4px;background:var(--line);border-radius:9px;margin:0 auto 14px}
 .mono{font-variant-numeric:tabular-nums}
 .mini{font-size:18px;color:var(--dim)}
