@@ -94,7 +94,11 @@ tr[onclick]:active{transform:scale(.99)}
 
 .saving{animation:pulseRing 1s ease-out}
 .nudge{animation:nudge .35s ease-in-out}
-body{padding-top:calc(54px + var(--safeTop));padding-bottom:var(--safe)}
+/* Bottom padding clears the floating chat button (52px tall, sitting 16px
+   above the safe area) so the last element on a tall tab is never sitting
+   underneath it, unreachable. Confirmed live: Record a Transaction's last
+   button landed 32px inside the button's own footprint before this. */
+body{padding-top:calc(54px + var(--safeTop));padding-bottom:calc(84px + var(--safe))}
 .wrap{max-width:520px;margin:0 auto;padding:14px 14px 0}
 h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.3px}
 h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;letter-spacing:.9px;font-weight:800}
@@ -701,16 +705,18 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 
   <h2>Your data</h2>
   <div class="card">
-    <div style="font-weight:700;margin-bottom:8px">&#128274; On this device only</div>
+    <div style="font-weight:700;margin-bottom:8px">&#128274; Private by default, synced if you choose</div>
     <div class="mini" style="line-height:1.6">
       &bull; <b>No bank login, ever.</b> At any tier. This app cannot see your accounts and never asks to.<br>
-      &bull; <b>Nothing is uploaded.</b> Statements are parsed in your phone's memory and the file is
-      discarded the moment it is read. Slip photos are stored in your browser, not on a server.<br>
-      &bull; <b>No account, no sign-up, no analytics.</b> There is no server to hold your data,
-      which is also why sharing works by sending a file rather than syncing.<br>
+      &bull; <b>Statements are never uploaded.</b> Parsed in your phone's memory and discarded
+      the moment they're read, whether or not you're signed in.<br>
+      &bull; <b>Signing in is optional.</b> Skip it, and everything stays on this device only.
+      Do it, and your categories, transactions and slip photos sync to your account &mdash;
+      visible only to you, never analysed or sold.<br>
+      &bull; <b>Slip photos expire after 45 days</b>, on this device and in your account either way.<br>
       &bull; <b>You can take it with you.</b> Export a full backup or a plain CSV at any time.<br>
-      &bull; <b>The trade-off:</b> because it lives only here, losing this phone loses the data.
-      Back it up.
+      &bull; <b>The trade-off:</b> signed out, losing this phone loses the data &mdash; back it up.
+      Signed in, your account is the backup.
     </div>
   </div>
 
