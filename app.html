@@ -159,6 +159,16 @@ h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;let
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .acctMenu button .lbl{flex:1}
 
+/* Slip thumbnail in the Recent list */
+td.thumbCell{width:56px;padding-right:0;vertical-align:top}
+.rthumb{width:48px;height:48px;flex:none;border-radius:10px;border:1px solid var(--line);
+  background:var(--card2) center/cover no-repeat;padding:0;cursor:pointer;display:block;
+  transition:transform .16s var(--ease),box-shadow .16s var(--ease)}
+.rthumb:hover,.rthumb:focus-visible{transform:scale(1.08);box-shadow:0 6px 16px -4px rgba(9,20,38,.4);outline:none}
+.rthumb.gone{display:flex;align-items:center;justify-content:center;cursor:default;
+  color:var(--dim);font-size:18px;background-image:none}
+.rthumb.gone:hover{transform:none;box-shadow:none}
+
 /* Checkbox row for the manual-entry form */
 .chk{display:flex;align-items:center;gap:10px;margin:14px 0 4px;cursor:pointer;
   text-transform:none;letter-spacing:0;color:var(--tx);font-weight:600}
@@ -1089,6 +1099,42 @@ async function photoUrl(id){
   if(_urls.has(id)) return _urls.get(id);
   const b = await photoGet(id); if(!b) return null;
   const u = URL.createObjectURL(b); _urls.set(id,u); return u;
+}
+
+/* ============================================================
+   Slip photos expire after 45 days.
+
+   Expiry is measured from when the photo was TAKEN (photoAt), not from the
+   transaction date. Photographing last month's slip today should give you
+   the full 45 days, not delete it on the spot. Older records predate
+   photoAt, so those fall back to the transaction date.
+   ============================================================ */
+const PHOTO_TTL_DAYS = 45;
+const DAY_MS = 86400000;
+
+function photoTakenAt(t){
+  if(t.photoAt) return t.photoAt;
+  const d = new Date((t.d || iso(new Date())) + 'T12:00:00');
+  return isNaN(d) ? Date.now() : d.getTime();
+}
+function photoDaysLeft(t){
+  return Math.ceil((photoTakenAt(t) + PHOTO_TTL_DAYS*DAY_MS - Date.now()) / DAY_MS);
+}
+function photoExpired(t){ return photoDaysLeft(t) <= 0; }
+
+/* Runs once on boot. Silent by design - this is routine housekeeping the user
+   already agreed to, not an event worth a dialog. `photoGone` is left behind
+   so the UI can say the photo expired rather than implying it was lost. */
+async function autoPurgePhotos(){
+  const due = S.tx.filter(t => t.photo && photoExpired(t));
+  if(!due.length) return 0;
+  for(const t of due){
+    await photoDel(t.photo);
+    delete t.photo; delete t.photoAt;
+    t.photoGone = 1;
+  }
+  save(); render();
+  return due.length;
 }
 
 /* ============================================================
@@ -2207,16 +2253,26 @@ function render(){
 
   const rec = [...active].sort((a,b)=> b.d.localeCompare(a.d) || String(b.id).localeCompare(String(a.id))).slice(0,25);
   document.getElementById('recent').innerHTML = rec.length
-    ? rec.map(t=>'<tr onclick="editTx(&quot;'+t.id+'&quot;)" style="cursor:pointer"><td><div style="font-weight:600">'+esc(t.note||t.c)+'</div>'
+    ? rec.map(t=>'<tr onclick="editTx(&quot;'+t.id+'&quot;)" style="cursor:pointer">'
+        +'<td class="thumbCell">'
+        + (t.photo
+            ? '<button class="rthumb" data-pid="'+esc(t.photo)+'" title="View slip"'
+              + ' onclick="event.stopPropagation();viewShot(&quot;'+t.id+'&quot;)"'
+              + ' aria-label="View slip photo"></button>'
+            : t.photoGone ? '<span class="rthumb gone" title="Photo expired">&#8709;</span>' : '')
+        +'</td>'
+        +'<td><div style="font-weight:600">'+esc(t.note||t.c)+'</div>'
         +'<div class="tag'+(t.c==='Uncategorised'?' wn':t.src==='pdf'?' bl':'')+'">'+esc(t.c)+' &middot; '+t.d+'</div> '
         +(t.rec ? '<span class="tag ok">matched</span>'
                 : t.src==='pdf' ? '<span class="tag wn">no receipt</span>'
                 : '<span class="tag bl">receipt only</span>')
         +(t.items&&t.items.length?' <span class="tag">'+t.items.length+' items</span>':'')
         +(t.tip?' <span class="tag">tip '+R2(t.tip)+'</span>':'')
-        +(t.vat?' <span class="tag">VAT '+R2(t.vat)+'</span>':'')+'</td>'
+        +(t.vat?' <span class="tag">VAT '+R2(t.vat)+'</span>':'')
+        +(t.photo?' <span class="tag">slip &middot; '+photoDaysLeft(t)+'d left</span>':'')+'</td>'
         +'<td class="r">'+R2(t.a)+'<div class="mini" style="font-weight:400;color:var(--blue)">edit &rsaquo;</div></td></tr>').join('')
-    : '<tr><td class="mini">Nothing logged yet. Snap a slip or import a statement.</td></tr>';
+    : '<tr><td class="mini" colspan="3">Nothing logged yet. Snap a slip or import a statement.</td></tr>';
+  hydrateThumbs();
 
   document.getElementById('income').value   = S.income;
   document.getElementById('cycleDay').value = S.cycleDay;
@@ -2956,13 +3012,33 @@ function saveTx(id){
   if(taught) alert('Rule saved. '+taught+' other transaction(s) updated.');
 }
 
+/* render() is synchronous but photos come from IndexedDB, so the thumbnails
+   are filled in afterwards. Object URLs are cached in _urls and reused, so
+   re-rendering does not leak a new one each time. */
+async function hydrateThumbs(){
+  const els = [...document.querySelectorAll('.rthumb[data-pid]')];
+  for(const el of els){
+    if(el.dataset.done) continue;
+    const u = await photoUrl(el.dataset.pid);
+    if(u){ el.style.backgroundImage = 'url("'+u+'")'; el.dataset.done = '1'; }
+    else { el.classList.add('gone'); el.textContent = '∅'; el.dataset.done = '1'; }
+  }
+}
+
 async function viewShot(id){
   const t = S.tx.find(x=>String(x.id)===String(id));
   if(!t || !t.photo) return;
   const u = await photoUrl(t.photo);
+  const left = photoDaysLeft(t);
   openSheet('<div class="row"><h1>'+esc(t.note||t.c)+'</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
     + '<div class="sub">'+R2(t.a)+' · '+t.d+' · '+esc(t.c)+'</div>'
-    + (u ? '<img class="shot" style="margin-top:12px" src="'+u+'">' : '<div class="mini" style="margin-top:12px">Photo no longer stored.</div>'));
+    + (u ? '<img class="shot" style="margin-top:12px" src="'+u+'">'
+         + '<div class="mini" style="margin-top:8px">'
+         + (left > 0 ? 'This photo is deleted from this device in ' + left + ' day' + (left===1?'':'s')
+                     + '. The transaction is kept.'
+                     : 'This photo is due to be deleted.')
+         + '</div>'
+       : '<div class="mini" style="margin-top:12px">Photo no longer stored.</div>'));
 }
 
 function flash(id,kind,msg){
@@ -3219,7 +3295,7 @@ async function storeSlip(r, thumb, override){
   const pid = uid();
   try{ if(thumb) await photoPut(pid, thumb); }catch(e){ console.warn('photo not stored', e); }
   S.tx.push({ id:uid(), a:o.a ?? r.total, c:o.c ?? r.cat, note:(o.note ?? r.merchant) || '',
-              d:o.d ?? r.date, src:'slip', photo:pid,
+              d:o.d ?? r.date, src:'slip', photo:pid, photoAt:Date.now(),
               items:(o.items ?? r.items ?? []).map(i=>({d:i.d, a:i.a})) });
   save();
 }
@@ -3461,7 +3537,9 @@ function applyMatches(){
   pairs.forEach(p=>{
     const s = S.tx.find(t=>t.id===p.stmt.id), l = S.tx.find(t=>t.id===p.log.id);
     if(!s||!l) return;
-    if(l.photo && !s.photo) s.photo = l.photo;
+    /* carry photoAt with the photo, or the copy would age from the statement
+       date instead of when the slip was actually taken */
+    if(l.photo && !s.photo){ s.photo = l.photo; if(l.photoAt) s.photoAt = l.photoAt; }
     if(l.note && l.note.length > (s.note||'').length) s.note = l.note;
     if(l.c && l.c !== 'Uncategorised') s.c = l.c;   /* your categorisation beats the rule engine */
     s.rec = true;
@@ -3804,10 +3882,12 @@ function openDataSheet(){
     +   '<div style="height:8px"></div>'
     +   '<button class="b g" onclick="exportCsv()">Export transactions (CSV)</button>'
     +   '<div style="height:8px"></div>'
-    +   '<button class="b g" onclick="purgePhotos()">Delete slip photos older than 90 days</button>'
+    +   '<button class="b g" onclick="purgePhotos()">Delete all slip photos now</button>'
     +   '<div style="height:8px"></div>'
     +   '<button class="b d" onclick="wipe()">Erase everything</button>'
-    +   '<div class="mini" style="margin-top:10px">Data lives only in this browser. The JSON backup does not include photos &mdash; those stay on the device.</div>'
+    +   '<div class="mini" style="margin-top:10px">Slip photos are deleted automatically '
+    +   PHOTO_TTL_DAYS + ' days after each is taken; the transaction is kept. '
+    +   'Data lives only in this browser. The JSON backup does not include photos &mdash; those stay on the device.</div>'
     + '</div>');
   render();
 }
@@ -3849,13 +3929,16 @@ function applySetup(d){
   go('today');
 }
 
+/* Photos older than the cut-off are removed automatically on boot, so this
+   is the "clear them all now" escape hatch rather than an age-based sweep. */
 async function purgePhotos(){
-  const cut = iso(new Date(Date.now() - 90*86400000));
-  const old = S.tx.filter(t => t.photo && t.d < cut);
-  if(!old.length) return alert('No slip photos older than 90 days.');
-  if(!confirm('Delete ' + old.length + ' photo(s)? The transactions themselves stay.')) return;
-  for(const t of old){ await photoDel(t.photo); delete t.photo; }
-  save(); render(); alert('Deleted ' + old.length + ' photo(s).');
+  const held = S.tx.filter(t => t.photo);
+  if(!held.length) return alert('No slip photos are stored on this device.');
+  if(!confirm('Delete all ' + held.length + ' slip photo(s) now?\n\n'
+    + 'They would otherwise be deleted automatically ' + PHOTO_TTL_DAYS
+    + ' days after each was taken. The transactions themselves stay.')) return;
+  for(const t of held){ await photoDel(t.photo); delete t.photo; delete t.photoAt; t.photoGone = 1; }
+  save(); render(); alert('Deleted ' + held.length + ' photo(s).');
 }
 async function wipe(){
   if(!confirm('Erase all transactions, budget settings and slip photos on this device? This cannot be undone.')) return;
@@ -4025,6 +4108,7 @@ document.getElementById('mDate').value = iso(new Date());
 if(lockCfg.on && lockCfg.hash) showLock();
 render();
 syncNavNow();          /* seed the phone nav's current-tab label on first paint */
+autoPurgePhotos();     /* drop slip photos past the 45-day cut-off */
 startPolling();
 if(syncCfg.auto && syncCfg.url) syncNow(true);
 if(!S.tx.length && !S.income){
