@@ -114,6 +114,9 @@ label{display:block;font-size:18px;color:var(--dim);text-transform:uppercase;let
 .pathbtn .t .arrow{transition:transform .25s var(--pop)}
 .pathbtn:hover .t .arrow{transform:translateX(6px)}
 .pathbtn .d{font-size:18px;color:var(--dim)}
+.segbtn{padding:16px 18px}
+.segbtn .t{font-size:18px}
+.segbtn .d{font-size:14px}
 
 /* ---- Phone mockup ---- */
 .phone{width:290px;margin:0 auto;background:var(--bg);border:9px solid #1c1c1e;border-radius:42px;
@@ -174,6 +177,16 @@ a{color:var(--blue)}
       <button id="authTabIn" class="on" onclick="setAuthMode('signin')" type="button">Log in</button>
       <button id="authTabUp" onclick="setAuthMode('signup')" type="button">Create account</button>
     </div>
+    <div id="authSegment" style="display:none;flex-direction:column;gap:10px;margin:16px 0">
+      <button class="pathbtn segbtn" data-segment="business" type="button" onclick="chooseSegment('business')">
+        <div class="t">I run a business <span class="arrow">&rarr;</span></div>
+        <div class="d">Turn slips and statements into tidy SARS records</div>
+      </button>
+      <button class="pathbtn segbtn" data-segment="personal" type="button" onclick="chooseSegment('personal')">
+        <div class="t">It's for me <span class="arrow">&rarr;</span></div>
+        <div class="d">Find out where the money actually goes each month</div>
+      </button>
+    </div>
     <div id="authEmailField">
       <label>Email</label>
       <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
@@ -203,16 +216,7 @@ a{color:var(--blue)}
       where the money went. Everything stays on your phone.</p>
 
       <div style="height:30px"></div>
-      <div class="grid two reveal d3">
-        <button class="pathbtn" data-path="business">
-          <div class="t">I run a business <span class="arrow">&rarr;</span></div>
-          <div class="d">Turn slips and statements into tidy SARS records</div>
-        </button>
-        <button class="pathbtn" data-path="personal">
-          <div class="t">It's for me <span class="arrow">&rarr;</span></div>
-          <div class="d">Find out where the money actually goes each month</div>
-        </button>
-      </div>
+      <button class="btn reveal d3" style="max-width:300px" onclick="openAuth('signup')">Create your free account</button>
     </div>
 
     <!-- Phone mock - the real Today screen -->
@@ -326,9 +330,22 @@ function saveSession(d){
 
 let authMode = 'signin';
 let recoverToken = null, recoverRefresh = null, recoverExpiresIn = null;
+let chosenSegment = '';
+
+/* The two paths that used to live in the hero, now asked at the point they
+   actually mean something - creating an account - rather than before the
+   visitor has decided to sign up at all. Optional: a business owner who
+   skips it is still a business owner, so it never blocks submitAuth(). */
+function chooseSegment(seg){
+  chosenSegment = seg;
+  document.querySelectorAll('.segbtn').forEach(b => b.classList.toggle('on', b.dataset.segment === seg));
+  try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
+}
 
 function openAuth(mode){
   authMode = mode || 'signin';
+  chosenSegment = '';
+  document.querySelectorAll('.segbtn').forEach(b => b.classList.remove('on'));
   setAuthMode(authMode);
   document.getElementById('authMsg').textContent = '';
   document.getElementById('authOverlay').classList.add('on');
@@ -341,6 +358,7 @@ function setAuthMode(mode){
   document.getElementById('authTabIn').classList.toggle('on', mode==='signin');
   document.getElementById('authTabUp').classList.toggle('on', mode==='signup');
   document.getElementById('authTabs').style.display = isRecover ? 'none' : 'flex';
+  document.getElementById('authSegment').style.display = mode === 'signup' ? 'flex' : 'none';
   document.getElementById('authEmailField').style.display = isRecover ? 'none' : 'block';
   document.getElementById('authForgot').style.display = isRecover ? 'none' : 'block';
   document.getElementById('authTitle').textContent = isRecover ? 'Set a new password' : 'Your account';
@@ -391,7 +409,8 @@ async function submitAuth(){
       saveSession(d);
       location.href = 'app.html?onboard=1';
     } else {
-      const d = await authFetch('/auth/v1/signup', {email, password:pass});
+      const d = await authFetch('/auth/v1/signup',
+        {email, password:pass, data: chosenSegment ? {segment: chosenSegment} : {}});
       if(d.access_token){
         saveSession(d);
         location.href = 'app.html?onboard=1';
@@ -421,16 +440,6 @@ document.getElementById('authPass').addEventListener('keydown', e=>{
     openAuth('recover');
   }
 })();
-
-/* The page is just the hero now - no signup form to route into, so both
-   path buttons lead the same place: create an account and go. Left as two
-   buttons (rather than merged into one) because the labels still tell a
-   visitor "this is for you" before they click anything. */
-document.querySelectorAll('.pathbtn').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.pathbtn').forEach(x => x.classList.toggle('on', x === b));
-  try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
-  openAuth('signup');
-});
 
 /* Already signed in? Don't make a returning tester sit through the whole
    pitch again - swap the top-corner link to go straight into the app. */
