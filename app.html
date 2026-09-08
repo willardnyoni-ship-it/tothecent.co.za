@@ -1781,12 +1781,17 @@ async function ensureToken(){
   storeSession(d);
   return syncCfg.token;
 }
+/* Both sign-out entry points (the account menu and the Account sheet's own
+   button) call this, so the redirect lives here once rather than being
+   something each caller has to remember. Lands on index.html - the app
+   itself has nothing useful to show someone who just signed out. */
 async function signOut(){
   try{ if(syncCfg.token) await authFetch('/auth/v1/logout', {method:'POST',
     headers:{Authorization:'Bearer '+syncCfg.token}}); }catch(e){}
   delete syncCfg.token; delete syncCfg.refresh; delete syncCfg.userId;
   delete syncCfg.email; delete syncCfg.expires;
-  saveSync(); clearInterval(_pollTimer); render();
+  saveSync(); clearInterval(_pollTimer);
+  location.href = 'index.html';
 }
 /* Joining a household is idempotent - knowing the passphrase is what lets you in. */
 async function joinHousehold(id, token){
@@ -3963,9 +3968,9 @@ function acctGo(fn){ closeAcctMenu(); fn(); }
 async function acctLogout(){
   closeAcctMenu();
   if(!syncCfg.token){ openAccountSheet(); return; }
+  /* signOut() redirects to the landing page itself, so there's no point
+     opening a confirmation sheet here - it would never be seen. */
   await signOut();
-  openSheet('<div class="row"><h1>Logged out</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
-    + '<div class="sub">Your data stays on this device. Sign in again to resume syncing.</div>');
 }
 /* Close on an outside click or Escape - a menu you cannot dismiss is a trap. */
 document.addEventListener('click', e=>{

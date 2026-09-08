@@ -398,7 +398,10 @@ async function submitAuth(){
       const d = await r.json().catch(()=>({}));
       if(!r.ok) throw new Error(d.msg || d.error_description || d.message || ('Request failed (' + r.status + ')'));
       saveSession({access_token:recoverToken, refresh_token:recoverRefresh, expires_in:recoverExpiresIn, user:d});
-      location.href = 'app.html?onboard=1';
+      /* Resetting a password is logging back into an existing account, not
+         creating one - Home, same as a normal sign-in, not the Setup
+         onboarding a brand new account gets. */
+      location.href = 'app.html';
     }catch(err){ msg.textContent = err.message; }
     return;
   }
@@ -412,7 +415,9 @@ async function submitAuth(){
     if(authMode === 'signin'){
       const d = await authFetch('/auth/v1/token?grant_type=password', {email, password:pass});
       saveSession(d);
-      location.href = 'app.html?onboard=1';
+      /* Logging in goes straight to Home - onboard=1 is only for a genuinely
+         new account, which is why signup below still uses it. */
+      location.href = 'app.html';
     } else {
       const d = await authFetch('/auth/v1/signup',
         {email, password:pass, data: {segment: chosenSegment}});
