@@ -568,9 +568,10 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <!-- ================= SNAP ================= -->
 <section class="tab" id="t-snap">
   <h1>Capture a slip</h1>
-  <div class="sub">Photograph the till slip. It is read on your phone. If you are signed in, a private copy
-    is also kept in your account, visible only to you, so it is there on your other devices &mdash; deleted
-    automatically 45 days after it is taken, on every device and in your account either way.</div>
+  <div class="sub">Photograph the till slip. Signed out, it is read entirely on your phone. Signed in, it is
+    read by Claude for better accuracy, falling back to on-device reading if that's ever unavailable &mdash;
+    and a private copy is kept in your account, visible only to you, so it is there on your other devices.
+    Deleted automatically 45 days after it is taken, on every device and in your account either way.</div>
 
   <div style="height:12px"></div>
   <div class="cap">
@@ -720,6 +721,8 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
       &bull; <b>No bank login, ever.</b> At any tier. This app cannot see your accounts and never asks to.<br>
       &bull; <b>Statements are never uploaded.</b> Parsed in your phone's memory and discarded
       the moment they're read, whether or not you're signed in.<br>
+      &bull; <b>Slip photos read on-device when signed out.</b> Signed in, they're read by Claude
+      for better accuracy instead, falling back to on-device reading if that's ever unavailable.<br>
       &bull; <b>Signing in is optional.</b> Skip it, and everything stays on this device only.
       Do it, and your categories, transactions and slip photos sync to your account &mdash;
       visible only to you, never analysed or sold.<br>
@@ -3184,8 +3187,73 @@ document.getElementById('batchIn').onchange = e => {
   snapBatch(fs);
 };
 
+/* ============================================================
+   Haiku 4.5 vision OCR - signed-in users only.
+
+   Tesseract (below) stays the fallback for everyone: on any failure here,
+   on timeout, offline, or when signed out entirely. The receipt photo
+   leaves the device through this one path only when signed in - the same
+   trust boundary the account backup already uses, not a new one. Errors
+   are swallowed on purpose: a flaky connection should degrade to on-device
+   reading, never surface as a broken capture.
+   ============================================================ */
+function blobToBase64(blob){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+async function readSlipViaHaiku(file){
+  if(!syncCfg.token || !syncCfg.userId) return null;
+  try{
+    /* Claude's vision input wants roughly this scale - notably not the
+       greyscale/auto-levelled copy forOcr() builds for Tesseract; a normal
+       colour photo gives it more to work with (logos, printed colour). */
+    const prepped = await shrink(file, 1568, 0.85);
+    const b64 = await blobToBase64(prepped);
+    const token = await ensureToken();
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 20000);
+    let resp;
+    try{
+      resp = await fetch(syncCfg.url.replace(/\/+$/,'') + '/functions/v1/read-receipt', {
+        method:'POST', signal:ctrl.signal,
+        headers:{apikey:syncCfg.key, Authorization:'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({image:b64, mimeType:'image/jpeg'})
+      });
+    } finally { clearTimeout(timer); }
+    if(!resp.ok) return null;
+    const d = await resp.json();
+    if(!d || d.error) return null;
+
+    const merchant = String(d.merchant||'').slice(0,60);
+    const items = Array.isArray(d.items)
+      ? d.items.filter(i=>i && typeof i.a==='number' && isFinite(i.a))
+               .map(i=>({d:String(i.d||'').slice(0,60), a:i.a}))
+      : [];
+    const total = (typeof d.total==='number' && isFinite(d.total)) ? d.total : null;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date||'') ? d.date : iso(new Date());
+    /* Merchant rules and taught corrections still win over a raw model
+       guess - classify() already layers those before falling back to
+       anything built-in, same as the Tesseract path. */
+    const cat = classify([merchant, d.category_hint, ...items.map(i=>i.d)].filter(Boolean).join(' '));
+    const rec = reconcileItems(items, total);
+    if(total == null && !items.length) return null;   /* nothing usable - let Tesseract try */
+    return {total, date, merchant, cat, how:'read by Claude', text:'', items, rec, totalConf:null};
+  }catch(e){ return null; }
+}
+
 async function readSlip(file, onProg){
-  const [thumb, ocrImg] = await Promise.all([ shrink(file, 1000, 0.6), forOcr(file) ]);
+  const thumb = await shrink(file, 1000, 0.6);
+  if(syncCfg.token){
+    onProg(0.15, 'Reading slip…');
+    const hk = await readSlipViaHaiku(file);
+    if(hk){ hk.readable = true; onProg(1, 'Done'); return {r:hk, thumb}; }
+    onProg(0.05, 'Reading on this device instead…');
+  }
+  const ocrImg = await forOcr(file);
   let out = {text:'', lines:[]}, r = null;
   try{
     out = await runOcr(ocrImg, onProg, '4');
