@@ -177,15 +177,18 @@ a{color:var(--blue)}
       <button id="authTabIn" class="on" onclick="setAuthMode('signin')" type="button">Log in</button>
       <button id="authTabUp" onclick="setAuthMode('signup')" type="button">Create account</button>
     </div>
-    <div id="authSegment" style="display:none;flex-direction:column;gap:10px;margin:16px 0">
-      <button class="pathbtn segbtn" data-segment="business" type="button" onclick="chooseSegment('business')">
-        <div class="t">I run a business <span class="arrow">&rarr;</span></div>
-        <div class="d">Turn slips and statements into tidy SARS records</div>
-      </button>
-      <button class="pathbtn segbtn" data-segment="personal" type="button" onclick="chooseSegment('personal')">
-        <div class="t">It's for me <span class="arrow">&rarr;</span></div>
-        <div class="d">Find out where the money actually goes each month</div>
-      </button>
+    <div id="authSegment" style="display:none;flex-direction:column;margin:16px 0">
+      <label style="margin:0 0 7px">Choose your plan</label>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="pathbtn segbtn" data-segment="business" type="button" onclick="chooseSegment('business')">
+          <div class="t">I run a business <span class="arrow">&rarr;</span></div>
+          <div class="d">Turn slips and statements into tidy SARS records</div>
+        </button>
+        <button class="pathbtn segbtn" data-segment="personal" type="button" onclick="chooseSegment('personal')">
+          <div class="t">It's for me <span class="arrow">&rarr;</span></div>
+          <div class="d">Find out where the money actually goes each month</div>
+        </button>
+      </div>
     </div>
     <div id="authEmailField">
       <label>Email</label>
@@ -334,11 +337,12 @@ let chosenSegment = '';
 
 /* The two paths that used to live in the hero, now asked at the point they
    actually mean something - creating an account - rather than before the
-   visitor has decided to sign up at all. Optional: a business owner who
-   skips it is still a business owner, so it never blocks submitAuth(). */
+   visitor has decided to sign up at all. This is the plan choice
+   (Individual/Business), so submitAuth() requires it for sign-up. */
 function chooseSegment(seg){
   chosenSegment = seg;
   document.querySelectorAll('.segbtn').forEach(b => b.classList.toggle('on', b.dataset.segment === seg));
+  document.getElementById('authMsg').textContent = '';
   try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
 }
 
@@ -400,6 +404,7 @@ async function submitAuth(){
   }
   const email = document.getElementById('authEmail').value.trim();
   const pass  = document.getElementById('authPass').value;
+  if(authMode === 'signup' && !chosenSegment){ msg.textContent = 'Choose Individual or Business to continue.'; return; }
   if(!email || !pass){ msg.textContent = 'Email and password are both needed.'; return; }
   if(authMode === 'signup' && pass.length < 6){ msg.textContent = 'Password must be at least 6 characters.'; return; }
   msg.textContent = 'Working…';
@@ -410,7 +415,7 @@ async function submitAuth(){
       location.href = 'app.html?onboard=1';
     } else {
       const d = await authFetch('/auth/v1/signup',
-        {email, password:pass, data: chosenSegment ? {segment: chosenSegment} : {}});
+        {email, password:pass, data: {segment: chosenSegment}});
       if(d.access_token){
         saveSession(d);
         location.href = 'app.html?onboard=1';
