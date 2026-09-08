@@ -68,7 +68,6 @@ body{background:var(--bg);color:var(--tx);
 @keyframes glowPulse{0%,100%{box-shadow:0 0 60px -18px rgba(48,209,88,.45)}
                      50%{box-shadow:0 0 90px -12px rgba(48,209,88,.75)}}
 @keyframes shimmer{0%{background-position:-500px 0}100%{background-position:500px 0}}
-@keyframes fall{to{transform:translateY(105vh) rotate(var(--r))}}
 @keyframes scanline{0%{top:6%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:88%;opacity:0}}
 @keyframes tick{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 @keyframes grow{from{width:0}}
@@ -79,25 +78,17 @@ body{background:var(--bg);color:var(--tx);
 .reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}
 
 .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
-.narrow{max-width:720px;margin:0 auto}
 section{padding:74px 0;position:relative}
-section+section{border-top:1px solid var(--line)}
 
 h1{font-size:clamp(32px,6.2vw,54px);line-height:1.08;letter-spacing:-1.6px;font-weight:800}
-h2{font-size:clamp(23px,4.2vw,34px);letter-spacing:-.8px;margin-bottom:16px;font-weight:800;line-height:1.18}
 h3{font-size:21px;margin-bottom:7px;font-weight:700}
 p{margin-bottom:15px}
 .lede{font-size:clamp(17px,2.4vw,21px);color:var(--dim);margin-top:20px}
-.eyebrow{color:var(--acc);font-size:18px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:15px}
 .mini{font-size:18px;color:var(--dim)}
 .ok{color:var(--acc)}.warn{color:var(--warn)}.bad{color:var(--bad)}.blue{color:var(--blue)}
 
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(48,209,88,.15);color:var(--acc);
-  border:1px solid rgba(48,209,88,.35);border-radius:99px;padding:8px 16px;font-size:18px;font-weight:700;margin-bottom:24px}
-.card{background:var(--card);border:.5px solid var(--line);border-radius:20px;padding:22px;transition:transform .25s var(--ease)}
-.card:hover{transform:translateY(-3px)}
 .grid{display:grid;gap:16px}
-@media(min-width:720px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:720px){.grid.two{grid-template-columns:1fr 1fr}}
 
 .btn{display:inline-block;width:100%;background:var(--acc);color:#ffffff;border:0;border-radius:999px;
   padding:17px;font-size:18px;font-weight:800;font-family:inherit;cursor:pointer;text-align:center;
@@ -146,26 +137,6 @@ label{display:block;font-size:18px;color:var(--dim);text-transform:uppercase;let
 .scan{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--acc),transparent);
   animation:scanline 2.8s ease-in-out infinite;box-shadow:0 0 14px var(--acc)}
 
-/* ---- Steps ---- */
-.step{position:relative;padding-left:56px}
-.step .num{position:absolute;left:0;top:0;width:40px;height:40px;border-radius:13px;
-  background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.35);color:var(--acc);
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
-
-/* ---- Proof table ---- */
-table{width:100%;border-collapse:collapse;font-size:18px}
-td,th{padding:14px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-tr:last-child td{border-bottom:0}
-th{color:var(--dim);font-size:18px;text-transform:uppercase;letter-spacing:.9px;font-weight:700}
-td.r{text-align:right;font-weight:700;white-space:nowrap}
-.stat{font-size:clamp(30px,6vw,44px);font-weight:900;letter-spacing:-1.4px;line-height:1}
-
-.q{border-left:3px solid var(--acc);padding:4px 0 4px 18px;margin:26px 0;color:var(--dim);font-size:18px;font-style:italic}
-.dot{display:inline-block;width:8px;height:8px;border-radius:99px;background:var(--acc);margin-right:10px;vertical-align:middle}
-.hide{display:none}
-#thanks{background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.4);border-radius:20px;padding:30px;text-align:center;
-  animation:popIn .5s var(--pop) both}
-footer{padding:46px 0 70px;color:var(--dim);font-size:18px;border-top:1px solid var(--line)}
 a{color:var(--blue)}
 .glow{position:absolute;width:460px;height:460px;border-radius:50%;filter:blur(110px);
   background:rgba(48,209,88,.14);top:-160px;right:-160px;pointer-events:none;z-index:-1}
@@ -275,194 +246,6 @@ a{color:var(--blue)}
   </div>
 </section>
 
-<!-- ================= PROBLEM ================= -->
-<section>
-  <div class="narrow">
-    <div class="eyebrow reveal">The problem</div>
-    <h2 class="reveal">Every other app wants your banking password.</h2>
-    <p class="reveal d1">And even then, those apps still miss two things:</p>
-    <div class="grid two" style="margin-top:26px">
-      <div class="card reveal d1">
-        <h3>&#128181; Cash</h3>
-        <p class="mini" style="margin:0">The R200 you spent at the market. Your bank never sees it.</p>
-      </div>
-      <div class="card reveal d2">
-        <h3>&#128722; What was in the basket</h3>
-        <p class="mini" style="margin:0">"Food Lovers R456" - not R310 of groceries, R146 of household stuff.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= HOW ================= -->
-<section>
-  <div class="narrow">
-    <div class="eyebrow reveal">How it works</div>
-    <h2 class="reveal">Three things, none of them your bank login.</h2>
-    <div style="height:34px"></div>
-    <div class="grid" style="gap:30px">
-      <div class="step reveal d1">
-        <div class="num">1</div>
-        <h3>Snap the slip</h3>
-        <p class="mini" style="margin:0">Reads the total, date, shop and items - checks they add up.</p>
-      </div>
-      <div class="step reveal d2">
-        <div class="num">2</div>
-        <h3>Drop in the statement</h3>
-        <p class="mini" style="margin:0">PDF or CSV, any major SA bank. Parsed on your phone, never uploaded.</p>
-      </div>
-      <div class="step reveal d3">
-        <div class="num">3</div>
-        <h3>See what's left over</h3>
-        <p class="mini" style="margin:0">Slips match to statement lines. What doesn't match is what you missed.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= PROOF ================= -->
-<section>
-  <div class="narrow">
-    <div class="eyebrow reveal">A real example</div>
-    <h2 class="reveal">Four months of one person's statements.</h2>
-    <p class="reveal d1">Real output, checked to the cent. Not a mock-up.</p>
-
-    <div class="grid three" style="margin-top:30px">
-      <div class="card reveal d1" style="text-align:center">
-        <div class="stat bad" data-count="-10537" data-prefix="R">R0</div>
-        <p class="mini" style="margin:8px 0 0">Taken <b>out</b> of savings, while they
-        thought they were saving it</p>
-      </div>
-      <div class="card reveal d2" style="text-align:center">
-        <div class="stat warn" data-count="1903" data-prefix="R">R0</div>
-        <p class="mini" style="margin:8px 0 0">A month on fuel - across <b>27 stops</b>
-        averaging R95 each</p>
-      </div>
-      <div class="card reveal d3" style="text-align:center">
-        <div class="stat bad" data-count="72" data-suffix="%">0%</div>
-        <p class="mini" style="margin:8px 0 0">Of the month's money spent in
-        <b>week one</b>, then nothing</p>
-      </div>
-    </div>
-
-    <div class="card reveal d1" style="margin-top:24px">
-      <table>
-        <tr><th>What they believed</th><th class="r">What the numbers said</th></tr>
-        <tr><td>Saving every month</td><td class="r bad">-R10 537 taken out</td></tr>
-        <tr><td>Spending about what they earn</td><td class="r bad">R5 876 over, in 4 months</td></tr>
-        <tr><td>One gym membership</td><td class="r warn">Two gyms, one billed twice</td></tr>
-        <tr><td>Eating out is under control</td><td class="r warn">R1 588/mo · 21 coffee visits</td></tr>
-      </table>
-    </div>
-
-    <div class="q reveal">The money moved to savings on payday, then came straight back. The
-    statement said so all along.</div>
-  </div>
-</section>
-
-<!-- ================= PRIVACY ================= -->
-<section>
-  <div class="narrow">
-    <div class="eyebrow reveal">Your data</div>
-    <h2 class="reveal">It lives on your phone. That's really how it works, not just marketing talk.</h2>
-    <div class="card reveal d1" style="margin-top:22px">
-      <p><span class="dot"></span><b>No bank login, at any price.</b> The app can't see your accounts.</p>
-      <p><span class="dot"></span><b>Statements are never uploaded.</b> Read on your phone, then discarded.</p>
-      <p><span class="dot"></span><b>An account syncs to our server, in the open</b> - nothing to
-      remember, but no encryption yet, so we can technically read it.</p>
-      <p style="margin:0"><span class="dot"></span><b>The trade-off:</b> no account = data lives only
-      on this device. Account = synced, but trusted to our server.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ================= SIGNUP ================= -->
-<section id="signup">
-  <div class="narrow">
-    <div class="eyebrow reveal">Early access</div>
-    <h2 class="reveal" id="signupTitle">Want early access?</h2>
-    <p class="reveal d1" id="signupBlurb">Built in South Africa. Leave your email -
-    I'll let you know when it's ready.</p>
-
-    <form id="form" class="card reveal d1" style="margin-top:24px">
-      <label>I'm interested as a…</label>
-      <select id="segment">
-        <option value="">Choose…</option>
-        <option value="business">Business owner - slips, records, SARS</option>
-        <option value="personal">Individual - personal budgeting</option>
-        <option value="bookkeeper">Bookkeeper or accountant - for my clients</option>
-        <option value="coach">Financial coach or debt counsellor</option>
-      </select>
-
-      <label>Email</label>
-      <input id="email" type="email" required placeholder="you@example.com" autocomplete="email">
-
-      <div id="bizQs" class="hide">
-        <label>Roughly what do you spend on bookkeeping each month?</label>
-        <select id="spend">
-          <option value="">Choose…</option>
-          <option>Nothing - I do it myself</option>
-          <option>Under R1 000</option>
-          <option>R1 000 - R3 000</option>
-          <option>R3 000 - R7 000</option>
-          <option>Over R7 000</option>
-        </select>
-      </div>
-
-      <label>The most annoying thing about tracking your spending right now</label>
-      <input id="pain" placeholder="Optional - but the most useful box on this page">
-
-      <div style="height:16px"></div>
-      <button class="btn" type="submit">Get early access</button>
-      <p class="mini" style="margin:14px 0 0;text-align:center">No spam. One email when it's ready.</p>
-      <p class="mini" style="margin:8px 0 0;text-align:center">Already got early access?
-        <a href="#" onclick="openAuth('signin');return false" style="color:var(--blue)">Log in</a></p>
-    </form>
-
-    <div id="thanks" class="hide">
-      <div style="font-size:40px">&#127881;</div>
-      <h3 style="margin-top:12px;font-size:24px">You're on the list.</h3>
-      <p class="mini" style="margin:10px 0 0">I read every reply - hit reply and tell me what you need.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ================= PRICE ================= -->
-<section>
-  <div class="narrow">
-    <div class="eyebrow reveal">What it will cost</div>
-    <h2 class="reveal">Pricing, stated up front.</h2>
-    <div class="grid two" style="margin-top:26px">
-      <div class="card reveal d1" style="border-color:var(--acc)">
-        <div class="row" style="display:flex;justify-content:space-between;align-items:center">
-          <h3 class="ok" style="margin:0">Personal</h3>
-          <span class="badge" style="margin:0;padding:5px 11px;font-size:18px">Most popular</span>
-        </div>
-        <div class="stat ok" style="margin-top:10px">R69<span style="font-size:18px;color:var(--dim);font-weight:600">/mo</span></div>
-        <p class="mini" style="margin-top:12px">Slip scanning with line items, sync across devices,
-        unlimited statements, household sharing and splitting.</p>
-      </div>
-      <div class="card reveal d2">
-        <h3>Business</h3>
-        <div class="stat" style="margin-top:10px">R199<span style="font-size:18px;color:var(--dim);font-weight:600">/mo</span></div>
-        <p class="mini" style="margin-top:12px">Everything in Personal, plus VAT fields,
-        financial-year periods, bookkeeper export and multiple users.</p>
-      </div>
-    </div>
-    <p class="mini reveal" style="margin-top:20px"><b class="ok">30-day money-back guarantee</b>, no
-    argument. These prices may change - but early access keeps today's price for a year.</p>
-    <div style="height:30px"></div>
-    <a href="#signup" class="btn reveal" style="max-width:340px">Get early access</a>
-  </div>
-</section>
-
-<footer>
-  <div class="narrow">
-    <p>Built in Knysna, South Africa. Not affiliated with any bank.</p>
-    <p style="margin:0">Not financial advice. <a href="#">Privacy</a> &middot; <a href="#">Terms</a></p>
-  </div>
-</footer>
-
 </div>
 
 <script>
@@ -514,25 +297,6 @@ function startCounts(root){
 }
 /* The phone is above the fold, so it runs on load rather than on scroll */
 window.addEventListener('load', () => setTimeout(()=>startCounts(document.getElementById('phone')), 450));
-
-/* --- Confetti, reserved for the one moment worth celebrating.
-       Used sparingly, or it stops meaning anything. --- */
-function celebrate(){
-  if(REDUCED) return;
-  const colours = ['#30d158','#0a84ff','#ff9f0a','#ff453a','#bf5af2'];
-  for(let i=0;i<46;i++){
-    const c = document.createElement('i');
-    const size = 6 + Math.random()*7;
-    c.style.cssText = 'position:fixed;top:-20px;left:'+(Math.random()*100)+'vw;'
-      + 'width:'+size+'px;height:'+(size*.5)+'px;background:'+colours[i%colours.length]+';'
-      + 'z-index:400;pointer-events:none;border-radius:2px;opacity:.95;'
-      + '--r:'+(Math.random()*900-450)+'deg;'
-      + 'animation:fall '+(1.5+Math.random()*1.4)+'s linear '+(Math.random()*.35)+'s forwards';
-    document.body.appendChild(c);
-    setTimeout(()=>c.remove(), 3400);
-  }
-  try{ navigator.vibrate && navigator.vibrate([14,60,14]); }catch(e){}
-}
 
 /* ============================================================
    Account - same hosted Supabase project the app itself uses.
@@ -658,99 +422,15 @@ document.getElementById('authPass').addEventListener('keydown', e=>{
   }
 })();
 
-/* ============================================================
-   The experiment.
-   This page exists to learn two things:
-     1. Does anyone want it?   -> email capture rate
-     2. WHICH people want it?  -> business vs personal split
-   The ratio matters more than the total. It is the market telling
-   you which product to build instead of you guessing.
-   ============================================================ */
-const params = new URLSearchParams(location.search);
-const meta = {
-  src: params.get('utm_source') || document.referrer || 'direct',
-  campaign: params.get('utm_campaign') || '',
-  variant: params.get('v') || 'a',
-  landed: new Date().toISOString()
-};
-
-let chosenPath = '';
+/* The page is just the hero now - no signup form to route into, so both
+   path buttons lead the same place: create an account and go. Left as two
+   buttons (rather than merged into one) because the labels still tell a
+   visitor "this is for you" before they click anything. */
 document.querySelectorAll('.pathbtn').forEach(b => b.onclick = () => {
-  chosenPath = b.dataset.path;
   document.querySelectorAll('.pathbtn').forEach(x => x.classList.toggle('on', x === b));
-  const sel = document.getElementById('segment');
-  sel.value = chosenPath;
-  sel.dispatchEvent(new Event('change'));
-
-  /* Speak to the person who just told you who they are */
-  const t = document.getElementById('signupTitle'), bl = document.getElementById('signupBlurb');
-  if(chosenPath === 'business'){
-    t.textContent = 'Turn your slips into tidy records.';
-    bl.textContent = 'Snap slips as they happen, import the statement at month end - hand your '
-      + 'bookkeeper a clean file, not a bag of paper.';
-  } else {
-    t.textContent = 'Find out where it actually goes.';
-    bl.textContent = 'Import a couple of statements. The pattern shows up in minutes.';
-  }
   try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
-  document.getElementById('signup').scrollIntoView({behavior: REDUCED?'auto':'smooth'});
+  openAuth('signup');
 });
-
-/* Only businesses see the bookkeeping-spend question. It is the best single
-   signal of willingness to pay, and it looks absurd asked of an individual. */
-document.getElementById('segment').addEventListener('change', e => {
-  const isBiz = ['business','bookkeeper'].includes(e.target.value);
-  document.getElementById('bizQs').classList.toggle('hide', !isBiz);
-});
-
-/* --- Submit ---
-   Wire ONE of these before running traffic:
-     • Formspree    - paste the form id below, no backend needed
-     • Supabase     - a `signups` table with an anon insert policy
-   Until then it stores locally so you can test the whole flow. */
-const ENDPOINT = '';   /* e.g. 'https://formspree.io/f/xxxxxxx' */
-
-document.getElementById('form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const spendEl = document.getElementById('spend');
-  const payload = {
-    email:   document.getElementById('email').value.trim(),
-    segment: document.getElementById('segment').value || chosenPath || 'unspecified',
-    spend:   spendEl ? spendEl.value : '',
-    pain:    document.getElementById('pain').value.trim(),
-    path:    chosenPath,
-    ...meta
-  };
-  if(!payload.email) return;
-  try{
-    if(ENDPOINT){
-      await fetch(ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'},
-                             body: JSON.stringify(payload)});
-    } else {
-      const all = JSON.parse(localStorage.getItem('signups') || '[]');
-      all.push(payload);
-      localStorage.setItem('signups', JSON.stringify(all));
-      console.log('Stored locally (no ENDPOINT set):', payload);
-    }
-    document.getElementById('form').classList.add('hide');
-    const th = document.getElementById('thanks');
-    th.classList.remove('hide');
-    celebrate();
-    th.scrollIntoView({behavior: REDUCED?'auto':'smooth', block:'center'});
-  }catch(err){
-    alert('Something went wrong. Try again, or email me directly.');
-  }
-});
-
-/* Read your results in the console:  results()
-   Watch the RATIO, not the total. */
-window.results = () => {
-  const all = JSON.parse(localStorage.getItem('signups') || '[]');
-  const by = {};
-  all.forEach(s => by[s.segment] = (by[s.segment]||0) + 1);
-  console.table(by); console.log('total', all.length);
-  return by;
-};
 
 /* Already signed in? Don't make a returning tester sit through the whole
    pitch again - swap the top-corner link to go straight into the app. */
