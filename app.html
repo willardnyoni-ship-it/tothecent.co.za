@@ -671,6 +671,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <section class="tab" id="t-setup">
   <div class="row"><h1>Setup</h1></div>
   <div class="sub">Income, pay day and category targets.</div>
+  <div id="welcomeBanner"></div>
 
   <div class="card" id="setupCard">
     <div style="font-weight:700;margin-bottom:8px">Set up from a bank statement</div>
@@ -4013,9 +4014,9 @@ function openTargetsSheet(){
 function openAccountSheet(){
   openSheet('<div class="row"><h1>Account</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
     + '<div class="card" id="authCard">'
-    +   '<div class="row" style="margin-bottom:8px">'
+    +   '<div style="margin-bottom:8px">'
     +     '<div style="font-weight:700">Sign in</div>'
-    +     '<div class="mini" id="authStatus">signed out</div>'
+    +     '<div class="mini" id="authStatus" style="margin-top:2px">signed out</div>'
     +   '</div>'
     +   '<div class="mini" style="margin-bottom:10px">Signing in syncs your data so it\'s there on your other '
     +   'devices too. The app works fully without an account &mdash; and this is <b>never</b> a bank login.</div>'
@@ -4362,12 +4363,20 @@ if(!S.tx.length && !S.income){
     '<div class="infobox"><b>First run.</b> Set your income and pay day under Budget, '
     + 'or restore your setup file there to load your categories, targets and shortcuts in one go.</div>';
 }
-/* Arriving fresh from the landing page after logging in or creating an
-   account - sync already ran automatically (see storeSession/doSignIn),
-   so just show them where they landed. */
+/* Arriving fresh from the landing page after creating an account - sync
+   already ran automatically (see storeSession/doSignUp). This used to
+   auto-open the Account sheet on top of Setup, which meant the very first
+   thing a brand new user saw was an account-status panel confirming
+   something they already knew (they just signed up seconds ago) while
+   burying the actual next step underneath it. A plain banner orients
+   without covering anything - confirmed live before this fix: the sheet
+   genuinely obscured "Set up from a bank statement" entirely. */
 if(new URLSearchParams(location.search).get('onboard') === '1'){
   go('setup');
-  setTimeout(()=>{ openAccountSheet(); }, 250);
+  const wb = document.getElementById('welcomeBanner');
+  if(wb) wb.innerHTML = '<div class="infobox" style="margin-bottom:14px">'
+    + '<b>You\'re in, and synced.</b> Drop in a bank statement below and most of this fills itself in '
+    + '&mdash; or skip straight to entering your income and categories by hand further down.</div>';
 }
 </script>
 </body>
