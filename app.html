@@ -433,6 +433,29 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .zh-legrow .ln{flex:1;font-size:18px;color:var(--zdim)}
 .zh-legrow .lv{font-size:18px;font-weight:700;color:var(--zink)}
 
+/* ---- Home essentials: Income/Spent/Remaining, budget status, quick insight,
+   quick actions. Added above the existing detail sections, which move under
+   the "More detail" disclosure so nothing already built is lost. ---- */
+#t-today .zh-val.bd{color:var(--zbad)}
+.zh-statusDot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+.zh-statusDot.ok{background:var(--zsage)}
+.zh-statusDot.wn{background:var(--zmustard)}
+.zh-statusDot.bd{background:var(--zbad)}
+.zh-budgetStatus{display:flex;align-items:center;gap:10px;padding:14px 16px;font-weight:700;font-size:18px}
+.zh-insight{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;font-size:18px;font-weight:600;line-height:1.4}
+.zh-insight .ic{flex:none;font-size:20px}
+.zh-qa{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 18px}
+.zh-qaBtn{background:var(--zcard);border:1px solid var(--zline);border-radius:16px;padding:14px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit;font-size:18px;
+  font-weight:700;color:var(--zink);cursor:pointer;text-align:center}
+.zh-qaBtn:hover{border-color:var(--zink)}
+.zh-qaIc{font-size:22px;line-height:1}
+.zh-more{margin-top:8px}
+.zh-more summary{cursor:pointer;font-weight:700;color:var(--zink);padding:10px 2px;list-style:none}
+.zh-more summary::-webkit-details-marker{display:none}
+.zh-more summary::before{content:'\25B8';display:inline-block;margin-right:6px;transition:transform .15s var(--ease)}
+.zh-more[open] summary::before{transform:rotate(90deg)}
+
 /* Home runs full-bleed rather than as a panel floating inside the page.
    The nav is styled once, globally, and is the same dark blue on every tab -
    the per-tab nav overrides that used to live here are gone. */
@@ -515,53 +538,85 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
     <div class="mini" id="dayLbl"></div><div class="mini" id="cycleCount"></div>
   </div>
 
+  <!-- ---- Essentials: the only things Home shows without a tap ---- -->
   <div class="zh-statrow">
     <div class="zh-stat sage">
-      <div class="zh-top"><span class="zh-ic">R</span><span class="zh-badge" id="zhDaysBadge"></span></div>
-      <div class="zh-lbl" id="zhSafeLbl">Safe to spend today</div>
-      <div class="zh-val"><span id="safeToday">R0</span></div>
-      <div class="zh-sub" id="safeNote"></div>
+      <div class="zh-lbl">Income</div>
+      <div class="zh-val" id="homeIncome">R0</div>
     </div>
     <div class="zh-stat mustard">
-      <div class="zh-top"><span class="zh-ic">%</span><span class="zh-badge" id="zhPctBadge"></span></div>
-      <div class="zh-lbl">Spent this month</div>
-      <div class="zh-val"><span id="spent">R0</span></div>
-      <div class="zh-sub">of <span id="budTot">R0</span> budget</div>
+      <div class="zh-lbl">Spent</div>
+      <div class="zh-val" id="spent">R0</div>
     </div>
     <div class="zh-stat lav">
-      <div class="zh-lbl">Snap a slip</div>
-      <div class="zh-sub">Photograph a till slip &mdash; OCR reads the total for you</div>
-      <button class="zh-cta" onclick="go('snap');return false">Open camera</button>
+      <div class="zh-lbl">Remaining</div>
+      <div class="zh-val" id="homeRemaining">R0</div>
     </div>
   </div>
-  <div class="bar"><i id="totBar"></i></div>
-  <div class="row" style="margin-top:8px;margin-bottom:16px"><div class="mini" id="pctLbl"></div><div class="mini" id="leftLbl"></div></div>
 
-  <div class="card" id="dailyLine" style="display:none"></div>
+  <div class="card zh-budgetStatus" id="budgetStatus" style="margin-bottom:12px"></div>
+
+  <div class="card zh-insight" id="quickInsight" style="margin-bottom:16px;display:none"></div>
+
   <div id="alerts"></div>
 
-  <div class="zh-grid">
-    <section class="zh-sec">
-      <h2>Spending this week</h2>
-      <div class="card"><div id="zhWeek"></div></div>
-    </section>
-
-    <section class="zh-sec">
-      <h2>Category breakdown</h2>
-      <div class="card"><div id="zhDonut"></div></div>
-    </section>
-
-    <section class="zh-sec">
-      <h2>Categories</h2>
-      <div class="card" id="catList"></div>
-      <button class="b g" id="catToggle" onclick="toggleCats()" style="margin-bottom:10px"></button>
-    </section>
-
-    <section class="zh-sec">
-      <h2>Recent</h2>
-      <div class="card"><table id="recent"></table></div>
-    </section>
+  <div class="zh-qa">
+    <button class="zh-qaBtn" onclick="goAddExpense()"><span class="zh-qaIc">&#43;</span>Add Expense</button>
+    <button class="zh-qaBtn" onclick="goScanReceipt()"><span class="zh-qaIc">&#128247;</span>Scan Receipt</button>
+    <button class="zh-qaBtn" onclick="go('stmt');return false"><span class="zh-qaIc">&#128196;</span>Upload Statement</button>
   </div>
+
+  <section class="zh-sec">
+    <h2>Recent activity</h2>
+    <div class="card"><table id="recent"></table></div>
+  </section>
+
+  <!-- ---- Everything already built, one tap away until it gets its own
+       home in the Spending tab ---- -->
+  <details class="zh-more">
+    <summary>More detail</summary>
+    <div class="zh-statrow" style="margin-top:14px">
+      <div class="zh-stat sage">
+        <div class="zh-top"><span class="zh-ic">R</span><span class="zh-badge" id="zhDaysBadge"></span></div>
+        <div class="zh-lbl" id="zhSafeLbl">Safe to spend today</div>
+        <div class="zh-val"><span id="safeToday">R0</span></div>
+        <div class="zh-sub" id="safeNote"></div>
+      </div>
+      <div class="zh-stat mustard">
+        <div class="zh-top"><span class="zh-ic">%</span><span class="zh-badge" id="zhPctBadge"></span></div>
+        <div class="zh-lbl">Spent this month</div>
+        <div class="zh-val"><span id="spentDetail">R0</span></div>
+        <div class="zh-sub">of <span id="budTot">R0</span> budget</div>
+      </div>
+      <div class="zh-stat lav">
+        <div class="zh-lbl">Snap a slip</div>
+        <div class="zh-sub">Photograph a till slip &mdash; OCR reads the total for you</div>
+        <button class="zh-cta" onclick="go('snap');return false">Open camera</button>
+      </div>
+    </div>
+    <div class="bar"><i id="totBar"></i></div>
+    <div class="row" style="margin-top:8px;margin-bottom:16px"><div class="mini" id="pctLbl"></div><div class="mini" id="leftLbl"></div></div>
+
+    <div class="card" id="dailyLine" style="display:none"></div>
+
+    <div class="zh-grid">
+      <section class="zh-sec">
+        <h2>Spending this week</h2>
+        <div class="card"><div id="zhWeek"></div></div>
+      </section>
+
+      <section class="zh-sec">
+        <h2>Category breakdown</h2>
+        <div class="card"><div id="zhDonut"></div></div>
+      </section>
+
+      <section class="zh-sec">
+        <h2>Categories</h2>
+        <div class="card" id="catList"></div>
+        <button class="b g" id="catToggle" onclick="toggleCats()" style="margin-bottom:10px"></button>
+      </section>
+    </div>
+  </details>
   <div style="height:20px"></div>
 </section>
 
@@ -2248,8 +2303,50 @@ function render(){
   }
 
   countTo(document.getElementById('spent'), spent);
+  countTo(document.getElementById('spentDetail'), spent);
   countTo(document.getElementById('budTot'), budTot);
   const pct = budTot ? spent/budTot*100 : 0;
+
+  /* ---- Home essentials: Income/Remaining, budget status dot, quick insight ---- */
+  (function zhRenderEssentials(){
+    const hi = document.getElementById('homeIncome');
+    if(!hi) return;                      /* only present on the Home tab */
+    countTo(hi, S.income||0);
+
+    const hr = document.getElementById('homeRemaining');
+    const rem = (S.income||0) - spent;
+    countTo(hr, rem, v => (v<0?'-R':'R') + Math.round(Math.abs(v)).toLocaleString('en-ZA'));
+    hr.classList.toggle('bd', rem<0);
+
+    const bs = document.getElementById('budgetStatus');
+    if(budTot>0){
+      const cls = pct>100?'bd':pct>85?'wn':'ok';
+      bs.innerHTML = '<span class="zh-statusDot '+cls+'"></span> You&rsquo;ve spent <b>'+Math.round(pct)+'%</b> of your monthly budget';
+    } else {
+      bs.innerHTML = '<span class="zh-statusDot wn"></span> Set a monthly budget under '
+        + '<a href="#" onclick="go(&quot;setup&quot;);return false" style="color:var(--zblue)">Budget</a> to track your spending.';
+    }
+
+    /* Quick insight: the category whose spend moved the most vs last cycle. */
+    const qi = document.getElementById('quickInsight');
+    const prev = cycleAt(cycleOffset-1);
+    const prevTx = S.tx.filter(t=>!t.mt && inCycle(t,prev));
+    const prevBy = {};
+    prevTx.forEach(t=> prevBy[t.c] = (prevBy[t.c]||0)+t.a);
+    let best = null;
+    S.cats.forEach(x=>{
+      const delta = (spentBy[x.n]||0) - (prevBy[x.n]||0);
+      if(Math.abs(delta) < 20) return;
+      if(!best || Math.abs(delta) > Math.abs(best.delta)) best = {n:x.n, delta};
+    });
+    if(best){
+      qi.innerHTML = '<span class="ic">&#128161;</span><span>You spent <b>'+R(Math.abs(best.delta))+'</b> '
+        + (best.delta>0?'more':'less') + ' on ' + esc(best.n) + ' than last month.</span>';
+      qi.style.display = '';
+    } else {
+      qi.style.display = 'none';
+    }
+  })();
   const bar = document.getElementById('totBar');
   /* The first paint animates 0% -> target across two frames. If another render
      lands inside that window (data finishing loading, cycle change) the queued
@@ -2413,7 +2510,7 @@ function render(){
     }
   })();
 
-  const rec = [...active].sort((a,b)=> b.d.localeCompare(a.d) || String(b.id).localeCompare(String(a.id))).slice(0,25);
+  const rec = [...active].sort((a,b)=> b.d.localeCompare(a.d) || String(b.id).localeCompare(String(a.id))).slice(0,8);
   document.getElementById('recent').innerHTML = rec.length
     ? rec.map(t=>'<tr onclick="editTx(&quot;'+t.id+'&quot;)" style="cursor:pointer">'
         +'<td class="thumbCell">'
@@ -3220,6 +3317,19 @@ function go(t){
   document.body.classList.toggle('zh-home', t==='today');
   if(typeof syncNavNow === 'function') syncNavNow();
   window.scrollTo(0,0);
+}
+/* Home's Quick actions row: two of the three just jump to Snap, pointed at
+   the part of it they mean - manual entry vs the camera. */
+function goAddExpense(){
+  go('snap');
+  const amt = document.getElementById('mAmt');
+  if(amt){ amt.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(()=>amt.focus(), 300); }
+}
+function goScanReceipt(){
+  go('snap');
+  /* Fires in the same gesture as the Quick-action click, so it still counts
+     as user-activated input for the camera picker on iOS Safari. */
+  document.getElementById('camIn').click();
 }
 /* Home is the landing tab, so the light theme must be on before the first go(). */
 document.body.classList.toggle('zh-home', !!document.querySelector('#t-today.on'));

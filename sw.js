@@ -9,7 +9,7 @@
 
    Bump VERSION to force clients onto a new build.
    ============================================================ */
-const VERSION = 'v44';
+const VERSION = 'v45';
 const SHELL   = 'budget-shell-' + VERSION;
 const RUNTIME = 'budget-runtime-' + VERSION;
 
