@@ -510,10 +510,10 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   <div class="navMenu" id="navMenu" role="menu" aria-labelledby="navBtn" hidden></div>
   <div class="tabs">
     <button class="on" data-t="today">Home</button>
-    <button data-t="snap">Record a Transaction</button>
-    <button data-t="stmt">Financials and reports<span class="dot" id="matchDot"></span></button>
-    <button data-t="insight">Insights</button>
-    <button data-t="tax" onclick="openTaxSheet()">Tax</button>
+    <button data-t="spending">Spending</button>
+    <button data-t="setup">Budget</button>
+    <button data-t="receipts">Receipts<span class="dot" id="matchDot"></span></button>
+    <button data-t="insight">Reports</button>
   </div>
   <button class="avatar" id="acctBtn" onclick="toggleAcctMenu(event)" aria-label="Account menu"
           aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu">
@@ -620,6 +620,26 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   <div style="height:20px"></div>
 </section>
 
+<!-- ================= SPENDING ================= -->
+<section class="tab" id="t-spending">
+  <h1 id="spendTitle">This month spending</h1>
+  <div class="mono" style="font-size:34px;font-weight:800" id="spendTotal">R0</div>
+
+  <div class="seg" id="spendPeriodSeg" style="margin-top:14px">
+    <button class="on" data-v="this">This month</button>
+    <button data-v="last">Last month</button>
+  </div>
+
+  <h2>Where your money went</h2>
+  <div class="card" id="spendCats"></div>
+
+  <h2>Transactions</h2>
+  <label>Category</label>
+  <select id="spendCatSel" onchange="setSpendCatFilter(this.value)"></select>
+  <div class="card" style="margin-top:10px"><table id="spendTx"></table></div>
+  <div style="height:20px"></div>
+</section>
+
 <!-- ================= SNAP ================= -->
 <section class="tab" id="t-snap">
   <h1>Capture a slip</h1>
@@ -669,11 +689,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 
 <!-- ================= IMPORT ================= -->
 <section class="tab" id="t-stmt">
-  <h1>Financials and reports</h1>
-  <div class="seg" id="stmtSeg">
-    <button class="on" data-v="imp">Import</button>
-    <button data-v="rec">Reconcile</button>
-  </div>
+  <h1>Upload a bank statement</h1>
   <div id="pane-imp">
   <h2>Import a statement</h2>
   <div class="sub">Download the statement PDF from the FNB app, then drop it here. Parsed on your phone; nothing is uploaded.</div>
@@ -695,22 +711,32 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   <div class="msg" id="impMsg"></div>
   <div id="impResult"></div>
   </div>
+  <div style="height:20px"></div>
+</section>
 
-  <div id="pane-rec" style="display:none">
-    <div class="sub">Your slips against the bank statement. The statement is always treated as the truth.</div>
-    <div style="height:12px"></div>
-    <div class="seg" id="matchSeg">
-      <button class="on" data-v="all">All time</button>
-      <button data-v="cycle">This cycle</button>
-    </div>
-    <div id="matchBody"></div>
+<!-- ================= RECEIPTS ================= -->
+<section class="tab" id="t-receipts">
+  <h1>Receipts</h1>
+  <button class="b" onclick="goScanReceipt()" style="margin-bottom:18px">&#128247; Scan Receipt</button>
+
+  <h2>Your receipts</h2>
+  <div class="card"><table id="receiptsList"></table></div>
+
+  <h2>Matching</h2>
+  <div class="sub">Your slips against the bank statement. The statement is always treated as the truth.</div>
+  <div style="height:12px"></div>
+  <div class="seg" id="matchSeg">
+    <button class="on" data-v="all">All time</button>
+    <button data-v="cycle">This cycle</button>
   </div>
+  <div id="matchBody"></div>
   <div style="height:20px"></div>
 </section>
 
 <!-- ================= INSIGHTS ================= -->
 <section class="tab" id="t-insight">
-  <h1>Insights</h1>
+  <h1>Reports</h1>
+  <div class="card" id="reportsOverview" style="margin-bottom:16px"></div>
   <div class="seg" id="insSeg">
     <button class="on" data-v="months">Months</button>
     <button data-v="merch">Merchants</button>
@@ -724,9 +750,15 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 
 <!-- ================= BUDGET ================= -->
 <section class="tab" id="t-setup">
-  <div class="row"><h1>Setup</h1></div>
+  <div class="row"><h1>Budget</h1></div>
   <div class="sub">Income, pay day and category targets.</div>
   <div id="welcomeBanner"></div>
+
+  <div class="row" style="margin:14px 0">
+    <div><div class="mini">Budget</div><div class="mono" style="font-size:26px;font-weight:700" id="budgetTopTotal">R0</div></div>
+    <div style="text-align:center"><div class="mini">Spent</div><div class="mono" style="font-size:26px;font-weight:700" id="budgetTopSpent">R0</div></div>
+    <div style="text-align:right"><div class="mini">Remaining</div><div class="mono" style="font-size:26px;font-weight:700" id="budgetTopRemaining">R0</div></div>
+  </div>
 
   <div class="card" id="setupCard">
     <div style="font-weight:700;margin-bottom:8px">Set up from a bank statement</div>
@@ -770,6 +802,18 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
     </div>
     <div class="mini" id="saveRate" style="margin-top:6px"></div>
   </div>
+
+  <h2>Category budgets</h2>
+  <div class="card" id="budList"></div>
+  <div class="card">
+    <label>Add a category</label>
+    <div class="row"><input id="newCat" placeholder="Name"><input id="newAmt" type="number" inputmode="decimal" placeholder="R" style="max-width:110px"></div>
+    <div style="height:10px"></div>
+    <button class="b g" onclick="addCat()">Add category</button>
+  </div>
+
+  <h2>Your recommended budget</h2>
+  <div class="card" id="recBudgetCard"></div>
 
   <h2>Your data</h2>
   <div class="card">
@@ -2587,15 +2631,27 @@ function render(){
   document.getElementById('saveRate').textContent = S.income
     ? (sv>=0 ? Math.round(sv/S.income*100)+'% savings rate' : 'Budget exceeds income by '+R(-sv)) : '';
 
+  const budgetTopTot = document.getElementById('budgetTopTotal');
+  if(budgetTopTot){
+    countTo(budgetTopTot, budTot);
+    countTo(document.getElementById('budgetTopSpent'), spent);
+    const rem = budTot - spent;
+    countTo(document.getElementById('budgetTopRemaining'), rem, v => (v<0?'-R':'R') + Math.round(Math.abs(v)).toLocaleString('en-ZA'));
+    document.getElementById('budgetTopRemaining').classList.toggle('bd', rem<0);
+  }
+
   const budListEl = document.getElementById('budList');
-  if(budListEl) budListEl.innerHTML = S.cats.map((x,i)=>
-     '<div class="cat"><div class="row">'
-    +'<div style="flex:1"><div class="n">'+esc(x.n)+'</div>'
-    +'<div class="mini">'+(x.base!=null?'was '+R(x.base)+'/mo':'&nbsp;')
-    + (x.base!=null && x.t<x.base ? ' <span class="ok">&#8595; '+R(x.base-x.t)+'</span>':'')+'</div></div>'
+  if(budListEl) budListEl.innerHTML = S.cats.map((x,i)=>{
+    const sp = spentBy[x.n]||0, rem = x.t - sp;
+    return '<div class="cat"><div class="row">'
+    +'<div style="flex:1"><div class="n">'+catEmoji(x.n)+' '+esc(x.n)+'</div>'
+    +'<div class="mini">'+R(sp)+' spent &middot; <span class="'+(rem<0?'bd':'ok')+'">'
+    + (rem<0?'-':'')+R(Math.abs(rem))+' remaining</span></div></div>'
     +'<input type="number" inputmode="decimal" value="'+x.t+'" style="max-width:96px;text-align:right" onchange="setT('+i+',this.value)">'
     +'<button class="b d sm" onclick="delCat('+i+')">&times;</button>'
-    +'</div></div>').join('');
+    +'</div></div>';
+  }).join('');
+  renderRecommendedBudget();
 
   const sel = document.getElementById('mCat'), keep = sel.value;
   sel.innerHTML = S.cats.map(x=>'<option>'+esc(x.n)+'</option>').join('');
@@ -2635,6 +2691,7 @@ function render(){
     document.getElementById('homeBox').style.display = dd.homeOffice ? '' : 'none';
   }
   renderShortcuts(); renderInsights(); renderMatch(); storeInfo();
+  renderReceiptsList(); renderSpending(); renderReportsOverview();
   checkMilestones();
 }
 
@@ -2879,16 +2936,206 @@ function viewSavings(){
   return h;
 }
 
-let stmtView='imp', insView='months', catsExpanded=false;
+let insView='months', catsExpanded=false;
 function bindSeg(id, set){
   const el=document.getElementById(id); if(!el) return;
   el.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return;
     [...el.children].forEach(x=>x.classList.toggle('on', x===b)); set(b.dataset.v); });
 }
-bindSeg('stmtSeg', v=>{ stmtView=v;
-  document.getElementById('pane-imp').style.display = v==='imp'?'':'none';
-  document.getElementById('pane-rec').style.display = v==='rec'?'':'none'; });
 bindSeg('insSeg', v=>{ insView=v; renderInsights(); });
+bindSeg('spendPeriodSeg', v=>{ spendPeriod = v==='last' ? -1 : 0; renderSpending(); });
+
+/* ============================================================
+   Spending tab - category breakdown + full transaction list
+   for whichever of this/last month is selected.
+   ============================================================ */
+const CAT_EMOJI = {
+  'Rent':'&#127968;', 'Groceries':'&#128722;', 'Fuel':'&#9981;',
+  'Transfers to people':'&#128184;', 'Eating out':'&#127828;', 'Internet':'&#128246;',
+  'Electricity':'&#128161;', 'Laundry':'&#129531;', 'Cash withdrawals':'&#127974;',
+  'Retail / health':'&#128717;', 'Gym & sport':'&#127939;', 'Airtime / data':'&#128241;',
+  'Subscriptions':'&#128257;', 'Transport':'&#128663;', 'Bank fees':'&#127974;',
+  'Accommodation':'&#128717;', 'Uncategorised':'&#10067;'
+};
+function catEmoji(n){ return CAT_EMOJI[n] || '&#128179;'; }
+
+let spendPeriod = 0, spendCatFilter = 'all';
+function setSpendCatFilter(v){ spendCatFilter = v; renderSpending(); }
+function renderSpending(){
+  const titleEl = document.getElementById('spendTitle');
+  if(!titleEl) return;                 /* only present on the Spending tab */
+  const c = cycleAt(spendPeriod);
+  const active = S.tx.filter(t=>!t.mt);
+  const tx = active.filter(t=>inCycle(t,c));
+  const spentBy = {};
+  tx.forEach(t=> spentBy[t.c] = (spentBy[t.c]||0) + t.a);
+  const total = tx.reduce((a,t)=>a+t.a,0);
+
+  titleEl.textContent = (spendPeriod===0 ? 'This month'
+    : c.s.toLocaleDateString('en-ZA',{month:'long',year:'numeric'})) + ' spending';
+  document.getElementById('spendTotal').textContent = R(total);
+
+  const cats = Object.entries(spentBy).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('spendCats').innerHTML = cats.length
+    ? cats.map(([n,v])=>'<div class="cat" onclick="setSpendCatFilter(&quot;'+esc(n).replace(/"/g,'&quot;')+'&quot;)">'
+        + '<div class="row"><div class="n">'+catEmoji(n)+' '+esc(n)+'</div><div class="v">'+R(v)+'</div></div></div>').join('')
+    : '<div class="mini">Nothing spent yet.</div>';
+
+  const catSel = document.getElementById('spendCatSel');
+  const keep = spendCatFilter;
+  catSel.innerHTML = '<option value="all">All categories</option>'
+    + [...new Set(tx.map(t=>t.c))].sort().map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
+  catSel.value = [...catSel.options].some(o=>o.value===keep) ? keep : 'all';
+  if(catSel.value !== keep) spendCatFilter = catSel.value;
+
+  const shown = tx.filter(t=> spendCatFilter==='all' || t.c===spendCatFilter)
+    .sort((a,b)=>b.d.localeCompare(a.d) || String(b.id).localeCompare(String(a.id)));
+  document.getElementById('spendTx').innerHTML = shown.length
+    ? shown.map(t=>'<tr onclick="editTx(&quot;'+t.id+'&quot;)" style="cursor:pointer">'
+        + '<td><div style="font-weight:600">'+esc(t.note||t.c)+'</div><div class="tag">'+esc(t.c)+' &middot; '+t.d+'</div></td>'
+        + '<td class="r">'+R2(t.a)+'</td></tr>').join('')
+    : '<tr><td class="mini" colspan="2">No transactions.</td></tr>';
+}
+
+/* ============================================================
+   Receipts tab - photographed slips, one list, tap to edit
+   ============================================================ */
+function renderReceiptsList(){
+  const el = document.getElementById('receiptsList');
+  if(!el) return;                      /* only present on the Receipts tab */
+  const list = S.tx.filter(t => t.photo || t.photoGone)
+    .sort((a,b)=> b.d.localeCompare(a.d) || String(b.id).localeCompare(String(a.id)))
+    .slice(0,60);
+  el.innerHTML = list.length ? list.map(t=>'<tr onclick="editTx(&quot;'+t.id+'&quot;)" style="cursor:pointer">'
+      + '<td class="thumbCell">' + (t.photo
+          ? '<button class="rthumb" data-pid="'+esc(t.photo)+'" title="View slip"'
+            + ' onclick="event.stopPropagation();viewShot(&quot;'+t.id+'&quot;)"'
+            + ' aria-label="View slip photo"></button>'
+          : '<span class="rthumb gone" title="Photo expired">&#8709;</span>') + '</td>'
+      + '<td><div style="font-weight:600">'+esc(t.note||t.c)+'</div><div class="tag">'+esc(t.d)+'</div></td>'
+      + '<td class="r">'+R2(t.a)+'</td></tr>').join('')
+    : '<tr><td class="mini" colspan="3">No receipts scanned yet.</td></tr>';
+  hydrateThumbs();
+}
+
+/* ============================================================
+   Budget tab - suggested budget from the last few months' actuals
+   ============================================================ */
+function recommendedBudget(){
+  const sums = {}; let months = 0;
+  [-1,-2,-3].forEach(o=>{
+    const c = cycleAt(o);
+    const tx = S.tx.filter(t=>!t.mt && inCycle(t,c));
+    if(!tx.length) return;
+    months++;
+    tx.forEach(t=> sums[t.c] = (sums[t.c]||0) + t.a);
+  });
+  if(!months) return null;
+  const perCat = {};
+  Object.keys(sums).forEach(k=> perCat[k] = sums[k]/months);
+  const total = Object.values(perCat).reduce((a,b)=>a+b, 0);
+  return {perCat, total, months};
+}
+function applyRecommendedBudget(){
+  const rec = recommendedBudget();
+  if(!rec) return;
+  Object.entries(rec.perCat).forEach(([n,amt])=>{
+    let cat = S.cats.find(x=>x.n===n);
+    if(!cat){ cat = {n, t:0}; S.cats.push(cat); }
+    cat.t = Math.round(amt);
+  });
+  save(); render();
+  flash('recMsg','s','Applied - adjust any category below if you need to.');
+}
+function renderRecommendedBudget(){
+  const el = document.getElementById('recBudgetCard');
+  if(!el) return;                      /* only present on the Budget tab */
+  const rec = recommendedBudget();
+  if(!rec){
+    el.innerHTML = '<div class="mini">Import at least one month of statements or logged spending to get a recommendation.</div>';
+    return;
+  }
+  const nextLbl = cycleAt(1).s.toLocaleDateString('en-ZA',{month:'long'});
+  el.innerHTML = '<div class="mini">Based on your last '+rec.months+' month'+(rec.months===1?'':'s')+", we recommend a "
+    + '<b style="color:var(--tx)">'+R(rec.total)+'</b> budget for '+nextLbl+'.</div>'
+    + '<div style="height:10px"></div>'
+    + '<button class="b g" onclick="applyRecommendedBudget()">Use suggested budget</button>'
+    + '<div class="msg" id="recMsg"></div>';
+}
+
+/* ============================================================
+   Reports tab - monthly review, biggest changes, recurring, CSV
+   ============================================================ */
+function renderReportsOverview(){
+  const el = document.getElementById('reportsOverview');
+  if(!el) return;                      /* only present on the Reports tab */
+  const active = S.tx.filter(t=>!t.mt);
+  if(!active.length){
+    el.innerHTML = '<div class="mini">Import a statement or log a few transactions to see your monthly review.</div>';
+    return;
+  }
+  const c = cycleAt(0), prev = cycleAt(-1);
+  const curTx = active.filter(t=>inCycle(t,c)), prevTx = active.filter(t=>inCycle(t,prev));
+  const spent = curTx.reduce((a,t)=>a+t.a,0), prevSpent = prevTx.reduce((a,t)=>a+t.a,0);
+  const income = S.income||0;
+  const saved = income - spent, prevSaved = income - prevSpent;
+
+  const curBy = {}; curTx.forEach(t=> curBy[t.c]=(curBy[t.c]||0)+t.a);
+  const prevBy = {}; prevTx.forEach(t=> prevBy[t.c]=(prevBy[t.c]||0)+t.a);
+  const changes = [...new Set([...Object.keys(curBy), ...Object.keys(prevBy)])].map(n=>{
+    const cur = curBy[n]||0, was = prevBy[n]||0;
+    const pct = was ? Math.round((cur-was)/was*100) : (cur>0?100:0);
+    return {n, cur, was, delta:cur-was, pct};
+  }).filter(x=>Math.abs(x.delta) >= 20).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,3);
+
+  const monthLbl = c.s.toLocaleDateString('en-ZA',{month:'long'});
+  const prevLbl  = prev.s.toLocaleDateString('en-ZA',{month:'long'});
+
+  let h = '<h2 style="margin-top:0">'+monthLbl+' financial review</h2>'
+    + '<div class="row"><div><div class="mini">Income</div><div class="mono" style="font-size:20px;font-weight:700">'+R(income)+'</div></div>'
+    + '<div><div class="mini">Spending</div><div class="mono" style="font-size:20px;font-weight:700">'+R(spent)+'</div></div>'
+    + '<div style="text-align:right"><div class="mini">Saved</div><div class="mono '+(saved>=0?'ok':'bd')+'" style="font-size:20px;font-weight:700">'
+    + (saved<0?'-':'')+R(Math.abs(saved))+'</div></div></div>';
+
+  if(changes.length){
+    h += '<h2>Your biggest changes</h2><div class="mini">'
+      + changes.map(x=> catEmoji(x.n)+' '+esc(x.n)+' '+(x.delta>0?'&#8593;':'&#8595;')+' '+Math.abs(x.pct)+'%').join('<br>')
+      + '</div>';
+  }
+
+  if(prevSpent>0){
+    const savedDelta = saved - prevSaved;
+    h += '<h2>Your financial highlights</h2><div class="card" style="margin:0">'
+      + (savedDelta>=0
+          ? '&#128994; You saved '+R(savedDelta)+' more than '+prevLbl+'.'
+          : '&#128308; You saved '+R(-savedDelta)+' less than '+prevLbl+'.')
+      + '</div>';
+  }
+
+  const worsening = changes.filter(x=>x.delta>0);
+  if(worsening.length){
+    h += '<h2>Watch this</h2><div class="warnbox">'
+      + catEmoji(worsening[0].n)+' Your '+esc(worsening[0].n)+' spending is up '+worsening[0].pct+'% vs '+prevLbl+'.'
+      + '</div>';
+  }
+
+  const rec = recurring();
+  if(rec.length){
+    const monthly = rec.reduce((a,x)=>a+x.amount,0);
+    h += '<h2>Recurring expenses</h2><div class="mini">You spend approximately '+R(monthly)+'/month on recurring payments.</div>';
+  }
+
+  h += '<div style="height:14px"></div><button class="b g" onclick="exportMonthCsv()">Download '+monthLbl+' report (CSV)</button>';
+  el.innerHTML = h;
+}
+function exportMonthCsv(){
+  const c = cycleAt(0);
+  const tx = S.tx.filter(t=>!t.mt && inCycle(t,c)).sort((a,b)=>a.d.localeCompare(b.d));
+  const rows = [['date','amount','category','note']]
+    .concat(tx.map(t=>[t.d, t.a.toFixed(2), t.c, (t.note||'').replace(/"/g,"'")]));
+  dl(new Blob([rows.map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n')],{type:'text/csv'}),
+     'monthly-report-'+iso(new Date())+'.csv');
+}
 function toggleCats(){ catsExpanded=!catsExpanded; render(); }
 function setWeekly(v){ S.weekly=!!v; save(); render(); }
 function setMethod(m){ S.method=m; save(); render(); }
@@ -4056,7 +4303,7 @@ function acctMenuHtml(){
        + (signedIn && syncCfg.email ? '<span>'+esc(syncCfg.email)+'</span>' : '')
        + '</div>'
     + row('profile','Profile','acctGo(openAccountSheet)')
-    + row('gear','Account','acctGo(openMoreMenu)')
+    + row('gear','Settings','acctGo(openMoreMenu)')
     + '<hr>'
     + row('out', signedIn ? 'Log out' : 'Sign in', 'acctLogout()');
 }
@@ -4096,30 +4343,16 @@ document.addEventListener('keydown', e=>{
 
 function openMoreMenu(){
   const items = [
-    ['goSetupTab','Setup'],
-    ['openTargetsSheet','Targets'],
     ['openAccountSheet','Account'],
     ['openLockSheet','Lock this device'],
     ['openWindfallSheet','When money lands'],
     ['openTaxSheet','Tax deductions'],
     ['openDataSheet','Data']
   ];
-  openSheet('<div class="row"><h1>Account</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
+  openSheet('<div class="row"><h1>Settings</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
     + '<div class="sub">Open any section on its own &mdash; nothing sits on the main page.</div>'
     + items.map(([fn,label])=>'<button class="b g" style="margin-top:8px;text-align:left" '
       +'onclick="'+fn+'()">'+esc(label)+'</button>').join(''));
-}
-function goSetupTab(){ closeSheet(); go('setup'); }
-function openTargetsSheet(){
-  openSheet('<div class="row"><h1>Targets</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
-    + '<div class="card" id="budList"></div>'
-    + '<div class="card">'
-    +   '<label>Add a category</label>'
-    +   '<div class="row"><input id="newCat" placeholder="Name"><input id="newAmt" type="number" inputmode="decimal" placeholder="R" style="max-width:110px"></div>'
-    +   '<div style="height:10px"></div>'
-    +   '<button class="b g" onclick="addCat()">Add category</button>'
-    + '</div>');
-  render();
 }
 function openAccountSheet(){
   openSheet('<div class="row"><h1>Account</h1><button class="b g sm" onclick="closeSheet()">Close</button></div>'
