@@ -9,3 +9,8 @@ budget-setup-PRIVATE.json
 # OS noise
 Thumbs.db
 .DS_Store
+
+# React/Vite build tooling - docs/ (the built site GitHub Pages serves)
+# IS committed, only the tooling and its cache are not.
+node_modules
+.vite

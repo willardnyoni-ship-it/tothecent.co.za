@@ -6,27 +6,40 @@ on top: Claude reads receipts more accurately than on-device OCR, and slip photo
 confirmed statement imports back up to your account. Signed out, nothing changes -
 everything stays exactly as local as before either existed.
 
-**Two pages, one site:**
+Built as a Vite + React app (see **Developing** below) that builds to two static
+pages, same as before:
 
-| File | What it is |
+| Page | What it is |
 |---|---|
-| `index.html` | The public front door — pitch, waitlist form, log in / create account. This is what `https://YOURNAME.github.io/budget/` shows. |
+| `index.html` | The public front door — pitch, log in / create account. This is what `https://tothecent.co.za/` shows. |
 | `app.html` | The actual app. Signing in or creating an account on `index.html` redirects here. Can also be opened directly. |
 
 An account is optional. If you sign in, your data syncs to the hosted server in
 the open — simple, nothing to remember, but the operator's Supabase project can
 technically read it. There is currently no end-to-end encrypted option.
 
+## Developing
+
+```bash
+npm install       # first time only
+npm run dev       # local dev server with hot reload
+npm run build     # builds the deployable site into docs/
+```
+
+Source lives under `src/` (React components, one file per tab/sheet, plus `src/lib/`
+for the pure business logic — parsers, categorisation, matching, sync). `index.html`
+and `app.html` at the repo root are Vite's entry points, not the served pages
+themselves; `npm run build` turns them (plus everything in `src/`) into the real
+static site under `docs/`, which is what GitHub Pages actually serves.
+
 ## Put it on GitHub Pages
 
 1. Go to **github.com/new**. Name it `budget`, set it to **Public**, click *Create repository*.
    (GitHub Pages only works from public repos on the free plan.)
-2. Click **uploading an existing file**, drag in *everything in this folder*:
-   `index.html`, `app.html`, `manifest.json`, `sw.js`, and all six `icon-*.png` files.
-   Do **not** upload `budget-setup-PRIVATE.json` — it lives on your phone only.
-3. Click **Commit changes**.
-4. **Settings → Pages** → Source: *Deploy from a branch* → Branch: `main`, folder `/ (root)` → **Save**.
-5. Wait about a minute. Your URL is `https://YOURNAME.github.io/budget/`.
+2. Push this repo, including the `docs/` folder produced by `npm run build`.
+3. **Settings → Pages** → Source: *Deploy from a branch* → Branch: `main`, folder **`/docs`** → **Save**.
+4. Wait about a minute. Your URL is `https://YOURNAME.github.io/budget/` (or your custom
+   domain, via the `CNAME` file under `public/`).
 
 ## Install on iPhone
 
@@ -46,45 +59,41 @@ use ⋮ → **Add to Home screen**.
 Either sign in / create an account from the front page, or skip that entirely — the
 app works fully without one. If you're moving from an existing setup:
 
-1. Open **Budget** (bottom bar) → **Restore from backup** → pick `budget-setup-PRIVATE.json`.
+1. Go to **Budget** → **Settings → Data** → **Restore from backup** → pick your JSON backup.
    That loads your income, pay day, category targets, shortcut buttons and merchant rules.
-2. Go to **Import** and drop in your FNB statement PDFs to build up history.
-3. Do your first **Snap** while on wifi — it downloads the OCR engine once (~4 MB),
+2. Go to **Reports** (or Home's **Upload Statement**) and drop in your bank statement PDF/CSV to build up history.
+3. Do your first **Scan Receipt** while on wifi — it downloads the OCR engine once (~4 MB),
    then caches it for offline use.
 
 ## Day to day
 
 | Tab | What it's for |
 |---|---|
-| **Today** | Safe-to-spend, budget burn-down, category bars, over-budget and duplicate-charge alerts |
-| **Snap** | Photograph a till slip; OCR pre-fills the amount, you confirm. Also quick-log chips and manual entry |
-| **Import** | Drop the monthly FNB statement PDF |
-| **Match** | Reconcile slips against the statement. Shows your capture rate and your blind spots |
-| **Budget** | Income, pay day, category targets, backup and restore |
-| **Trends** | Month-on-month spending |
+| **Home** | Safe-to-spend, budget status, quick insight, quick actions, recent activity |
+| **Spending** | Where your money went this month/last month, full transaction list |
+| **Budget** | Income, pay day, category targets, recommended budget |
+| **Receipts** | Scan a slip, browse photographed receipts, reconcile against a statement |
+| **Reports** | Monthly review, biggest changes, recurring payments, CSV export |
+
+Settings (account, device lock, tax deductions, data backup) live under the account
+menu (top right), not the main nav.
 
 ## Backups matter
 
-Your data lives only in this browser on this phone. There is no cloud copy.
-**Budget → Export backup (JSON)** every week or two, and mail it to yourself.
-Clearing Safari website data, or losing the phone, loses the lot.
+Your data lives only in this browser on this phone (or your account, if signed in).
+**Settings → Data → Export backup (JSON)** every week or two, and keep it somewhere safe.
+Clearing site data, or losing the phone, loses the lot if you're signed out.
 
 Photos are stored separately in IndexedDB and are *not* in the JSON backup.
 Use **Export transactions (CSV)** if you want the numbers in a spreadsheet.
-
-## Updating
-
-Re-upload the changed files to GitHub. The service worker caches aggressively, so
-bump `VERSION` at the top of `sw.js` (e.g. `v17` → `v18`) whenever you change
-`index.html` or `app.html`, otherwise phones may keep serving the old build.
 
 ## Notes and limits
 
 - **OCR is a helper, not an oracle.** On a creased or dim slip it will get the total
   wrong. Nothing saves without your confirmation — check the number before tapping save.
 - **Reconciliation** matches on exact amount within ±4 days. Same-amount purchases close
-  together may pair with the wrong slip; the Match tab shows you every pairing.
-- **Statement parsing** is built for FNB's layout and was verified to the cent against
-  four consecutive statements. Other banks will need the parser adjusted.
+  together may pair with the wrong slip; the Receipts tab shows you every pairing.
+- **Statement parsing** is built for FNB's PDF layout, plus a header-sniffing CSV parser
+  for Capitec, Standard Bank, Absa and Nedbank. Other banks will need the parser adjusted.
 - The hosted files contain **no personal information** — your figures arrive only when
-  you restore your private setup file on the device.
+  you sign in or restore your backup file on the device.
