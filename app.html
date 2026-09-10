@@ -99,12 +99,12 @@ tr[onclick]:active{transform:scale(.99)}
    underneath it, unreachable. Confirmed live: Record a Transaction's last
    button landed 32px inside the button's own footprint before this. */
 body{padding-top:calc(54px + var(--safeTop));padding-bottom:calc(84px + var(--safe))}
-/* Home gets its own wider, multi-column treatment below (body.zh-home
-   overrides this - more specific selector wins regardless of order).
-   Every other tab is a stacked list of forms/cards, not a dashboard, so
-   it earns a wider comfortable reading column rather than a full-bleed
-   layout - a single form stretched to fill an ultrawide monitor looks
-   worse than the narrow column it replaces, not better. */
+/* The five primary tabs get a wider, full-bleed treatment below
+   (body.zh-home overrides this - more specific selector wins regardless
+   of order). Snap and the statement-upload screen are a stacked list of
+   forms, not a dashboard, so they keep this narrower reading column - a
+   single form stretched to fill an ultrawide monitor looks worse than
+   the narrow column it replaces, not better. */
 .wrap{max-width:520px;margin:0 auto;padding:14px 14px 0}
 @media (min-width:640px){ .wrap{max-width:640px} }
 @media (min-width:1024px){ .wrap{max-width:760px} }
@@ -320,10 +320,12 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .khNote{font-size:18px;color:var(--dim);padding:0 14px 8px;text-align:center}
 
 /* ============================================================
-   Home screen redesign (Zarss-style) — scoped to #t-today only.
-   Every other tab keeps the original dark theme.
+   Shared light-theme redesign (Zarss-style) — scoped to .light-tab,
+   a class shared by the five primary nav tabs (Home, Spending, Budget,
+   Receipts, Reports) so they all read as one consistent app instead of
+   Home looking like a bespoke redesign bolted onto the rest.
    ============================================================ */
-#t-today{
+.light-tab{
   --zbg:#E5E7EB; --zcard:#FFFFFF; --zink:#000000; --zdim:#000000; --zline:rgba(22,24,27,.14);
   --zsage:#94AF66; --zsageDeep:#33421F; --zmustard:#E2A82E; --zmustardDeep:#5E3F0C;
   --zlav:#9C8FE6; --zlavDeep:#241D57; --zdark:#16181B; --zdarkTx:#E5E7EB;
@@ -331,26 +333,27 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
   background:var(--zbg); border-radius:22px; padding:16px 14px 22px; margin-bottom:14px;
   color:var(--zink);
 }
-#t-today h1,#t-today h2{color:var(--zink)}
-#t-today h2{color:var(--zink);font-weight:800}
-#t-today .sub,#t-today .mini{color:var(--zdim);font-weight:600}
+.light-tab h1,.light-tab h2{color:var(--zink)}
+.light-tab h2{color:var(--zink);font-weight:800}
+.light-tab .sub,.light-tab .mini{color:var(--zdim);font-weight:600}
 /* Chart furniture: ticks, day names and the budget caption are all black now,
    with enough weight to hold their own against the bars. */
-#t-today .zh-yaxis,#t-today .zh-daylbl{color:var(--zink);font-weight:600}
-#t-today .zh-caption{color:var(--zink);font-weight:700}
-#t-today .zh-legrow .ln{color:var(--zink);font-weight:600}
-#t-today .zh-hole span{color:var(--zink);font-weight:600}
+.light-tab .zh-yaxis,.light-tab .zh-daylbl{color:var(--zink);font-weight:600}
+.light-tab .zh-caption{color:var(--zink);font-weight:700}
+.light-tab .zh-legrow .ln{color:var(--zink);font-weight:600}
+.light-tab .zh-hole span{color:var(--zink);font-weight:600}
 /* The two figures under the budget bar read as values, so they carry more weight. */
-#t-today #pctLbl,#t-today #leftLbl{font-weight:700}
-#t-today .card{background:var(--zcard);border:1px solid var(--zline);border-radius:18px}
-#t-today button.b.g.sm{background:var(--zcard);border:1px solid var(--zline);color:var(--zink)}
-#t-today .bar{background:rgba(34,31,27,.08)}
-#t-today table td{border-bottom:1px solid var(--zline);color:var(--zink)}
-#t-today .tag{background:rgba(22,24,27,.07);color:#4A4F57}
-#t-today .tag.wn{color:var(--zmustardDeep);background:rgba(226,168,46,.18)}
-#t-today .tag.bl{color:var(--zlavDeep);background:rgba(156,143,230,.18)}
-#t-today .tag.ok{color:var(--zsageDeep);background:rgba(148,175,102,.2)}
-#t-today .warnbox{background:#E7BFAA;border:0;color:#6E2A1B;border-radius:14px}
+.light-tab #pctLbl,.light-tab #leftLbl{font-weight:700}
+.light-tab .card{background:var(--zcard);border:1px solid var(--zline);border-radius:18px}
+.light-tab button.b.g.sm{background:var(--zcard);border:1px solid var(--zline);color:var(--zink)}
+.light-tab .bar{background:rgba(34,31,27,.08)}
+.light-tab table td{border-bottom:1px solid var(--zline);color:var(--zink)}
+.light-tab .tag{background:rgba(22,24,27,.07);color:#4A4F57}
+.light-tab .tag.wn{color:var(--zmustardDeep);background:rgba(226,168,46,.18)}
+.light-tab .tag.bl{color:var(--zlavDeep);background:rgba(156,143,230,.18)}
+.light-tab .tag.ok{color:var(--zsageDeep);background:rgba(148,175,102,.2)}
+.light-tab .warnbox{background:#E7BFAA;border:0;color:#6E2A1B;border-radius:14px}
+.light-tab .infobox{background:#C9DCF5;border:0;color:#0B3E7A;border-radius:14px}
 
 /* Phone: two number cards side by side, the prompt card full width beneath.
    No horizontal scroll - a clipped third card read as a bug, not an affordance. */
@@ -436,7 +439,7 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 /* ---- Home essentials: Income/Spent/Remaining, budget status, quick insight,
    quick actions. Added above the existing detail sections, which move under
    the "More detail" disclosure so nothing already built is lost. ---- */
-#t-today .zh-val.bd{color:var(--zbad)}
+.light-tab .zh-val.bd{color:var(--zbad)}
 .zh-statusDot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
 .zh-statusDot.ok{background:var(--zsage)}
 .zh-statusDot.wn{background:var(--zmustard)}
@@ -456,15 +459,17 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .zh-more summary::before{content:'\25B8';display:inline-block;margin-right:6px;transition:transform .15s var(--ease)}
 .zh-more[open] summary::before{transform:rotate(90deg)}
 
-/* Home runs full-bleed rather than as a panel floating inside the page.
-   The nav is styled once, globally, and is the same dark blue on every tab -
-   the per-tab nav overrides that used to live here are gone. */
+/* The five primary tabs run full-bleed rather than as a panel floating
+   inside the page. The nav is styled once, globally, and is the same
+   dark blue on every tab - the per-tab nav overrides that used to live
+   here are gone. */
 body.zh-home{background:#E5E7EB}
-body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;background:transparent}
+body.zh-home .light-tab{border-radius:0;margin-bottom:0;padding:16px 0 22px;background:transparent}
 
-/* ---- Home layout: phone column -> tablet -> desktop ----
-   The 520px shell is right for a phone but strands the Home tab on a monitor,
-   so only this tab widens; every other tab keeps the reading-width column. */
+/* ---- Primary-tab layout: phone column -> tablet -> desktop ----
+   The 520px shell is right for a phone but strands these tabs on a
+   monitor, so they widen together; sheets and settings screens keep
+   the narrower reading-width column. */
 .zh-grid{display:block}
 .zh-sec{min-width:0}
 
@@ -472,7 +477,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
   body.zh-home .wrap{max-width:900px}
   .zh-statrow{grid-template-columns:repeat(3,1fr)}
   .zh-stat.lav{grid-column:auto}
-  #t-today h1{font-size:32px}
+  .light-tab h1{font-size:32px}
 }
 
 @media (min-width:900px){
@@ -525,7 +530,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 <div class="wrap">
 
 <!-- ================= TODAY ================= -->
-<section class="tab on" id="t-today">
+<section class="tab on light-tab" id="t-today">
   <div class="row" style="margin-bottom:4px">
     <button class="b g sm" style="width:auto" onclick="shiftCycle(-1)" aria-label="Previous month">&#10094;</button>
     <div style="text-align:center;flex:1">
@@ -621,7 +626,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= SPENDING ================= -->
-<section class="tab" id="t-spending">
+<section class="tab light-tab" id="t-spending">
   <h1 id="spendTitle">This month spending</h1>
   <div class="mono" style="font-size:34px;font-weight:800" id="spendTotal">R0</div>
 
@@ -641,7 +646,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= SNAP ================= -->
-<section class="tab" id="t-snap">
+<section class="tab light-tab" id="t-snap">
   <h1>Capture a slip</h1>
   <div class="sub">Photograph the till slip. Signed out, it is read entirely on your phone. Signed in, it is
     read by Claude for better accuracy, falling back to on-device reading if that's ever unavailable &mdash;
@@ -688,7 +693,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= IMPORT ================= -->
-<section class="tab" id="t-stmt">
+<section class="tab light-tab" id="t-stmt">
   <h1>Upload a bank statement</h1>
   <div id="pane-imp">
   <h2>Import a statement</h2>
@@ -715,7 +720,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= RECEIPTS ================= -->
-<section class="tab" id="t-receipts">
+<section class="tab light-tab" id="t-receipts">
   <h1>Receipts</h1>
   <button class="b" onclick="goScanReceipt()" style="margin-bottom:18px">&#128247; Scan Receipt</button>
 
@@ -734,7 +739,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= INSIGHTS ================= -->
-<section class="tab" id="t-insight">
+<section class="tab light-tab" id="t-insight">
   <h1>Reports</h1>
   <div class="card" id="reportsOverview" style="margin-bottom:16px"></div>
   <div class="seg" id="insSeg">
@@ -749,7 +754,7 @@ body.zh-home #t-today{border-radius:0;margin-bottom:0;padding:16px 0 22px;backgr
 </section>
 
 <!-- ================= BUDGET ================= -->
-<section class="tab" id="t-setup">
+<section class="tab light-tab" id="t-setup">
   <div class="row"><h1>Budget</h1></div>
   <div class="sub">Income, pay day and category targets.</div>
   <div id="welcomeBanner"></div>
@@ -3555,13 +3560,18 @@ function flash(id,kind,msg){
 }
 
 /* ---------- nav ---------- */
+/* The five primary nav tabs share the wide, full-bleed "zh-home" desktop
+   layout; Snap and the statement-upload screen are one-tap destinations
+   from a Quick action, not primary tabs, so they stay a narrower panel
+   even though they share the same .light-tab card/colour treatment. */
+const PRIMARY_TABS = ['today','spending','setup','receipts','insight'];
 function go(t){
   document.querySelectorAll('.tab').forEach(s=>s.classList.remove('on'));
   const el = document.getElementById('t-'+t);
   /* forcing reflow restarts the entrance animation on re-entry */
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   document.querySelectorAll('.topnav .tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
-  document.body.classList.toggle('zh-home', t==='today');
+  document.body.classList.toggle('zh-home', PRIMARY_TABS.includes(t));
   if(typeof syncNavNow === 'function') syncNavNow();
   window.scrollTo(0,0);
 }
