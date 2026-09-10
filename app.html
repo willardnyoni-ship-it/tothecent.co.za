@@ -481,7 +481,12 @@ body.zh-home .light-tab{border-radius:0;margin-bottom:0;padding:16px 0 22px;back
 }
 
 @media (min-width:900px){
-  body.zh-home .wrap{max-width:1180px;padding:14px 28px 0}
+  /* Fluid, not a fixed jump - a 900px laptop and a 1920px monitor both
+     get a sensible fraction of their own width instead of the same
+     1180px column with a growing dead gutter on either side as the
+     window gets wider. Capped at 1700px so text and charts don't get
+     absurdly wide on an ultrawide monitor. */
+  body.zh-home .wrap{max-width:min(1700px, 94vw);padding:14px clamp(16px,3vw,48px) 0}
   .zh-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);
     gap:4px 28px;align-items:start}
   /* Chart and donut pair on the top row; categories and recent below them. */
