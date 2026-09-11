@@ -17,6 +17,7 @@ import Receipts from '../tabs/Receipts.jsx';
 import Reports from '../tabs/Reports.jsx';
 import Snap from '../tabs/Snap.jsx';
 import Statement from '../tabs/Statement.jsx';
+import BusinessApp from '../business/BusinessApp.jsx';
 
 const TAB_COMPONENTS = {
   today: Home, spending: Spending, setup: Budget, receipts: Receipts, insight: Reports, snap: Snap, stmt: Statement,
@@ -50,7 +51,7 @@ function WelcomeBanner({ onDismiss }) {
   );
 }
 
-function Shell() {
+function Shell({ onSwitchToBusiness }) {
   const { S } = useBudget();
   const { open } = useSheet();
   const [tab, setTab] = useState('today');
@@ -92,7 +93,7 @@ function Shell() {
 
   return (
     <NavContext.Provider value={{ go, snapAction, setSnapAction }}>
-      <TopNav tab={tab} go={go} hasUnreconciled={hasUnreconciled} onOpenMoreMenu={openMoreMenu} onOpenAccountSheet={openAccountSheet} />
+      <TopNav tab={tab} go={go} hasUnreconciled={hasUnreconciled} onOpenMoreMenu={openMoreMenu} onOpenAccountSheet={openAccountSheet} onSwitchToBusiness={onSwitchToBusiness} />
       <div className="wrap">
         {tab === 'setup' && showWelcome && <WelcomeBanner onDismiss={() => setShowWelcome(false)} />}
         <Active />
@@ -103,11 +104,24 @@ function Shell() {
   );
 }
 
+const MODE_KEY = 'wnAppMode';
+
 export default function App() {
   const { cycleOffset } = useBudget();
+  const [mode, setModeState] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'business') return 'business';
+      return localStorage.getItem(MODE_KEY) || 'personal';
+    } catch (e) { return 'personal'; }
+  });
+  const setMode = (m) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* ignore */ } };
+
   return (
     <SheetProvider>
-      <Shell />
+      {mode === 'business'
+        ? <BusinessApp onSwitchMode={() => setMode('personal')} />
+        : <Shell onSwitchToBusiness={() => setMode('business')} />}
       <Khanyiso cycleOffset={cycleOffset} />
     </SheetProvider>
   );

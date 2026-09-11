@@ -1,0 +1,46 @@
+/* ============================================================
+   Business mode - reuses the personal app's card/table/sheet/nav
+   system (app.css) wherever possible; this file only adds the bits
+   that don't already exist: dashboard stat cards, status badges,
+   the attention list, and the invoice line-item editor.
+   ============================================================ */
+.biz-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 18px}
+@media (min-width:760px){ .biz-cards{grid-template-columns:repeat(4,1fr)} }
+.biz-card{background:var(--card);border:.5px solid var(--line);border-radius:18px;padding:16px}
+.biz-card .lbl{font-size:18px;color:var(--dim);font-weight:700}
+.biz-card .val{font-size:26px;font-weight:800;margin-top:4px}
+.biz-card .val.bd{color:var(--bad)}
+
+.biz-attn{background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:4px 14px;margin-bottom:12px}
+.biz-attn-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,159,10,.25);cursor:pointer}
+.biz-attn-row:last-child{border-bottom:0}
+.biz-attn-row .ic{flex:none}
+
+.status-badge{display:inline-block;font-size:18px;font-weight:700;padding:3px 10px;border-radius:99px}
+.status-badge.draft{background:var(--card2);color:var(--dim)}
+.status-badge.sent{background:rgba(10,132,255,.15);color:var(--blue)}
+.status-badge.viewed{background:rgba(10,132,255,.15);color:var(--blue)}
+.status-badge.partially_paid{background:rgba(255,159,10,.15);color:var(--warn)}
+.status-badge.paid{background:rgba(48,209,88,.15);color:var(--acc)}
+.status-badge.overdue{background:rgba(255,69,58,.15);color:var(--bad)}
+.status-badge.cancelled{background:var(--card2);color:var(--dim);text-decoration:line-through}
+
+.biz-item-row{display:grid;grid-template-columns:1fr 56px 90px 90px 32px;gap:8px;align-items:center;margin-bottom:8px}
+.biz-item-row input{padding:10px}
+@media (max-width:520px){ .biz-item-row{grid-template-columns:1fr 1fr;grid-template-areas:'desc desc' 'qty price' 'total del'} }
+
+.biz-totals{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.biz-totals .row{padding:2px 0}
+.biz-totals .row.grand{font-size:22px;font-weight:800;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+
+.biz-switch-banner{background:var(--accC);color:var(--acc);border-radius:12px;padding:10px 14px;font-size:18px;font-weight:700;margin-bottom:12px;text-align:center}
+
+/* "Download PDF" = browser print-to-PDF of just #invoicePrintArea (no
+   PDF-generation library). Standard "print only this element" trick:
+   hide the whole page, then re-reveal just the print area and pull it
+   out of the fixed-position sheet so it isn't clipped to one screen. */
+@media print{
+  body *{visibility:hidden}
+  #invoicePrintArea,#invoicePrintArea *{visibility:visible}
+  #invoicePrintArea{position:absolute;top:0;left:0;width:100%;background:#fff;color:#000}
+}

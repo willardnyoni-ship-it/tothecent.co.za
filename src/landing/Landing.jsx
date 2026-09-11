@@ -153,7 +153,10 @@ export default function Landing() {
         location.href = 'app.html';
       } else {
         const d = await authFetch('/auth/v1/signup', { email: email.trim(), password: pass, data: { segment } });
-        if (d.access_token) { saveSession(d); location.href = 'app.html?onboard=1'; }
+        if (d.access_token) {
+          saveSession(d);
+          location.href = segment === 'business' ? 'app.html?mode=business' : 'app.html?onboard=1';
+        }
         else setMsg('Check your email to confirm the account, then log in.');
       }
     } catch (err) { setMsg(err.message); } finally { setBusy(false); }

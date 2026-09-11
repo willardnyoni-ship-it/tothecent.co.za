@@ -15,7 +15,7 @@ const ICO = {
   out: <><path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" /><path d="M10 17l-5-5 5-5" /><path d="M5 12h11" /></>,
 };
 
-export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpenAccountSheet }) {
+export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpenAccountSheet, onSwitchToBusiness }) {
   const { syncCfg, doSignOut } = useBudget();
   const [navMenuOpen, setNavMenuOpen] = useState(false);
   const [acctMenuOpen, setAcctMenuOpen] = useState(false);
@@ -86,6 +86,11 @@ export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpe
         <button role="menuitem" onClick={() => { setAcctMenuOpen(false); onOpenMoreMenu(); }}>
           <svg viewBox="0 0 24 24">{ICO.gear}</svg><span className="lbl">Settings</span>
         </button>
+        {signedIn && onSwitchToBusiness && (
+          <button role="menuitem" onClick={() => { setAcctMenuOpen(false); onSwitchToBusiness(); }}>
+            <svg viewBox="0 0 24 24">{ICO.gear}</svg><span className="lbl">Switch to Business</span>
+          </button>
+        )}
         <hr />
         <button role="menuitem" onClick={handleLogout}>
           <svg viewBox="0 0 24 24">{ICO.out}</svg><span className="lbl">{signedIn ? 'Log out' : 'Sign in'}</span>
