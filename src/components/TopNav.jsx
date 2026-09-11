@@ -49,7 +49,7 @@ export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpe
 
   return (
     <header className="topnav">
-      <button className="navToggle" aria-label="Menu" aria-haspopup="menu" aria-expanded={navMenuOpen} ref={navRef}
+      <button className="navToggle" data-tour="navtoggle" aria-label="Menu" aria-haspopup="menu" aria-expanded={navMenuOpen} ref={navRef}
         onClick={e => { e.stopPropagation(); setNavMenuOpen(o => !o); }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" />

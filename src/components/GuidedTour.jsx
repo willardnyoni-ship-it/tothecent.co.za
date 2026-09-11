@@ -3,9 +3,13 @@ import { useEffect, useState } from 'react';
 // A one-time walkthrough, not a lingering checklist: it drives navigation
 // itself (via `go`), spotlighting each nav tab in turn with a short
 // explanation, then disappears for good once finished or skipped. Steps
-// reference nav buttons by a `data-tour="<tab>"` attribute (added on both
-// the mobile dropdown and desktop tab-row buttons - only the one actually
-// rendered with a size gets used, so it works at any viewport).
+// reference nav buttons by a `data-tour="<tab>"` attribute. Below 760px the
+// tab row is display:none (only a hamburger + current-tab label show, and
+// the dropdown itself stays hidden until tapped) so none of those buttons
+// have a measurable size there - the hamburger button itself
+// (data-tour="navtoggle", always visible on mobile) is the fallback target
+// in that case, with the tooltip content still describing whichever tab
+// `go()` has actually switched to underneath.
 export default function GuidedTour({ storageKey, steps, tab, go }) {
   const [running, setRunning] = useState(() => {
     try { return localStorage.getItem(storageKey) !== '1'; } catch (e) { return true; }
@@ -27,12 +31,15 @@ export default function GuidedTour({ storageKey, steps, tab, go }) {
   // (the just-switched tab's own content can shift layout a frame later).
   useEffect(() => {
     if (!running || !step) return;
-    function measure() {
-      const els = document.querySelectorAll(`[data-tour="${step.tab}"]`);
-      for (const el of els) {
+    function firstVisible(selector) {
+      for (const el of document.querySelectorAll(selector)) {
         const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) { setRect(r); return; }
+        if (r.width > 0 && r.height > 0) return r;
       }
+      return null;
+    }
+    function measure() {
+      setRect(firstVisible(`[data-tour="${step.tab}"]`) || firstVisible('[data-tour="navtoggle"]'));
     }
     measure();
     const t = setTimeout(measure, 60);

@@ -31,7 +31,7 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
 
   return (
     <header className="topnav">
-      <button className="navToggle" aria-label="Menu" ref={navRef} onClick={e => { e.stopPropagation(); setNavOpen(o => !o); }}>
+      <button className="navToggle" data-tour="navtoggle" aria-label="Menu" ref={navRef} onClick={e => { e.stopPropagation(); setNavOpen(o => !o); }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" />
         </svg>
