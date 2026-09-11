@@ -22,6 +22,11 @@ const TAB_COMPONENTS = {
   today: Home, spending: Spending, setup: Budget, receipts: Receipts, insight: Reports, snap: Snap, stmt: Statement,
 };
 
+// The five primary tabs share the wide, full-bleed desktop layout (see
+// body.zh-home rules in app.css); Snap and the statement-upload screen stay
+// a narrower reading column since they're single-purpose forms.
+const PRIMARY_TAB_KEYS = ['today', 'spending', 'setup', 'receipts', 'insight'];
+
 function MilestoneToast() {
   const { milestone, dismissMilestone } = useBudget();
   if (!milestone) return null;
@@ -56,6 +61,14 @@ function Shell() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('onboard') === '1') { setTab('setup'); setShowWelcome(true); }
   }, []);
+
+  // CSS gates the wide desktop layout behind body.zh-home - ported from the
+  // original's `document.body.classList.toggle('zh-home', ...)` inside its
+  // go() function, which the React port had dropped, leaving every primary
+  // tab stuck at the narrow (760px-cap) reading-column width on desktop.
+  useEffect(() => {
+    document.body.classList.toggle('zh-home', PRIMARY_TAB_KEYS.includes(tab));
+  }, [tab]);
 
   const go = (t) => { setTab(t); window.scrollTo(0, 0); };
 
