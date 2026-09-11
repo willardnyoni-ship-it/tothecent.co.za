@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
-import { R2 } from '../lib/format.js';
+import { R2, iso } from '../lib/format.js';
 import { invoiceStatusLabel } from '../lib/businessMath.js';
 
 export function InvoiceDetailContent({ invoiceId }) {
   const { close } = useSheet();
-  const { business, invoices, customers, updateInvoice } = useBusiness();
+  const { business, invoices, customers, transactions, updateInvoice, addTransaction } = useBusiness();
   const inv = invoices.find(i => i.id === invoiceId);
   const [busy, setBusy] = useState(false);
   if (!inv) return null;
@@ -31,7 +31,23 @@ export function InvoiceDetailContent({ invoiceId }) {
   }
   async function markPaid() {
     setBusy(true);
-    try { await updateInvoice(inv.id, { status: 'paid', paid_amount: inv.total }); } finally { setBusy(false); }
+    try {
+      await updateInvoice(inv.id, { status: 'paid', paid_amount: inv.total });
+      // Marking paid here (as opposed to confirming a suggested match on the
+      // Invoices tab, which links an existing transaction) has no bank
+      // transaction behind it yet - without recording one, the invoice
+      // would show Paid and Outstanding would drop to zero, but the money
+      // would never appear in Money, Home's Income card, or Reports. Only
+      // record it if this invoice doesn't already have a linked transaction.
+      const alreadyLinked = transactions.some(t => t.linked_invoice_id === inv.id);
+      if (!alreadyLinked) {
+        await addTransaction({
+          amount: inv.total, kind: 'income',
+          description: inv.invoice_number + (customer ? ' - ' + customer.name : ''),
+          date: iso(new Date()), status: 'reviewed', source: 'manual', linked_invoice_id: inv.id,
+        });
+      }
+    } finally { setBusy(false); }
   }
   async function setStatus(status) {
     setBusy(true);
