@@ -19,6 +19,9 @@
      npm dependency - it ships its own worker as a separate file that Vite
      would otherwise need special handling to bundle correctly. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- Invoice PDF generation (Business mode). Same reasoning as pdf.js above -
+     a one-off render job, loaded as a global rather than an npm dependency. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="root"></div>

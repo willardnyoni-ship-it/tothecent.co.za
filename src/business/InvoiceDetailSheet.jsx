@@ -3,6 +3,15 @@ import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso } from '../lib/format.js';
 import { invoiceStatusLabel, RECURRING_FREQUENCIES, RECURRING_FREQUENCY_LABEL } from '../lib/businessMath.js';
+import { buildInvoicePdfFile } from '../lib/invoicePdf.js';
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 
 export function InvoiceDetailContent({ invoiceId }) {
   const { close } = useSheet();
@@ -17,16 +26,35 @@ export function InvoiceDetailContent({ invoiceId }) {
   const summary = `Invoice ${inv.invoice_number} from ${business.name} for ${R2(inv.total)}, due ${inv.due_date || 'on receipt'}.`;
 
   function downloadPdf() {
-    // No PDF-generation library - "Download PDF" uses the browser's own
-    // print-to-PDF. @media print in business.css hides everything except
-    // #invoicePrintArea.
-    window.print();
+    downloadFile(buildInvoicePdfFile(business, customer, inv));
   }
-  function shareWhatsApp() {
-    window.open('https://wa.me/?text=' + encodeURIComponent(summary + ' (PDF attached separately - tap Download PDF first, then attach it here.)'), '_blank');
+  // Shares the actual generated PDF, not just a text summary. The Web Share
+  // API is the only way a browser can hand a file straight to WhatsApp/Mail
+  // (a wa.me link or mailto: URI can prefill text but can never attach a
+  // file - that's a platform limitation, not something we can code around).
+  // Where file sharing isn't supported (most desktop browsers), the PDF is
+  // downloaded automatically and the chat/email is opened with a note to
+  // attach the file that just landed in Downloads.
+  async function shareViaSystemSheet() {
+    const file = buildInvoicePdfFile(business, customer, inv);
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Invoice ' + inv.invoice_number, text: summary });
+        return true;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return true; // user closed the share sheet - don't also open the fallback
+      }
+    }
+    downloadFile(file);
+    return false;
   }
-  function shareEmail() {
-    window.location.href = 'mailto:' + (customer?.email || '') + '?subject=' + encodeURIComponent('Invoice ' + inv.invoice_number) + '&body=' + encodeURIComponent(summary);
+  async function shareWhatsApp() {
+    if (await shareViaSystemSheet()) return;
+    window.open('https://wa.me/?text=' + encodeURIComponent(summary + ' (PDF just downloaded - attach it to this chat.)'), '_blank');
+  }
+  async function shareEmail() {
+    if (await shareViaSystemSheet()) return;
+    window.location.href = 'mailto:' + (customer?.email || '') + '?subject=' + encodeURIComponent('Invoice ' + inv.invoice_number) + '&body=' + encodeURIComponent(summary + '\n\n(PDF just downloaded - please attach it to this email.)');
   }
   function copySummary() {
     navigator.clipboard?.writeText(summary);
