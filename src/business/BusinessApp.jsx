@@ -13,6 +13,7 @@ import Expenses from './tabs/Expenses.jsx';
 import Reports from './tabs/Reports.jsx';
 import Team from './tabs/Team.jsx';
 import BizSettings from './tabs/Settings.jsx';
+import GuidedTour from '../components/GuidedTour.jsx';
 
 const TABS = { home: BizHome, money: Money, invoices: Invoices, expenses: Expenses, reports: Reports, team: Team };
 
@@ -67,6 +68,19 @@ export default function BusinessApp({ onSwitchMode }) {
       <div className="wrap">
         <Active go={go} />
       </div>
+      <GuidedTour
+        storageKey="wnTourDone_business"
+        tab={tab}
+        go={go}
+        steps={[
+          { tab: 'home', title: 'Home', body: 'Cash available, income vs expenses, and anything that needs your attention - overdue invoices, missing receipts, transactions to review.' },
+          { tab: 'money', title: 'Money', body: 'Every transaction, income logged separately, manual entry, and importing your bank statement.' },
+          { tab: 'invoices', title: 'Invoices', body: 'Customers, creating and sending invoices, tracking payments, and recurring invoices.' },
+          { tab: 'expenses', title: 'Expenses', body: 'Scan a receipt and OCR fills in the amount and category for you, ready for approval.' },
+          { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
+          { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
+        ]}
+      />
     </>
   );
 }

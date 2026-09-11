@@ -7,6 +7,7 @@ import TopNav from '../components/TopNav.jsx';
 import LockScreen from '../components/LockScreen.jsx';
 import Khanyiso from '../components/Khanyiso.jsx';
 import { isStmt, isLog } from '../lib/match.js';
+import GuidedTour from '../components/GuidedTour.jsx';
 import {
   AccountSheetContent, LockSheetContent, WindfallSheetContent, TaxSheetContent, DataSheetContent, MoreMenuContent,
 } from '../components/SettingsSheets.jsx';
@@ -103,6 +104,18 @@ function Shell({ onSwitchToBusiness }) {
       </div>
       <MilestoneToast />
       <LockScreen />
+      <GuidedTour
+        storageKey="wnTourDone_personal"
+        tab={tab}
+        go={go}
+        steps={[
+          { tab: 'today', title: 'Home', body: "Today's safe-to-spend amount, upcoming bills and recent activity, all at a glance." },
+          { tab: 'spending', title: 'Spending', body: 'See exactly where your money went this month and last, by category.' },
+          { tab: 'setup', title: 'Budget', body: 'Set your income, pay day, savings goal and category targets here.' },
+          { tab: 'receipts', title: 'Receipts', body: "Scan a slip and OCR reads the total for you - it's also where slips get matched against your bank statement." },
+          { tab: 'insight', title: 'Reports', body: 'Monthly reviews, recurring payments, and CSV export whenever you want your numbers elsewhere.' },
+        ]}
+      />
     </NavContext.Provider>
   );
 }

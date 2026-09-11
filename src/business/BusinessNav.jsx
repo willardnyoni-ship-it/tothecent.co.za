@@ -39,14 +39,14 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
       <div className="navNow">{business?.name || current?.label}</div>
       <div className="navMenu" hidden={!navOpen}>
         {BIZ_TABS.map(x => (
-          <button key={x.t} className={x.t === tab ? 'on' : ''} onClick={() => { setNavOpen(false); go(x.t); }}>{x.label}</button>
+          <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => { setNavOpen(false); go(x.t); }}>{x.label}</button>
         ))}
         <hr />
         <button onClick={() => { setNavOpen(false); onOpenSettings(); }}>Settings</button>
       </div>
       <div className="tabs">
         {BIZ_TABS.map(x => (
-          <button key={x.t} className={x.t === tab ? 'on' : ''} onClick={() => go(x.t)}>{x.label}</button>
+          <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => go(x.t)}>{x.label}</button>
         ))}
       </div>
       <button className="avatar" aria-label="Account menu" ref={acctRef} onClick={e => { e.stopPropagation(); setAcctOpen(o => !o); }}>

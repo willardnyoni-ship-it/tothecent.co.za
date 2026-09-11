@@ -7,7 +7,6 @@ import { R, fmtD, catEmoji } from '../lib/format.js';
 import { useEditTx } from '../components/EditTxSheet.jsx';
 import PhotoThumb from '../components/PhotoThumb.jsx';
 import { useViewShot } from '../components/ViewShotSheet.jsx';
-import GettingStartedCard from '../components/GettingStartedCard.jsx';
 
 function WeeklyChart({ active, budTot, totalDays }) {
   const days = useMemo(() => {
@@ -154,16 +153,6 @@ export default function Home() {
           ? <><span className={'zh-statusDot ' + (pct > 100 ? 'bd' : pct > 85 ? 'wn' : 'ok')} /> You&rsquo;ve spent <b>{Math.round(pct)}%</b> of your monthly budget</>
           : <><span className="zh-statusDot wn" /> Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</>}
       </div>
-
-      <GettingStartedCard
-        storageKey="wnOnboardDismissed_personal"
-        title="Get started"
-        items={[
-          { label: 'Set your income and pay day', done: !!S.income, onClick: () => go('setup') },
-          { label: 'Import a bank statement', done: S.tx.some(t => t.src === 'pdf' || t.src === 'csv'), onClick: () => go('stmt') },
-          { label: 'Scan your first receipt', done: S.tx.some(t => t.photo || t.photoGone), onClick: () => { setSnapAction('camera'); go('snap'); } },
-        ]}
-      />
 
       {spendingFast && (
         <div className="card zh-insight" style={{ marginBottom: 16 }}>

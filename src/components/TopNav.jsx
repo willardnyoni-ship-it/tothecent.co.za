@@ -58,7 +58,7 @@ export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpe
       <div className="navNow">{current?.label}</div>
       <div className="navMenu" role="menu" hidden={!navMenuOpen}>
         {PRIMARY_TABS.map(x => (
-          <button key={x.t} className={x.t === tab ? 'on' : ''} onClick={() => { setNavMenuOpen(false); go(x.t); }}>
+          <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => { setNavMenuOpen(false); go(x.t); }}>
             {x.label}
             {x.t === 'receipts' && hasUnreconciled && <span className="nmDot" />}
           </button>
@@ -66,7 +66,7 @@ export default function TopNav({ tab, go, hasUnreconciled, onOpenMoreMenu, onOpe
       </div>
       <div className="tabs">
         {PRIMARY_TABS.map(x => (
-          <button key={x.t} className={x.t === tab ? 'on' : ''} onClick={() => go(x.t)}>
+          <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => go(x.t)}>
             {x.label}
             {x.t === 'receipts' && <span className={'dot' + (hasUnreconciled ? ' on' : '')} />}
           </button>
