@@ -12,7 +12,7 @@ pages, same as before:
 | Page | What it is |
 |---|---|
 | `index.html` | The public front door — pitch, log in / create account. This is what `https://tothecent.co.za/` shows. |
-| `app.html` | The actual app. Signing in or creating an account on `index.html` redirects here. Can also be opened directly. |
+| `app/` | The actual app, at `https://tothecent.co.za/app/`. Signing in or creating an account on `index.html` redirects here. Can also be opened directly. `/app.html` (the old URL) still works — it's a redirect stub that forwards to `/app/`, query string and tab hash included. |
 
 An account is optional. If you sign in, your data syncs to the hosted server in
 the open — simple, nothing to remember, but the operator's Supabase project can
@@ -28,7 +28,7 @@ npm run build     # builds the deployable site into docs/
 
 Source lives under `src/` (React components, one file per tab/sheet, plus `src/lib/`
 for the pure business logic — parsers, categorisation, matching, sync). `index.html`
-and `app.html` at the repo root are Vite's entry points, not the served pages
+and `app/index.html` at the repo root are Vite's entry points, not the served pages
 themselves; `npm run build` turns them (plus everything in `src/`) into the real
 static site under `docs/`, which is what GitHub Pages actually serves.
 
@@ -44,7 +44,7 @@ static site under `docs/`, which is what GitHub Pages actually serves.
 ## Install on iPhone
 
 1. Open the URL in **Safari** (must be Safari — Chrome on iOS cannot install web apps).
-   Works from either `index.html` or `app.html`; it always launches into the app.
+   Works from either `index.html` or `app/`; it always launches into the app.
 2. Tap the **Share** button (square with an arrow).
 3. Scroll down, tap **Add to Home Screen**, then **Add**.
 4. Launch it from the home screen. It opens full-screen with no browser bars.

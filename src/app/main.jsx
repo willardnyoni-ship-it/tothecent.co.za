@@ -15,3 +15,11 @@ createRoot(document.getElementById('root')).render(
     </BudgetProvider>
   </StrictMode>,
 );
+
+// Registered by hand (not vite-plugin-pwa's auto-injected script) with an
+// absolute path so it resolves correctly regardless of this page's own
+// depth - this file is served from /app/, one directory below the site
+// root where sw.js actually lives.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW failed', e)));
+}

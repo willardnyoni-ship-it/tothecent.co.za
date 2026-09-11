@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        app: resolve(__dirname, 'app.html'),
+        app: resolve(__dirname, 'app/index.html'),
       },
     },
   },
@@ -25,12 +25,16 @@ export default defineConfig({
       // icons, etc. tuned for this app) - the plugin only needs to add the
       // service worker and its registration, not generate its own manifest.
       manifest: false,
-      injectRegister: 'auto',
+      // 'auto' injects a <script src="./registerSW.js"> - relative, which
+      // broke once app/index.html moved a directory deeper than the output
+      // root (it resolved to /app/registerSW.js, a 404). Registering by
+      // hand with an absolute '/sw.js' works from any page depth.
+      injectRegister: false,
       registerType: 'autoUpdate',
       workbox: {
         // Both HTML entry points need their own navigation fallback rather
         // than Workbox's single-page-app default of always falling back to
-        // index.html - opening /app.html offline must still open the app,
+        // index.html - opening /app/ offline must still open the app,
         // not the landing page.
         navigateFallback: null,
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],

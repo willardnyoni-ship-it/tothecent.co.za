@@ -10,18 +10,20 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Private offline budget tracker.">
 <title>Budget</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="../manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="../icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="../icon-152.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
 <!-- Statement PDF parsing (FNB). Loaded as a global script rather than an
      npm dependency - it ships its own worker as a separate file that Vite
      would otherwise need special handling to bundle correctly. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script type="module" crossorigin src="../assets/app-B_-PPZnm.js"></script>
+  <link rel="modulepreload" crossorigin href="../assets/client-C9yhCDaK.js">
+  <link rel="stylesheet" crossorigin href="../assets/app-n-qOwECV.css">
 </head>
 <body>
 <div id="root"></div>
-<script type="module" src="/src/app/main.jsx"></script>
 </body>
 </html>

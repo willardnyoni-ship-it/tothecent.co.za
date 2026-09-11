@@ -186,7 +186,7 @@ export function BudgetProvider({ children }) {
   const doSignOut = useCallback(async () => {
     await apiSignOut(syncCfg);
     setSyncCfg({ token: undefined, refresh: undefined, userId: undefined, email: undefined, expires: undefined });
-    window.location.href = 'index.html';
+    window.location.href = '/';
   }, [syncCfg, setSyncCfg]);
 
   const syncNow = useCallback(async (silent) => {

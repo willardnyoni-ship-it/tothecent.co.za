@@ -138,7 +138,7 @@ export default function Landing() {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d.msg || d.error_description || d.message || 'Request failed (' + r.status + ')');
         saveSession({ access_token: token, refresh_token: refresh, expires_in: expiresIn, user: d });
-        location.href = 'app.html';
+        location.href = '/app/';
       } catch (err) { setMsg(err.message); } finally { setBusy(false); }
       return;
     }
@@ -150,12 +150,12 @@ export default function Landing() {
       if (authMode === 'signin') {
         const d = await authFetch('/auth/v1/token?grant_type=password', { email: email.trim(), password: pass });
         saveSession(d);
-        location.href = 'app.html';
+        location.href = '/app/';
       } else {
         const d = await authFetch('/auth/v1/signup', { email: email.trim(), password: pass, data: { segment } });
         if (d.access_token) {
           saveSession(d);
-          location.href = segment === 'business' ? 'app.html?mode=business' : 'app.html?onboard=1';
+          location.href = segment === 'business' ? '/app/?mode=business' : '/app/?onboard=1';
         }
         else setMsg('Check your email to confirm the account, then log in.');
       }
@@ -228,7 +228,7 @@ export default function Landing() {
       <div className="wrap">
         <div className="topnav">
           {alreadySignedIn
-            ? <button className="loginlink" onClick={() => { location.href = 'app.html'; }} type="button">Open app &rarr;</button>
+            ? <button className="loginlink" onClick={() => { location.href = '/app/'; }} type="button">Open app &rarr;</button>
             : <button className="loginlink" onClick={() => openAuth('signin')} type="button">Log in</button>}
         </div>
 
