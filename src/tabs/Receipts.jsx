@@ -115,7 +115,7 @@ export default function Receipts() {
         {receipts.length ? receipts.map(t => (
           <tr key={t.id} onClick={() => editTx(t.id)} style={{ cursor: 'pointer' }}>
             <td className="thumbCell">{t.photo ? <PhotoThumb pid={t.photo} onClick={() => viewShot(t.id)} /> : <span className="rthumb gone">&#8709;</span>}</td>
-            <td><div style={{ fontWeight: 600 }}>{t.note || t.c}</div><div className="tag">{t.d}</div></td>
+            <td><div style={{ fontWeight: 600 }}>{t.note || t.c}</div><div className="tag">{t.d}{t.cash ? ' · cash' : ''}</div></td>
             <td className="r">{R2(t.a)}</td>
           </tr>
         )) : <tr><td className="mini" colSpan={3}>No receipts scanned yet.</td></tr>}

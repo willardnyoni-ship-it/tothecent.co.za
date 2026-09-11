@@ -2,7 +2,9 @@ import { dayDiff } from './format.js';
 
 export const MATCH_DAYS = 4;
 export const isStmt = t => t.src === 'pdf';
-export const isLog = t => !isStmt(t) && !t.mt;
+// Cash-marked receipts are excluded - the user has said no bank line will
+// ever appear for them, so they shouldn't sit in "logged, not on statement".
+export const isLog = t => !isStmt(t) && !t.mt && !t.cash;
 
 // Statement lines are truth; logged slips match to them on exact amount
 // within a +/- day window. Ported unchanged from app.html.

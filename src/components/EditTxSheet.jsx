@@ -3,6 +3,7 @@ import { useBudget } from '../store/BudgetStore.jsx';
 import { useSheet } from './Sheet.jsx';
 import { R2, esc } from '../lib/format.js';
 import { merchantOf } from '../lib/categorize.js';
+import { isStmt } from '../lib/match.js';
 import { photoDel } from '../lib/photos.js';
 import { useViewShot } from './ViewShotSheet.jsx';
 
@@ -16,6 +17,7 @@ export function EditTxSheetContent({ txId }) {
   const [note, setNote] = useState(t ? (t.note || '') : '');
   const [date, setDate] = useState(t ? t.d : '');
   const [rememberRule, setRememberRule] = useState(false);
+  const [cash, setCash] = useState(t ? !!t.cash : false);
 
   if (!t) return null;
   const m = merchantOf(t.note);
@@ -24,7 +26,7 @@ export function EditTxSheetContent({ txId }) {
     const a = parseFloat(amt);
     if (!a || a <= 0) return alert('Enter an amount greater than zero.');
     const catChanged = cat !== t.c;
-    editTx(t.id, { a, c: cat, note, d: date || t.d, userCat: catChanged || t.userCat });
+    editTx(t.id, { a, c: cat, note, d: date || t.d, userCat: catChanged || t.userCat, cash });
 
     if (rememberRule && m && m !== '(bank fee)') {
       const k = m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -58,6 +60,12 @@ export function EditTxSheetContent({ txId }) {
       <input value={note} onChange={e => setNote(e.target.value)} />
       <label>Date</label>
       <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+      {!isStmt(t) && (
+        <label className="chk" style={{ marginTop: 10 }}>
+          <input type="checkbox" checked={cash} onChange={e => setCash(e.target.checked)} />
+          <span>Cash purchase &mdash; don't expect this on a bank statement</span>
+        </label>
+      )}
       {t.items && t.items.length > 0 && (
         <>
           <h2 style={{ marginBottom: 6 }}>What was on the slip</h2>

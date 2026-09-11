@@ -23,8 +23,8 @@ function useRecommendedBudget(S) {
 }
 
 export default function Budget() {
-  const { S, setIncome, setCycleDay, setSavingsGoal, setWeekly, setMethod, setCatTarget, addCat, delCat, applyRecommendedBudget } = useBudget();
-  const { spentBy, spent, budTot } = useCycleData(S, 0);
+  const { S, setIncome, setCycleDay, setSavingsGoal, setBudgetRollover, setWeekly, setMethod, setCatTarget, addCat, delCat, applyRecommendedBudget } = useBudget();
+  const { spentBy, spent, budTot, catTargets } = useCycleData(S, 0);
   const rec = useRecommendedBudget(S);
   const [newCat, setNewCat] = useState('');
   const [newAmt, setNewAmt] = useState('');
@@ -70,6 +70,11 @@ export default function Budget() {
         <input type="number" min="1" max="28" value={S.cycleDay} onChange={e => setCycleDay(Math.min(28, Math.max(1, +e.target.value || 1)))} />
         <label>Savings goal per month (R)</label>
         <input type="number" inputMode="decimal" value={S.savingsGoal || ''} onChange={e => setSavingsGoal(e.target.value)} />
+        <label className="chk">
+          <input type="checkbox" checked={!!S.budgetRollover} onChange={e => setBudgetRollover(e.target.checked)} />
+          <span>Roll unused budget into next month</span>
+        </label>
+        <div className="mini" style={{ marginTop: -6, marginBottom: 10 }}>If a category comes in under target, the leftover is added to that category's target next month instead of disappearing.</div>
         <label>Spending pace</label>
         <div className="seg" style={{ margin: 0 }}>
           <button className={!S.weekly ? 'on' : ''} onClick={() => setWeekly(false)}>One monthly pot</button>
@@ -92,12 +97,13 @@ export default function Budget() {
       <h2>Category budgets</h2>
       <div className="card">
         {S.cats.map((x, i) => {
-          const sp = spentBy[x.n] || 0, rem = x.t - sp;
+          const eff = catTargets.find(c => c.n === x.n) || x;
+          const sp = spentBy[x.n] || 0, rem = eff.t - sp;
           return (
             <div className="cat" key={x.n}>
               <div className="row">
                 <div style={{ flex: 1 }}>
-                  <div className="n">{catEmoji(x.n)} {x.n}</div>
+                  <div className="n">{catEmoji(x.n)} {x.n}{eff.rollover > 0 && <span className="tag">+{R(eff.rollover)} rolled over</span>}</div>
                   <div className="mini">{R(sp)} spent &middot; <span className={rem < 0 ? 'bd' : 'ok'}>{rem < 0 ? '-' : ''}{R(Math.abs(rem))} remaining</span></div>
                 </div>
                 <input type="number" inputMode="decimal" value={x.t} style={{ maxWidth: 96, textAlign: 'right' }} onChange={e => setCatTarget(i, e.target.value)} />

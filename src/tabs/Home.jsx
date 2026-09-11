@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useNav } from '../app/NavContext.jsx';
 import { useCycleData } from '../lib/useCycleData.js';
-import { cycleAt } from '../lib/cycle.js';
+import { cycleAt, dailyAllowance } from '../lib/cycle.js';
 import { R, fmtD, catEmoji } from '../lib/format.js';
 import { useEditTx } from '../components/EditTxSheet.jsx';
 import PhotoThumb from '../components/PhotoThumb.jsx';
@@ -90,7 +90,7 @@ export default function Home() {
   const { go, setSnapAction } = useNav();
   const editTx = useEditTx();
   const viewShot = useViewShot();
-  const { c, active, tx, spentBy, spent, budTot, pct, due, dueTot } = useCycleData(S, cycleOffset);
+  const { c, active, tx, spentBy, spent, budTot, pct, due, dueTot, catTargets } = useCycleData(S, cycleOffset);
 
   const isNow = cycleOffset === 0;
   const msDay = 86400000, now = new Date();
@@ -98,7 +98,15 @@ export default function Home() {
   const totalDays = Math.round((c.e - c.s) / msDay) + 1;
   const daysLeft = Math.max(1, totalDays - dayN + 1);
   const remaining = (budTot || 0) - spent;
-  const safeToday = Math.max(0, remaining / daysLeft);
+  // Safe-to-spend is the pace-adjusted daily allowance for the days left in
+  // the cycle, after setting aside upcoming bills (dueTot) and this cycle's
+  // savings goal - not just whatever's left in the budget divided by days.
+  const fixedRem = dueTot + (S.savingsGoal || 0);
+  const allowance = dailyAllowance(c, budTot, spent, fixedRem);
+  const safeToday = Math.max(0, allowance.perDayNow);
+  // Negative "ahead" means spending has outpaced the flat per-day budget for
+  // this point in the cycle - i.e. spending faster than usual.
+  const spendingFast = budTot > 0 && allowance.ahead < -100;
 
   const income = S.income || 0;
   const homeRemaining = income - spent;
@@ -146,6 +154,13 @@ export default function Home() {
           : <><span className="zh-statusDot wn" /> Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</>}
       </div>
 
+      {spendingFast && (
+        <div className="card zh-insight" style={{ marginBottom: 16 }}>
+          <span className="ic">&#9888;&#65039;</span>
+          <span>You're spending faster than usual &mdash; about <b>{R(-allowance.ahead)}</b> ahead of pace for day {dayN} of {totalDays}.</span>
+        </div>
+      )}
+
       {quickInsight && (
         <div className="card zh-insight" style={{ marginBottom: 16 }}>
           <span className="ic">&#128161;</span>
@@ -189,7 +204,10 @@ export default function Home() {
           <div className="zh-stat sage">
             <div className="zh-lbl">Safe to spend today</div>
             <div className="zh-val">{R(safeToday)}</div>
-            <div className="zh-sub">{remaining < 0 ? `You are ${R(-remaining)} over for this month.` : `${R(remaining)} left for this month`}</div>
+            <div className="zh-sub">
+              {remaining < 0 ? `You are ${R(-remaining)} over for this month.` : `${R(remaining)} left for this month`}
+              {dueTot > 0 && ` · ${R(dueTot)} of bills still to come`}
+            </div>
           </div>
           <div className="zh-stat mustard">
             <div className="zh-lbl">Spent this month</div>
@@ -214,12 +232,12 @@ export default function Home() {
           <section className="zh-sec">
             <h2>Categories</h2>
             <div className="card">
-              {S.cats.filter(x => x.t > 0 || (spentBy[x.n] || 0) > 0).map(x => {
+              {catTargets.filter(x => x.t > 0 || (spentBy[x.n] || 0) > 0).map(x => {
                 const sp = spentBy[x.n] || 0, p = x.t ? sp / x.t * 100 : (sp ? 100 : 0);
                 const col = x.t === 0 ? 'var(--dim)' : p > 100 ? 'var(--bad)' : p > 85 ? 'var(--warn)' : 'var(--acc)';
                 return (
                   <div className="cat" key={x.n}>
-                    <div className="row"><div className="n">{catEmoji(x.n)} {x.n}{x.fixed && <span className="tag">fixed</span>}</div><div className="v">{R(sp)} <span style={{ color: '#9AA0AA' }}>/</span> {R(x.t)}</div></div>
+                    <div className="row"><div className="n">{catEmoji(x.n)} {x.n}{x.fixed && <span className="tag">fixed</span>}{x.rollover > 0 && <span className="tag">+{R(x.rollover)} rolled over</span>}</div><div className="v">{R(sp)} <span style={{ color: '#9AA0AA' }}>/</span> {R(x.t)}</div></div>
                     <div className="bar"><i style={{ width: Math.min(100, p) + '%', background: col }} /></div>
                   </div>
                 );

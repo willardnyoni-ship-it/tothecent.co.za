@@ -6,6 +6,7 @@ import { saTaxYear, taxYearLabel, taxYearsAvailable, blankDeductions } from '../
 import { loadLock, saveLock, pinHash } from '../lib/lock.js';
 import { photoDel, photoRemoteDelete, PHOTO_TTL_DAYS } from '../lib/photos.js';
 import { DEFAULTS, KEY } from '../store/defaults.js';
+import { listAutoBackups, readAutoBackup } from '../lib/autobackup.js';
 
 function dl(blob, name) {
   const u = URL.createObjectURL(blob), a = document.createElement('a');
@@ -177,10 +178,20 @@ export function TaxSheetContent() {
 }
 
 // ---------- Data ----------
+function fmtWhen(ts) {
+  if (!ts) return 'never';
+  const d = new Date(ts), now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  return sameDay ? `Today, ${time}` : d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + ', ' + time;
+}
+
 export function DataSheetContent() {
   const { close } = useSheet();
-  const { S, syncCfg, ensureToken, update } = useBudget();
+  const { S, syncCfg, ensureToken, update, trust, markBackup, restoreBackup } = useBudget();
   const [info, setInfo] = useState('');
+  const [restoreMsg, setRestoreMsg] = useState('');
+  const autoBackups = listAutoBackups();
   useEffect(() => {
     (async () => {
       const shots = S.tx.filter(t => t.photo).length;
@@ -195,7 +206,10 @@ export function DataSheetContent() {
     })();
   }, [S.tx]);
 
-  function exportData() { dl(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), 'budget-backup-' + iso(new Date()) + '.json'); }
+  function exportData() {
+    dl(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), 'budget-backup-' + iso(new Date()) + '.json');
+    markBackup();
+  }
   function exportCsv() {
     const rows = [['date', 'amount', 'category', 'note', 'source', 'reconciled']]
       .concat([...S.tx].sort((a, b) => a.d.localeCompare(b.d)).map(t => [t.d, t.a.toFixed(2), t.c, (t.note || '').replace(/"/g, "'"), t.src || '', t.rec ? 'yes' : 'no']));
@@ -219,19 +233,28 @@ export function DataSheetContent() {
   function handleRestore(file) {
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result));
-        update(s => ({ ...structuredClone(DEFAULTS), ...data }));
-        alert('Backup restored.');
-      } catch (e) { alert('That does not look like a valid backup file.'); }
+      let data;
+      try { data = JSON.parse(String(reader.result)); }
+      catch (e) { setRestoreMsg('That does not look like a valid backup file.'); return; }
+      const err = restoreBackup(data);
+      setRestoreMsg(err ? err : 'Backup restored.');
     };
     reader.readAsText(file);
+  }
+  function restoreFromAuto(dateKey) {
+    const data = readAutoBackup(dateKey);
+    if (!data) { setRestoreMsg('That automatic backup is no longer available.'); return; }
+    if (!confirm(`Restore your data to how it was on ${dateKey}? Anything changed since then on this device will be lost unless it's also backed up elsewhere.`)) return;
+    const err = restoreBackup(data);
+    setRestoreMsg(err ? err : `Restored to ${dateKey}.`);
   }
 
   return (
     <>
       <div className="row"><h1>Data</h1><button className="b g sm" onClick={close}>Close</button></div>
       <div className="card">
+        <div className="mini" style={{ marginBottom: 4 }}>Last backup: {fmtWhen(trust.lastBackupAt)}</div>
+        <div className="mini" style={{ marginBottom: 10 }}>Last statement import: {fmtWhen(trust.lastImportAt)}</div>
         <div className="mini" style={{ marginBottom: 10 }}>{info}</div>
         <button className="b g" onClick={exportData}>Export backup (JSON)</button>
         <div style={{ height: 8 }} />
@@ -239,6 +262,19 @@ export function DataSheetContent() {
           Restore from backup
           <input type="file" accept="application/json" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (f) handleRestore(f); e.target.value = ''; }} />
         </label>
+        {restoreMsg && <div className={'msg ' + (restoreMsg.includes('restored') || restoreMsg.startsWith('Restored') ? 's' : 'e')} style={{ marginTop: 8 }}>{restoreMsg}</div>}
+        {autoBackups.length > 0 && (
+          <details style={{ marginTop: 10 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Automatic backups ({autoBackups.length})</summary>
+            <div className="mini" style={{ margin: '8px 0' }}>Taken automatically once a day on this device, kept for 5 days - a safety net if something goes wrong, separate from the export above.</div>
+            {autoBackups.map(d => (
+              <div className="row" key={d} style={{ padding: '4px 0' }}>
+                <span className="mini">{d}</span>
+                <a href="#" onClick={e => { e.preventDefault(); restoreFromAuto(d); }} style={{ color: 'var(--blue)' }}>Restore</a>
+              </div>
+            ))}
+          </details>
+        )}
         <div style={{ height: 8 }} />
         <button className="b g" onClick={exportCsv}>Export transactions (CSV)</button>
         <div style={{ height: 8 }} />

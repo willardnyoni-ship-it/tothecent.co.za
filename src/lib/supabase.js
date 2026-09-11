@@ -79,7 +79,7 @@ export function mergeState(local, remote) {
   });
 
   const remoteNewer = (remote.syncedAt || 0) > (local.syncedAt || 0);
-  for (const k of ['income', 'cycleDay', 'weekly', 'method', 'savingsGoal', 'cats', 'rules', 'shortcuts', 'windfall', 'members', 'memory']) {
+  for (const k of ['income', 'cycleDay', 'weekly', 'method', 'savingsGoal', 'budgetRollover', 'cats', 'rules', 'shortcuts', 'windfall', 'members', 'memory']) {
     if (remoteNewer && remote[k] !== undefined) out[k] = remote[k];
   }
   out.splits = { ...(remote.splits || {}), ...(local.splits || {}) };
@@ -91,10 +91,10 @@ export function mergeState(local, remote) {
 // Photos are deliberately excluded here - they are large and stay on the device.
 export function syncPayload(S) {
   const { flows, tx, cats, rules, shortcuts, members, splits, memory,
-    achievements, windfall, income, cycleDay, weekly, method, savingsGoal,
+    achievements, windfall, income, cycleDay, weekly, method, savingsGoal, budgetRollover,
     deleted, syncedAt } = S;
   return { flows, tx, cats, rules, shortcuts, members, splits, memory, achievements,
-    windfall, income, cycleDay, weekly, method, savingsGoal, deleted, syncedAt };
+    windfall, income, cycleDay, weekly, method, savingsGoal, budgetRollover, deleted, syncedAt };
 }
 
 export async function pullAndMergeAndPush(syncCfg, token, S) {

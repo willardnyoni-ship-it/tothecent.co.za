@@ -9,6 +9,9 @@ import {
 } from '../lib/supabase.js';
 import { photoDel, photoRemoteDelete, photoExpired } from '../lib/photos.js';
 import { loadLock, saveLock } from '../lib/lock.js';
+import { loadTrust, saveTrust } from '../lib/trust.js';
+import { snapshotIfNeeded } from '../lib/autobackup.js';
+import { validateBackup } from '../lib/backupValidate.js';
 
 const BudgetContext = createContext(null);
 
@@ -26,14 +29,25 @@ export function BudgetProvider({ children }) {
   const [cycleOffset, setCycleOffsetRaw] = useState(0);
   const [milestone, setMilestone] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
+  const [trust, setTrustState] = useState(loadTrust);
   const syncBusyRef = useRef(false);
+
+  const setTrust = useCallback((patch) => setTrustState(prev => {
+    const next = { ...prev, ...patch };
+    saveTrust(next);
+    return next;
+  }), []);
 
   // Persist to localStorage on every state change - the React equivalent of
   // the original app's save() call at the end of every mutating function.
+  // Also takes a once-a-day rolling snapshot to a separate key (autobackup.js)
+  // so a bug that corrupts the live state doesn't take the last few days'
+  // history down with it.
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
     catch (e) { alert('Could not save - storage may be full, or you are in private browsing.'); }
-  }, [S]);
+    if (snapshotIfNeeded(S)) setTrust({ lastBackupAt: Date.now() });
+  }, [S, setTrust]);
 
   // One-off boot tasks: purge expired slip photos, check for a milestone
   // already earned by data restored from a backup.
@@ -110,6 +124,7 @@ export function BudgetProvider({ children }) {
   const setIncome = useCallback(v => update(s => ({ ...s, income: +v || 0, syncedAt: Date.now() })), [update]);
   const setCycleDay = useCallback(v => update(s => ({ ...s, cycleDay: +v || 1, syncedAt: Date.now() })), [update]);
   const setSavingsGoal = useCallback(v => update(s => ({ ...s, savingsGoal: +v || 0, syncedAt: Date.now() })), [update]);
+  const setBudgetRollover = useCallback(v => update(s => ({ ...s, budgetRollover: !!v, syncedAt: Date.now() })), [update]);
   const setWeekly = useCallback(v => update(s => ({ ...s, weekly: !!v, syncedAt: Date.now() })), [update]);
   const setMethod = useCallback(v => update(s => ({ ...s, method: v, syncedAt: Date.now() })), [update]);
 
@@ -153,7 +168,16 @@ export function BudgetProvider({ children }) {
     return { ...s, splits };
   }), [update]);
 
-  const restoreBackup = useCallback((data) => update(() => ({ ...structuredClone(DEFAULTS), ...data })), [update]);
+  // Validated so a corrupted/foreign JSON file can't silently wipe good data
+  // with garbage - returns an error string on failure, null on success.
+  const restoreBackup = useCallback((data) => {
+    const err = validateBackup(data);
+    if (err) return err;
+    update(() => ({ ...structuredClone(DEFAULTS), ...data }));
+    return null;
+  }, [update]);
+  const markStatementImport = useCallback(() => setTrust({ lastImportAt: Date.now() }), [setTrust]);
+  const markBackup = useCallback(() => setTrust({ lastBackupAt: Date.now() }), [setTrust]);
 
   // ---------- auth / sync ----------
   const setSyncCfg = useCallback((patch) => setSyncCfgState(prev => {
@@ -225,10 +249,11 @@ export function BudgetProvider({ children }) {
   const value = {
     S, update, cycleOffset, setCycleOffset: cycleOffsetSet, resetCycle,
     addTx, editTx, deleteTx, importTx, recordFlows,
-    setIncome, setCycleDay, setSavingsGoal, setWeekly, setMethod,
+    setIncome, setCycleDay, setSavingsGoal, setBudgetRollover, setWeekly, setMethod,
     setCatTarget, addCat, delCat, applyRecommendedBudget,
     setTaxDeduction, setTaxYearSel, setWindfallRule,
     addMember, delMember, setSplit, restoreBackup,
+    trust, markStatementImport, markBackup,
     syncCfg, setSyncCfg, doSignUp, doSignIn, doSignOut, syncNow, ensureToken, syncStatus,
     lockCfg, setLockCfg, locked, setLocked,
     milestone, dismissMilestone: () => setMilestone(null),

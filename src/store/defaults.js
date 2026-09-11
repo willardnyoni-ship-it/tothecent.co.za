@@ -16,6 +16,7 @@ export const DEFAULTS = {
   deleted: [],
   syncedAt: 0,
   savingsGoal: 0,
+  budgetRollover: false,
   flows: [],
   setupDone: false,
   rules: [],

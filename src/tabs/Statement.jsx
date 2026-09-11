@@ -8,7 +8,7 @@ import { uid, R, R2 } from '../lib/format.js';
 import { uploadStatement } from '../lib/photos.js';
 
 export default function Statement() {
-  const { S, update, syncCfg, ensureToken } = useBudget();
+  const { S, update, syncCfg, ensureToken, markStatementImport } = useBudget();
   const { go } = useNav();
   const fileRef = useRef(null), csvRef = useRef(null), dropRef = useRef(null);
   const [msg, setMsg] = useState(null);
@@ -76,6 +76,7 @@ export default function Statement() {
     }
     const n = preview.pending.length;
     setPreview(null);
+    markStatementImport();
     setMsg({ kind: 's', text: `${n} statement lines added. Check the Receipts tab.` });
     go('receipts');
   }
