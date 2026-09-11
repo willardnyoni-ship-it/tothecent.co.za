@@ -5,9 +5,11 @@
 // triggers a sync or a persistence-effect loop.
 const KEY = 'wnTrust_v1';
 
+const BLANK = { lastBackupAt: 0, lastImportAt: 0, lastBizBackupAt: 0 };
+
 export function loadTrust() {
-  try { return { lastBackupAt: 0, lastImportAt: 0, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
-  catch (e) { return { lastBackupAt: 0, lastImportAt: 0 }; }
+  try { return { ...BLANK, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
+  catch (e) { return { ...BLANK }; }
 }
 
 export function saveTrust(t) {

@@ -1,11 +1,33 @@
 import { useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
+import { useBudget } from '../../store/BudgetStore.jsx';
+import { iso } from '../../lib/format.js';
+
+function dl(blob, name) {
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1500);
+}
+
+function fmtWhen(ts) {
+  if (!ts) return 'never';
+  const d = new Date(ts), now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  return sameDay ? `Today, ${time}` : d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + ', ' + time;
+}
 
 export default function BizSettings({ onClose }) {
-  const { business, updateBusiness } = useBusiness();
+  const { business, updateBusiness, customers, invoices, expenses, transactions, recurringInvoices, myRole } = useBusiness();
+  const { trust, markBizBackup } = useBudget();
   const [form, setForm] = useState({ ...business });
   const [seg, setSeg] = useState('business');
   const [msg, setMsg] = useState('');
+
+  function exportBackup() {
+    const payload = { exportedAt: new Date().toISOString(), business, customers, invoices, expenses, transactions, recurringInvoices };
+    dl(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), 'business-backup-' + iso(new Date()) + '.json');
+    markBizBackup();
+  }
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
   async function save() {
@@ -23,9 +45,9 @@ export default function BizSettings({ onClose }) {
     <>
       <div className="row"><h1>Settings</h1><button className="b g sm" onClick={onClose}>Close</button></div>
       <div className="seg">
-        {['business', 'invoice', 'tax', 'notifications', 'subscription'].map(s => (
+        {['business', 'invoice', 'tax', 'data', 'notifications', 'subscription'].map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
-            {{ business: 'Business', invoice: 'Invoice', tax: 'Tax', notifications: 'Notifications', subscription: 'Subscription' }[s]}
+            {{ business: 'Business', invoice: 'Invoice', tax: 'Tax', data: 'Data', notifications: 'Notifications', subscription: 'Subscription' }[s]}
           </button>
         ))}
       </div>
@@ -61,6 +83,20 @@ export default function BizSettings({ onClose }) {
           <div className="mini">Invoices add 15% VAT when you tick the option while creating one. Not tax advice.</div>
         </div>
       )}
+      {seg === 'data' && (
+        <div className="card">
+          <div className="mini" style={{ marginBottom: 4 }}>Last backup: {fmtWhen(trust.lastBizBackupAt)}</div>
+          <div className="mini" style={{ marginBottom: 10 }}>
+            {customers.length} customers &middot; {invoices.length} invoices &middot; {expenses.length} expenses &middot; {transactions.length} transactions &middot; {recurringInvoices.length} recurring invoices
+          </div>
+          <button className="b g" onClick={exportBackup}>Export full backup (JSON)</button>
+          <div className="mini" style={{ marginTop: 10 }}>
+            A complete copy of your business records, for your own safekeeping or to hand to your accountant.
+            This is a snapshot for backup and record-keeping - restoring it isn't self-service yet, so keep it
+            somewhere safe and contact support if you ever need to recover from one.
+          </div>
+        </div>
+      )}
       {seg === 'notifications' && (
         <div className="card">
           <div className="mini" style={{ marginBottom: 10 }}>These preferences are saved, but nothing is sent yet - notification delivery (email/push) isn't wired up.</div>
@@ -76,7 +112,10 @@ export default function BizSettings({ onClose }) {
         </div>
       )}
       {msg && <div className="msg s">{msg}</div>}
-      {seg !== 'notifications' && seg !== 'subscription' && (
+      {myRole !== 'owner' && seg !== 'notifications' && seg !== 'subscription' && seg !== 'data' && (
+        <div className="mini" style={{ marginTop: 8 }}>Only the business owner can change these settings.</div>
+      )}
+      {myRole === 'owner' && seg !== 'notifications' && seg !== 'subscription' && seg !== 'data' && (
         <>
           <div style={{ height: 12 }} />
           <button className="b" onClick={save}>Save</button>

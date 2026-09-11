@@ -4,6 +4,7 @@ import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R2, iso, uid } from '../../lib/format.js';
 import { readSlip } from '../../lib/readSlip.js';
 import { uploadBusinessFile } from '../../lib/businessApi.js';
+import { findExpenseMatches } from '../../lib/businessMath.js';
 
 const CATEGORIES = ['Rent', 'Transport', 'Fuel', 'Telephone', 'Marketing', 'Equipment', 'Supplies', 'Salaries', 'Other'];
 
@@ -86,10 +87,13 @@ function ScanReceipt({ onDone }) {
 
 export default function Expenses() {
   const { syncCfg } = useBudget();
-  const { expenses, updateExpense } = useBusiness();
+  const { expenses, transactions, updateExpense, myRole } = useBusiness();
+  const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('all');
 
   const total = expenses.filter(e => e.status !== 'rejected').reduce((a, e) => a + +e.amount, 0);
+  const matches = useMemo(() => findExpenseMatches(expenses, transactions), [expenses, transactions]);
+  async function confirmMatch(m) { await updateExpense(m.expense.id, { matched_transaction_id: m.transaction.id }); }
 
   const shown = useMemo(() => {
     if (seg === 'receipts') return expenses.filter(e => e.receipt_storage_path);
@@ -106,11 +110,29 @@ export default function Expenses() {
       <h1>Expenses</h1>
       <div className="card"><div className="mini">Total Expenses</div><div className="mono" style={{ fontSize: 28, fontWeight: 800 }}>{R2(total)}</div></div>
 
-      <ScanReceipt onDone={() => {}} />
-      <div style={{ height: 10 }} />
-      <details><summary style={{ cursor: 'pointer', fontWeight: 700, padding: '4px 0' }}>Add expense manually</summary>
-        <div style={{ marginTop: 10 }}><AddExpenseForm onSaved={() => {}} /></div>
-      </details>
+      {readOnly && <div className="infobox">You have accountant (view-only) access - review and export here, but logging or approving expenses needs an owner or admin.</div>}
+
+      {!readOnly && (
+        <>
+          <ScanReceipt onDone={() => {}} />
+          <div style={{ height: 10 }} />
+          <details><summary style={{ cursor: 'pointer', fontWeight: 700, padding: '4px 0' }}>Add expense manually</summary>
+            <div style={{ marginTop: 10 }}><AddExpenseForm onSaved={() => {}} /></div>
+          </details>
+        </>
+      )}
+
+      {matches.length > 0 && (
+        <>
+          <h2>Possible bank matches</h2>
+          {matches.map((m, i) => (
+            <div className="infobox" key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div>{m.expense.description || m.expense.merchant || 'Expense'} &middot; {R2(m.expense.amount)}{m.days > 0 ? ` · ${m.days}d apart` : ' · same day'}</div>
+              {!readOnly && <button className="b sm" style={{ width: 'auto' }} onClick={() => confirmMatch(m)}>Match</button>}
+            </div>
+          ))}
+        </>
+      )}
 
       <div className="seg" style={{ marginTop: 16 }}>
         {['all', 'receipts', 'mine', 'review'].map(s => (
@@ -129,7 +151,7 @@ export default function Expenses() {
               </td>
               <td className="r">
                 {R2(e.amount)}
-                {(e.status === 'needs_review' || e.status === 'pending_approval') && (
+                {!readOnly && (e.status === 'needs_review' || e.status === 'pending_approval') && (
                   <div style={{ marginTop: 4 }}>
                     <a href="#" onClick={ev => { ev.preventDefault(); approve(e.id); }} style={{ color: 'var(--acc)', marginRight: 10 }}>Approve</a>
                     <a href="#" onClick={ev => { ev.preventDefault(); reject(e.id); }} style={{ color: 'var(--bad)' }}>Reject</a>

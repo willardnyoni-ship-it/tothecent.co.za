@@ -17,7 +17,7 @@ function GeneratedBanner() {
   );
 }
 
-function CustomersView() {
+function CustomersView({ readOnly }) {
   const { customers, invoices, addCustomer } = useBusiness();
   const openCustomer = useCustomerDetail();
   const [adding, setAdding] = useState(false);
@@ -36,7 +36,7 @@ function CustomersView() {
 
   return (
     <>
-      {adding ? (
+      {!readOnly && (adding ? (
         <div className="card" style={{ marginTop: 12 }}>
           <h2 style={{ marginTop: 0 }}>New Customer</h2>
           <label>Name</label>
@@ -53,7 +53,7 @@ function CustomersView() {
         </div>
       ) : (
         <button className="b" onClick={() => setAdding(true)}>+ Add Customer</button>
-      )}
+      ))}
       <div className="card" style={{ marginTop: 16 }}>
         <table><tbody>
           {withBalance.length ? withBalance.map(c => (
@@ -75,7 +75,7 @@ function CustomersView() {
   );
 }
 
-function RecurringView() {
+function RecurringView({ readOnly }) {
   const { recurringInvoices, customers, updateRecurringInvoice } = useBusiness();
 
   return (
@@ -91,15 +91,13 @@ function RecurringView() {
               </td>
               <td className="r">
                 <span className={'status-badge ' + r.status}>{r.status[0].toUpperCase() + r.status.slice(1)}</span>
-                <div style={{ height: 6 }} />
-                {r.status !== 'cancelled' && (
-                  <button className="b g sm" style={{ width: 'auto' }}
-                    onClick={() => updateRecurringInvoice(r.id, { status: r.status === 'active' ? 'paused' : 'active' })}>
-                    {r.status === 'active' ? 'Pause' : 'Resume'}
-                  </button>
-                )}
-                {r.status !== 'cancelled' && (
+                {!readOnly && r.status !== 'cancelled' && (
                   <>
+                    <div style={{ height: 6 }} />
+                    <button className="b g sm" style={{ width: 'auto' }}
+                      onClick={() => updateRecurringInvoice(r.id, { status: r.status === 'active' ? 'paused' : 'active' })}>
+                      {r.status === 'active' ? 'Pause' : 'Resume'}
+                    </button>
                     <div style={{ height: 6 }} />
                     <button className="b d sm" style={{ width: 'auto' }} onClick={() => updateRecurringInvoice(r.id, { status: 'cancelled' })}>Cancel</button>
                   </>
@@ -114,7 +112,8 @@ function RecurringView() {
 }
 
 export default function Invoices() {
-  const { invoices, customers, transactions, updateInvoice, updateTransaction } = useBusiness();
+  const { invoices, customers, transactions, updateInvoice, updateTransaction, myRole } = useBusiness();
+  const readOnly = myRole === 'accountant';
   const createInvoice = useCreateInvoice();
   const openInvoice = useInvoiceDetail();
   const [view, setView] = useState('invoices');
@@ -157,9 +156,11 @@ export default function Invoices() {
         ))}
       </div>
 
-      {view === 'customers' ? <CustomersView /> : view === 'recurring' ? <RecurringView /> : (
+      {readOnly && <div className="infobox" style={{ marginBottom: 12 }}>You have accountant (view-only) access - review and export here, but editing invoices needs an owner or admin.</div>}
+
+      {view === 'customers' ? <CustomersView readOnly={readOnly} /> : view === 'recurring' ? <RecurringView readOnly={readOnly} /> : (
         <>
-          <button className="b" style={{ marginTop: 16 }} onClick={createInvoice}>+ Create Invoice</button>
+          {!readOnly && <button className="b" style={{ marginTop: 16 }} onClick={createInvoice}>+ Create Invoice</button>}
 
           {matches.length > 0 && (
             <>
@@ -167,7 +168,7 @@ export default function Invoices() {
               {matches.map((m, i) => (
                 <div className="infobox" key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                   <div>{m.invoice.invoice_number} &middot; {m.invoice.customerName || 'Customer'} &middot; {R2(m.transaction.amount)}</div>
-                  <button className="b sm" style={{ width: 'auto' }} onClick={() => confirmMatch(m)}>Match Invoice</button>
+                  {!readOnly && <button className="b sm" style={{ width: 'auto' }} onClick={() => confirmMatch(m)}>Match Invoice</button>}
                 </div>
               ))}
             </>

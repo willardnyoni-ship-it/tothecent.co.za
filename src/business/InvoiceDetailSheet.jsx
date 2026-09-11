@@ -15,7 +15,8 @@ function downloadFile(file) {
 
 export function InvoiceDetailContent({ invoiceId }) {
   const { close } = useSheet();
-  const { business, invoices, customers, transactions, recurringInvoices, updateInvoice, addTransaction, makeInvoiceRecurring } = useBusiness();
+  const { business, invoices, customers, transactions, recurringInvoices, updateInvoice, addTransaction, makeInvoiceRecurring, myRole } = useBusiness();
+  const readOnly = myRole === 'accountant';
   const inv = invoices.find(i => i.id === invoiceId);
   const [busy, setBusy] = useState(false);
   const [pickingFrequency, setPickingFrequency] = useState(false);
@@ -129,19 +130,19 @@ export function InvoiceDetailContent({ invoiceId }) {
         <button className="b g" disabled={busy} onClick={shareEmail}>Send via Email</button>
         <div style={{ height: 8 }} />
         <button className="b g" disabled={busy} onClick={copySummary}>Copy Summary</button>
-        {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+        {!readOnly && inv.status !== 'paid' && inv.status !== 'cancelled' && (
           <>
             <div style={{ height: 8 }} />
             <button className="b g" disabled={busy} onClick={markPaid}>Mark as Paid</button>
           </>
         )}
-        {inv.status === 'draft' && (
+        {!readOnly && inv.status === 'draft' && (
           <>
             <div style={{ height: 8 }} />
             <button className="b g" disabled={busy} onClick={() => setStatus('sent')}>Mark as Sent</button>
           </>
         )}
-        {!series && inv.status !== 'cancelled' && (
+        {!readOnly && !series && inv.status !== 'cancelled' && (
           <>
             <div style={{ height: 8 }} />
             {pickingFrequency ? (
@@ -155,7 +156,7 @@ export function InvoiceDetailContent({ invoiceId }) {
             )}
           </>
         )}
-        {inv.status !== 'cancelled' && inv.status !== 'paid' && (
+        {!readOnly && inv.status !== 'cancelled' && inv.status !== 'paid' && (
           <>
             <div style={{ height: 8 }} />
             <button className="b d" disabled={busy} onClick={() => setStatus('cancelled')}>Cancel Invoice</button>

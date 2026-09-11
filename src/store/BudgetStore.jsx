@@ -178,6 +178,7 @@ export function BudgetProvider({ children }) {
   }, [update]);
   const markStatementImport = useCallback(() => setTrust({ lastImportAt: Date.now() }), [setTrust]);
   const markBackup = useCallback(() => setTrust({ lastBackupAt: Date.now() }), [setTrust]);
+  const markBizBackup = useCallback(() => setTrust({ lastBizBackupAt: Date.now() }), [setTrust]);
 
   // ---------- auth / sync ----------
   const setSyncCfg = useCallback((patch) => setSyncCfgState(prev => {
@@ -253,7 +254,7 @@ export function BudgetProvider({ children }) {
     setCatTarget, addCat, delCat, applyRecommendedBudget,
     setTaxDeduction, setTaxYearSel, setWindfallRule,
     addMember, delMember, setSplit, restoreBackup,
-    trust, markStatementImport, markBackup,
+    trust, markStatementImport, markBackup, markBizBackup,
     syncCfg, setSyncCfg, doSignUp, doSignIn, doSignOut, syncNow, ensureToken, syncStatus,
     lockCfg, setLockCfg, locked, setLocked,
     milestone, dismissMilestone: () => setMilestone(null),

@@ -31,6 +31,16 @@ export default function BizHome({ go }) {
   const outstanding = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status))
     .reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
 
+  // All-time cumulative income minus expenses - a stand-in for "cash
+  // available" in the absence of any real bank-balance integration.
+  const allExpenseRecords = useMemo(() => expenses.filter(e => e.status !== 'rejected' && !e.matched_transaction_id), [expenses]);
+  const cashAvailable = transactions.filter(t => t.kind === 'income').reduce((a, t) => a + +t.amount, 0)
+    - transactions.filter(t => t.kind === 'expense').reduce((a, t) => a + +t.amount, 0)
+    - allExpenseRecords.reduce((a, e) => a + +e.amount, 0);
+
+  const missingReceipts = expenses.filter(e => e.status !== 'rejected' && !e.receipt_storage_path).length;
+  const missingVat = expenses.filter(e => e.receipt_storage_path && !e.vat).length;
+
   const days = useMemo(() => {
     const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     return [...Array(7)].map((_, i) => {
@@ -61,6 +71,7 @@ export default function BizHome({ go }) {
       <div className="sub">{monthLbl}</div>
 
       <div className="biz-cards">
+        <div className="biz-card"><div className="lbl">Cash available</div><div className={'val' + (cashAvailable < 0 ? ' bd' : '')}>{cashAvailable < 0 ? '-' : ''}{R(Math.abs(cashAvailable))}</div></div>
         <div className="biz-card"><div className="lbl">Income</div><div className="val">{R(income)}</div></div>
         <div className="biz-card"><div className="lbl">Expenses</div><div className="val">{R(expensesTotal)}</div></div>
         <div className="biz-card"><div className="lbl">Net</div><div className={'val' + (net < 0 ? ' bd' : '')}>{net < 0 ? '-' : ''}{R(Math.abs(net))}</div></div>
@@ -90,7 +101,7 @@ export default function BizHome({ go }) {
         <div style={{ flex: 1 }}><div className="mono" style={{ fontSize: 22, fontWeight: 700 }}>{dueSoon.length}</div><div className="mini">Due Soon</div></div>
       </div>
 
-      {(needsReviewTx > 0 || overdueInvoices.length > 0 || needsReviewExpenses > 0) && (
+      {(needsReviewTx > 0 || overdueInvoices.length > 0 || needsReviewExpenses > 0 || missingReceipts > 0 || missingVat > 0) && (
         <>
           <h2>Needs your attention</h2>
           <div className="biz-attn">
@@ -101,12 +112,22 @@ export default function BizHome({ go }) {
             )}
             {overdueInvoices.length > 0 && (
               <div className="biz-attn-row" onClick={() => go('invoices')}>
-                <span className="ic">⚠</span><span>{overdueInvoices.length} invoice{overdueInvoices.length === 1 ? '' : 's'} {overdueInvoices.length === 1 ? 'is' : 'are'} overdue</span>
+                <span className="ic">⚠</span><span>{overdueInvoices.length} invoice{overdueInvoices.length === 1 ? '' : 's'} overdue &middot; {R(overdueInvoices.reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0))} outstanding</span>
               </div>
             )}
             {needsReviewExpenses > 0 && (
               <div className="biz-attn-row" onClick={() => go('expenses')}>
                 <span className="ic">⚠</span><span>{needsReviewExpenses} receipt{needsReviewExpenses === 1 ? '' : 's'} {needsReviewExpenses === 1 ? "hasn't" : "haven't"} been reviewed</span>
+              </div>
+            )}
+            {missingReceipts > 0 && (
+              <div className="biz-attn-row" onClick={() => go('expenses')}>
+                <span className="ic">⚠</span><span>{missingReceipts} expense{missingReceipts === 1 ? '' : 's'} {missingReceipts === 1 ? 'has' : 'have'} no receipt on file</span>
+              </div>
+            )}
+            {missingVat > 0 && (
+              <div className="biz-attn-row" onClick={() => go('expenses')}>
+                <span className="ic">⚠</span><span>Tax records incomplete &middot; {missingVat} receipt{missingVat === 1 ? '' : 's'} missing VAT details</span>
               </div>
             )}
           </div>

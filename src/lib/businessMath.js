@@ -41,6 +41,32 @@ export function findInvoiceMatches(invoices, transactions) {
   return matches;
 }
 
+const EXPENSE_MATCH_DAYS = 4;
+
+// Same idea as findInvoiceMatches, for the other side of the ledger: a
+// scanned/manual expense with no linked bank line yet, matched against an
+// unmatched expense-kind transaction by amount (within a cent) and a small
+// day window. Lets an expense record actually connect to the money that
+// left the account, instead of matched_transaction_id sitting unused.
+export function findExpenseMatches(expenses, transactions) {
+  const open = expenses.filter(e => e.status !== 'rejected' && !e.matched_transaction_id);
+  const unlinked = transactions.filter(t => t.kind === 'expense' && !t.linked_invoice_id);
+  const used = new Set();
+  const matches = [];
+  for (const e of open) {
+    let best = null, bestDays = Infinity;
+    for (const t of unlinked) {
+      if (used.has(t.id)) continue;
+      if (Math.abs(+t.amount - +e.amount) > 0.01) continue;
+      const days = Math.abs((new Date(t.date) - new Date(e.date)) / 86400000);
+      if (days > EXPENSE_MATCH_DAYS) continue;
+      if (days < bestDays) { best = t; bestDays = days; }
+    }
+    if (best) { used.add(best.id); matches.push({ expense: e, transaction: best, days: Math.round(bestDays) }); }
+  }
+  return matches;
+}
+
 export function nextInvoiceNumber(business) {
   return (business.invoice_prefix || 'INV-') + String(business.next_invoice_number || 1).padStart(4, '0');
 }

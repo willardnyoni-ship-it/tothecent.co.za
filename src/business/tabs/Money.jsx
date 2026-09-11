@@ -3,8 +3,9 @@ import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { parsePdf } from '../../lib/parsePdf.js';
 import { parseCsv } from '../../lib/parseCsv.js';
+import { flowKind } from '../../lib/categorize.js';
 
-function TransactionsView({ filter, setFilter }) {
+function TransactionsView({ filter, setFilter, readOnly }) {
   const { transactions, updateTransaction } = useBusiness();
   const shown = useMemo(() => {
     if (filter === 'all') return transactions;
@@ -33,7 +34,7 @@ function TransactionsView({ filter, setFilter }) {
                 <span className={t.kind === 'income' ? 'ok' : t.kind === 'expense' ? 'bd' : ''}>
                   {t.kind === 'income' ? '+' : t.kind === 'expense' ? '-' : ''}{R2(t.amount)}
                 </span>
-                {t.status === 'needs_review' && (
+                {!readOnly && t.status === 'needs_review' && (
                   <div className="mini" style={{ fontWeight: 400 }}>
                     <a href="#" onClick={e => { e.preventDefault(); updateTransaction(t.id, { status: 'reviewed' }); }} style={{ color: 'var(--blue)' }}>mark reviewed</a>
                   </div>
@@ -79,7 +80,8 @@ function AddTransactionForm() {
   async function save() {
     const a = parseFloat(amt);
     if (!a || a <= 0) { setMsg('Enter an amount greater than zero.'); return; }
-    await addTransaction({ amount: a, kind, description: desc, date, status: 'reviewed', source: 'manual' });
+    const category = kind === 'transfer' ? 'Transfer' : undefined;
+    await addTransaction({ amount: a, kind, category, description: desc, date, status: 'reviewed', source: 'manual' });
     setAmt(''); setDesc(''); setMsg('Logged.');
     setTimeout(() => setMsg(''), 2500);
   }
@@ -90,7 +92,9 @@ function AddTransactionForm() {
       <div className="seg" style={{ margin: 0 }}>
         <button className={kind === 'income' ? 'on' : ''} onClick={() => setKind('income')}>Income</button>
         <button className={kind === 'expense' ? 'on' : ''} onClick={() => setKind('expense')}>Expense</button>
+        <button className={kind === 'transfer' ? 'on' : ''} onClick={() => setKind('transfer')}>Transfer</button>
       </div>
+      {kind === 'transfer' && <div className="mini" style={{ marginTop: 6 }}>Money moved between your own accounts, or to/from the owner - not business income or an expense, so it's kept out of profit.</div>}
       <label>Amount (R)</label>
       <input type="number" inputMode="decimal" value={amt} onChange={e => setAmt(e.target.value)} />
       <label>Description</label>
@@ -99,32 +103,63 @@ function AddTransactionForm() {
       <input type="date" value={date} onChange={e => setDate(e.target.value)} />
       {msg && <div className="msg s">{msg}</div>}
       <div style={{ height: 10 }} />
-      <button className="b" onClick={save}>Add {kind === 'income' ? 'Income' : 'Expense'}</button>
+      <button className="b" onClick={save}>Add {kind === 'income' ? 'Income' : kind === 'expense' ? 'Expense' : 'Transfer'}</button>
     </div>
   );
 }
 
 function StatementUploadView() {
-  const { addTransactions } = useBusiness();
+  const { transactions, addTransactions } = useBusiness();
   const fileRef = useRef(null), csvRef = useRef(null);
   const [msg, setMsg] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [preview, setPreview] = useState(null); // { rows, dupes, autoCount, reviewCount }
 
-  function buildRows(rawTx) {
-    setPreview(rawTx.map(t => ({
-      date: t.d, description: t.desc, amount: t.a,
-      kind: 'expense', category: t.c, status: 'needs_review', source: 'statement',
-    })));
+  // Debits (r.tx) are candidate expenses; credits (r.skipped, cr:true) are
+  // candidate income - dropping credits entirely (the previous behaviour)
+  // meant a statement import could never pick up an incoming client
+  // payment, which is exactly what invoice-payment matching depends on.
+  // A credit that looks like an internal/savings movement (flowKind) is
+  // classified as a transfer instead, so it doesn't inflate income.
+  function buildRows(debits, credits) {
+    const seen = new Set(transactions.map(t => t.date + '|' + (+t.amount).toFixed(2) + '|' + (t.description || '')));
+    const rows = [];
+    let dupes = 0;
+
+    debits.forEach(t => {
+      if (seen.has(t.d + '|' + t.a.toFixed(2) + '|' + t.desc)) { dupes++; return; }
+      // The shared parser only routes a debit into "skipped" (and so through
+      // flowKind) when it matches its own SKIP list, which doesn't include
+      // "transfer to savings/investment" wording - so a debit-side transfer
+      // (e.g. moving money to the owner or another account) needs its own
+      // check here, or it would silently land as a plain unreviewed expense.
+      if (flowKind(t.desc, false) === 'savings-out') {
+        rows.push({ date: t.d, description: t.desc, amount: t.a, kind: 'transfer', category: 'Transfer', status: 'reviewed', source: 'statement' });
+        return;
+      }
+      const confident = t.c && t.c !== 'Uncategorised';
+      rows.push({ date: t.d, description: t.desc, amount: t.a, kind: 'expense', category: t.c, status: confident ? 'reviewed' : 'needs_review', source: 'statement' });
+    });
+    credits.forEach(t => {
+      if (seen.has(t.d + '|' + t.a.toFixed(2) + '|' + t.desc)) { dupes++; return; }
+      const isTransfer = t.kind === 'savings-out' || t.kind === 'savings-in';
+      rows.push({
+        date: t.d, description: t.desc, amount: t.a, kind: isTransfer ? 'transfer' : 'income',
+        category: isTransfer ? 'Transfer' : null, status: isTransfer ? 'reviewed' : 'needs_review', source: 'statement',
+      });
+    });
+
+    const autoCount = rows.filter(r => r.status === 'reviewed').length;
+    setPreview({ rows, dupes, autoCount, reviewCount: rows.length - autoCount });
   }
 
   async function handlePdf(f) {
     setMsg({ kind: 'i', text: `Reading ${f.name} …` }); setPreview(null);
     try {
       const r = await parsePdf(f, {}, []);
-      if (!r.tx.length) return setMsg({ kind: 'e', text: 'No transactions found in that PDF.' });
-      buildRows(r.tx);
-      const total = r.tx.reduce((a, t) => a + t.a, 0);
-      setMsg({ kind: 's', text: `${r.tx.length} transactions found · ${R2(total)} money spent` });
+      const credits = r.skipped.filter(s => s.cr);
+      if (!r.tx.length && !credits.length) return setMsg({ kind: 'e', text: 'No transactions found in that PDF.' });
+      buildRows(r.tx, credits);
+      setMsg(null);
     } catch (err) { setMsg({ kind: 'e', text: 'Could not read that PDF: ' + err.message }); }
   }
   async function handleCsv(f) {
@@ -132,16 +167,17 @@ function StatementUploadView() {
     try {
       const text = await f.text();
       const r = parseCsv(text, {}, []);
-      if (r.error || !r.tx.length) return setMsg({ kind: 'e', text: r.error || 'No transactions found in that CSV.' });
-      buildRows(r.tx);
-      setMsg({ kind: 's', text: r.header });
+      const credits = (r.skipped || []).filter(s => s.cr);
+      if (r.error || (!r.tx.length && !credits.length)) return setMsg({ kind: 'e', text: r.error || 'No transactions found in that CSV.' });
+      buildRows(r.tx, credits);
+      setMsg(null);
     } catch (err) { setMsg({ kind: 'e', text: 'Could not read that CSV: ' + err.message }); }
   }
 
   async function commit() {
-    if (!preview?.length) return;
-    await addTransactions(preview);
-    setMsg({ kind: 's', text: `${preview.length} transactions imported. Review them under Transactions.` });
+    if (!preview?.rows.length) return;
+    await addTransactions(preview.rows);
+    setMsg({ kind: 's', text: `${preview.rows.length} transactions imported. Review them under Transactions.` });
     setPreview(null);
   }
 
@@ -157,9 +193,14 @@ function StatementUploadView() {
       {msg && <div className={'msg ' + msg.kind}>{msg.text}</div>}
       {preview && (
         <>
-          <div style={{ height: 10 }} />
-          <button className="b" onClick={commit}>Import {preview.length} transactions</button>
-          <div className="mini" style={{ marginTop: 8 }}>All imported as expenses, flagged "needs review" so you can confirm type/category and mark any that are actually income.</div>
+          <div className="infobox" style={{ marginTop: 10 }}>
+            {preview.rows.length} transaction{preview.rows.length === 1 ? '' : 's'} found
+            {preview.dupes > 0 && ` (${preview.dupes} already imported, skipped)`}
+            <br />
+            {preview.autoCount} categorised automatically{preview.reviewCount > 0 ? ` · ${preview.reviewCount} need review` : ''}
+          </div>
+          {preview.rows.length ? <button className="b" onClick={commit}>Import {preview.rows.length} transaction{preview.rows.length === 1 ? '' : 's'}</button>
+            : <div className="mini">Nothing new to import.</div>}
         </>
       )}
     </div>
@@ -167,23 +208,27 @@ function StatementUploadView() {
 }
 
 export default function Money() {
+  const { myRole } = useBusiness();
+  const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('transactions');
   const [filter, setFilter] = useState('all');
+  const segs = readOnly ? ['transactions', 'income'] : ['transactions', 'income', 'add', 'statement'];
 
   return (
     <section className="tab on light-tab">
       <h1>Money</h1>
+      {readOnly && <div className="infobox" style={{ marginBottom: 12 }}>You have accountant (view-only) access - review and export here, but logging transactions needs an owner or admin.</div>}
       <div className="seg">
-        {['transactions', 'income', 'add', 'statement'].map(s => (
+        {segs.map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
             {{ transactions: 'Transactions', income: 'Income', add: 'Add', statement: 'Upload Statement' }[s]}
           </button>
         ))}
       </div>
-      {seg === 'transactions' && <TransactionsView filter={filter} setFilter={setFilter} />}
+      {seg === 'transactions' && <TransactionsView filter={filter} setFilter={setFilter} readOnly={readOnly} />}
       {seg === 'income' && <IncomeView />}
-      {seg === 'add' && <AddTransactionForm />}
-      {seg === 'statement' && <StatementUploadView />}
+      {!readOnly && seg === 'add' && <AddTransactionForm />}
+      {!readOnly && seg === 'statement' && <StatementUploadView />}
       <div style={{ height: 20 }} />
     </section>
   );

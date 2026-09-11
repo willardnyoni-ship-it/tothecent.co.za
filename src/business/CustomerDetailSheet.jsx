@@ -7,7 +7,8 @@ import { useInvoiceDetail } from './InvoiceDetailSheet.jsx';
 
 export function CustomerDetailContent({ customerId }) {
   const { close } = useSheet();
-  const { customers, invoices, updateCustomer } = useBusiness();
+  const { customers, invoices, updateCustomer, myRole } = useBusiness();
+  const readOnly = myRole === 'accountant';
   const openInvoice = useInvoiceDetail();
   const customer = customers.find(c => c.id === customerId);
   const [editing, setEditing] = useState(false);
@@ -32,7 +33,7 @@ export function CustomerDetailContent({ customerId }) {
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="row"><h2 style={{ marginTop: 0 }}>Profile</h2>
-          {!editing && <button className="b g sm" onClick={() => { setFields(customer); setEditing(true); }}>Edit</button>}
+          {!editing && !readOnly && <button className="b g sm" onClick={() => { setFields(customer); setEditing(true); }}>Edit</button>}
         </div>
         {editing ? (
           <>
