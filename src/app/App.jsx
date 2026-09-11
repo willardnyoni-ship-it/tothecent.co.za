@@ -18,6 +18,7 @@ import Reports from '../tabs/Reports.jsx';
 import Snap from '../tabs/Snap.jsx';
 import Statement from '../tabs/Statement.jsx';
 import BusinessApp from '../business/BusinessApp.jsx';
+import { useHashTab } from './useHashTab.js';
 
 const TAB_COMPONENTS = {
   today: Home, spending: Spending, setup: Budget, receipts: Receipts, insight: Reports, snap: Snap, stmt: Statement,
@@ -54,13 +55,14 @@ function WelcomeBanner({ onDismiss }) {
 function Shell({ onSwitchToBusiness }) {
   const { S } = useBudget();
   const { open } = useSheet();
-  const [tab, setTab] = useState('today');
+  const [tab, goHash] = useHashTab(Object.keys(TAB_COMPONENTS), 'today');
   const [snapAction, setSnapAction] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('onboard') === '1') { setTab('setup'); setShowWelcome(true); }
+    if (params.get('onboard') === '1') { goHash('setup'); setShowWelcome(true); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // CSS gates the wide desktop layout behind body.zh-home - ported from the
@@ -71,7 +73,7 @@ function Shell({ onSwitchToBusiness }) {
     document.body.classList.toggle('zh-home', PRIMARY_TAB_KEYS.includes(tab));
   }, [tab]);
 
-  const go = (t) => { setTab(t); window.scrollTo(0, 0); };
+  const go = (t) => { goHash(t); window.scrollTo(0, 0); };
 
   const hasUnreconciled = useMemo(() => {
     const unrec = S.tx.filter(t => isLog(t) && !t.rec).length;

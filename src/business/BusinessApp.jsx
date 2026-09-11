@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { AccountSheetContent } from '../components/SettingsSheets.jsx';
+import { useHashTab } from '../app/useHashTab.js';
 import BusinessNav from './BusinessNav.jsx';
 import BusinessSignup from './BusinessSignup.jsx';
 import BizHome from './tabs/Home.jsx';
@@ -19,7 +20,7 @@ export default function BusinessApp({ onSwitchMode }) {
   const { syncCfg } = useBudget();
   const { loading, checked, hasBusiness, claimInvites, refreshAll } = useBusiness();
   const { open, close } = useSheet();
-  const [tab, setTab] = useState('home');
+  const [tab, goHash] = useHashTab(Object.keys(TABS), 'home');
 
   useEffect(() => { if (syncCfg.token) claimInvites(); }, [syncCfg.token, claimInvites]);
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function BusinessApp({ onSwitchMode }) {
     return () => document.body.classList.remove('zh-home');
   }, []);
 
-  const go = (t) => { setTab(t); window.scrollTo(0, 0); };
+  const go = (t) => { goHash(t); window.scrollTo(0, 0); };
   function openSettings() { open(() => <BizSettings onClose={close} />); }
 
   if (!syncCfg.token) {
