@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso } from '../lib/format.js';
-import { invoiceStatusLabel } from '../lib/businessMath.js';
+import { invoiceStatusLabel, RECURRING_FREQUENCIES, RECURRING_FREQUENCY_LABEL } from '../lib/businessMath.js';
 
 export function InvoiceDetailContent({ invoiceId }) {
   const { close } = useSheet();
-  const { business, invoices, customers, transactions, updateInvoice, addTransaction } = useBusiness();
+  const { business, invoices, customers, transactions, recurringInvoices, updateInvoice, addTransaction, makeInvoiceRecurring } = useBusiness();
   const inv = invoices.find(i => i.id === invoiceId);
   const [busy, setBusy] = useState(false);
+  const [pickingFrequency, setPickingFrequency] = useState(false);
   if (!inv) return null;
   const customer = customers.find(c => c.id === inv.customer_id);
+  const series = inv.recurring_invoice_id ? recurringInvoices.find(r => r.id === inv.recurring_invoice_id) : null;
 
   const summary = `Invoice ${inv.invoice_number} from ${business.name} for ${R2(inv.total)}, due ${inv.due_date || 'on receipt'}.`;
 
@@ -53,6 +55,10 @@ export function InvoiceDetailContent({ invoiceId }) {
     setBusy(true);
     try { await updateInvoice(inv.id, { status }); } finally { setBusy(false); }
   }
+  async function chooseFrequency(frequency) {
+    setBusy(true);
+    try { await makeInvoiceRecurring(inv, frequency); setPickingFrequency(false); } finally { setBusy(false); }
+  }
 
   return (
     <>
@@ -62,6 +68,7 @@ export function InvoiceDetailContent({ invoiceId }) {
           <div><b>{business.name}</b><div className="mini">{business.tax_number ? 'VAT: ' + business.tax_number : ''}</div></div>
           <span className={'status-badge ' + inv.status}>{invoiceStatusLabel(inv)}</span>
         </div>
+        {series && <div className="tag">Part of a {RECURRING_FREQUENCY_LABEL[series.frequency].toLowerCase()} recurring series &middot; {series.generated_count} generated so far</div>}
         <div style={{ height: 10 }} />
         <div className="row">
           <div><div className="mini">Bill to</div><b>{customer?.name || 'No customer'}</b><div className="mini">{customer?.email}</div></div>
@@ -104,6 +111,20 @@ export function InvoiceDetailContent({ invoiceId }) {
           <>
             <div style={{ height: 8 }} />
             <button className="b g" disabled={busy} onClick={() => setStatus('sent')}>Mark as Sent</button>
+          </>
+        )}
+        {!series && inv.status !== 'cancelled' && (
+          <>
+            <div style={{ height: 8 }} />
+            {pickingFrequency ? (
+              <div className="seg">
+                {RECURRING_FREQUENCIES.map(f => (
+                  <button key={f} disabled={busy} onClick={() => chooseFrequency(f)}>{RECURRING_FREQUENCY_LABEL[f]}</button>
+                ))}
+              </div>
+            ) : (
+              <button className="b g" disabled={busy} onClick={() => setPickingFrequency(true)}>Make recurring</button>
+            )}
           </>
         )}
         {inv.status !== 'cancelled' && inv.status !== 'paid' && (

@@ -44,3 +44,29 @@ export function findInvoiceMatches(invoices, transactions) {
 export function nextInvoiceNumber(business) {
   return (business.invoice_prefix || 'INV-') + String(business.next_invoice_number || 1).padStart(4, '0');
 }
+
+export const RECURRING_FREQUENCIES = ['weekly', 'monthly', 'quarterly'];
+export const RECURRING_FREQUENCY_LABEL = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
+
+// Calendar-based (not fixed-day-count) so a monthly series lands on roughly
+// the same date each month instead of drifting. Anchored to UTC throughout
+// (parse with a 'Z', advance with the UTC setters) - mixing a local-time
+// parse with toISOString()'s UTC output would silently shift the result by
+// a day depending on the runtime's timezone.
+export function advanceDate(dateStr, frequency) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  if (frequency === 'weekly') d.setUTCDate(d.getUTCDate() + 7);
+  else if (frequency === 'quarterly') d.setUTCMonth(d.getUTCMonth() + 3);
+  else d.setUTCMonth(d.getUTCMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// Outstanding balance and payment history for one customer, used by their
+// profile screen under Invoices -> Customers.
+export function customerLedger(customerId, invoices) {
+  const theirs = invoices.filter(i => i.customer_id === customerId && i.status !== 'cancelled');
+  const outstanding = theirs.filter(i => i.status !== 'paid' && i.status !== 'draft')
+    .reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
+  const history = [...theirs].sort((a, b) => (b.issue_date || '').localeCompare(a.issue_date || ''));
+  return { outstanding, history };
+}
