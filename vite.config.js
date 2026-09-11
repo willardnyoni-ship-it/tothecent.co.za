@@ -38,6 +38,17 @@ export default defineConfig({
         // not the landing page.
         navigateFallback: null,
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+        // Because the service worker is registered by hand (see main.jsx)
+        // rather than through vite-plugin-pwa's own registerType:'autoUpdate'
+        // script, none of that script's update-checking/skipWaiting logic
+        // ever ran - a new service worker installed but sat "waiting"
+        // until every tab on the site fully closed, so a deploy could look
+        // like it never happened to anyone who just refreshed. These two
+        // make a new service worker activate and take over open tabs
+        // immediately instead of waiting; main.jsx reloads once when that
+        // happens so the new build actually shows up.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
