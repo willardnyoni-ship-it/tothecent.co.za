@@ -1,15 +1,16 @@
 import { useState } from 'react';
 
-// A first-run checklist, not a one-off banner: it stays on Home until every
-// step is done or the user dismisses it, and each step is a real shortcut
-// into the tab that does it. Dismissal/completion is per-device
+// A standing "how to use this" checklist for everyone, not just accounts
+// that haven't finished it yet - it stays visible (ticking items off as
+// real data shows up) until the user dismisses it themselves, rather than
+// disappearing on its own once every step happens to be done. Each step is
+// a real shortcut into the tab that does it. Dismissal is per-device
 // (localStorage) - this is a nudge, not data worth syncing.
 export default function GettingStartedCard({ storageKey, title, items }) {
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(storageKey) === '1'; } catch (e) { return false; }
   });
-  const allDone = items.every(it => it.done);
-  if (dismissed || allDone) return null;
+  if (dismissed) return null;
 
   function dismiss() {
     setDismissed(true);
