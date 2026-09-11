@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
+import { useBusiness } from '../store/BusinessStore.jsx';
 import { NavContext } from './NavContext.jsx';
 import { SheetProvider, useSheet } from '../components/Sheet.jsx';
 import TopNav from '../components/TopNav.jsx';
@@ -110,14 +111,40 @@ const MODE_KEY = 'wnAppMode';
 
 export default function App() {
   const { cycleOffset } = useBudget();
-  const [mode, setModeState] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('mode') === 'business') return 'business';
-      return localStorage.getItem(MODE_KEY) || 'personal';
-    } catch (e) { return 'personal'; }
-  });
-  const setMode = (m) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* ignore */ } };
+  const { hasBusiness, checked } = useBusiness();
+  // A within-session choice (explicit "Switch to Business/Personal" click,
+  // or having just created a business) - never written to localStorage on
+  // its own, so it can't outlive this sign-in.
+  const [override, setOverride] = useState(null);
+  const setMode = (m) => {
+    setOverride(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* ignore */ }
+  };
+
+  const forceBusiness = (() => {
+    try { return new URLSearchParams(window.location.search).get('mode') === 'business'; } catch (e) { return false; }
+  })();
+
+  // wnAppMode is a per-device flag, but "which app do I open into" must
+  // follow the signed-in ACCOUNT, not whatever the last account on this
+  // device happened to leave behind. Without the hasBusiness check, a
+  // personal-only sign-in on a device that had ever touched Business mode
+  // (a different account, or an abandoned "explore Business" click that
+  // never became a real business) would get dropped straight into the
+  // Business setup wizard instead of their own personal budget.
+  let mode;
+  if (override) mode = override;
+  else if (forceBusiness) mode = 'business';
+  else if (!checked) mode = null; // still confirming whether this account has a business
+  else if (hasBusiness) {
+    let saved = null;
+    try { saved = localStorage.getItem(MODE_KEY); } catch (e) { /* ignore */ }
+    mode = saved === 'personal' ? 'personal' : 'business';
+  } else mode = 'personal';
+
+  if (mode === null) {
+    return <div className="light-tab" style={{ padding: 40, textAlign: 'center' }}><div className="mini">Loading…</div></div>;
+  }
 
   return (
     <SheetProvider>
