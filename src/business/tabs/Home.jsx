@@ -3,6 +3,7 @@ import { useBudget } from '../../store/BudgetStore.jsx';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
 import { invoiceStatusLabel } from '../../lib/businessMath.js';
+import GettingStartedCard from '../../components/GettingStartedCard.jsx';
 
 function greeting() {
   const h = new Date().getHours();
@@ -11,7 +12,7 @@ function greeting() {
 
 export default function BizHome({ go }) {
   const { syncCfg } = useBudget();
-  const { transactions, invoices, expenses } = useBusiness();
+  const { transactions, invoices, expenses, customers } = useBusiness();
   const name = (syncCfg.email || '').split('@')[0].replace(/[._-]+/g, ' ');
 
   const now = new Date();
@@ -77,6 +78,16 @@ export default function BizHome({ go }) {
         <div className="biz-card"><div className="lbl">Net</div><div className={'val' + (net < 0 ? ' bd' : '')}>{net < 0 ? '-' : ''}{R(Math.abs(net))}</div></div>
         <div className="biz-card"><div className="lbl">Outstanding</div><div className="val">{R(outstanding)}</div></div>
       </div>
+
+      <GettingStartedCard
+        storageKey="wnOnboardDismissed_business"
+        title="Get started"
+        items={[
+          { label: 'Add your first customer', done: customers.length > 0, onClick: () => go('invoices') },
+          { label: 'Create your first invoice', done: invoices.length > 0, onClick: () => go('invoices') },
+          { label: 'Log or import a transaction', done: transactions.length > 0, onClick: () => go('money') },
+        ]}
+      />
 
       <h2>Cash flow</h2>
       <div className="card">
