@@ -5,9 +5,12 @@ import { dueThisCycle } from '../lib/recurring.js';
 import { netSaved } from '../lib/milestones.js';
 import { R2, fmtD } from '../lib/format.js';
 
-const KH_KEY = 'wnKhanyiso_v1';
-function loadKhHistory() { try { return JSON.parse(localStorage.getItem(KH_KEY)) || []; } catch (e) { return []; } }
-function saveKhHistory(h) { try { localStorage.setItem(KH_KEY, JSON.stringify(h.slice(-40))); } catch (e) { /* ignore */ } }
+// Chat history lives only in memory for this page load - closing the app
+// (or just reloading it) starts a fresh conversation, rather than Khanyiso
+// remembering everything indefinitely across every future visit.
+const MAX_KH_HISTORY = 40;
+const OLD_KH_KEY = 'wnKhanyiso_v1'; // previously persisted here - clear it out once
+try { localStorage.removeItem(OLD_KH_KEY); } catch (e) { /* ignore */ }
 
 function buildContext(S, cycleOffset) {
   const c = cycleAt(S.cycleDay, cycleOffset);
@@ -55,7 +58,7 @@ function buildContext(S, cycleOffset) {
 export default function Khanyiso({ cycleOffset }) {
   const { S, syncCfg, ensureToken } = useBudget();
   const [open, setOpen] = useState(false);
-  const [history, setHistory] = useState(loadKhHistory);
+  const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState('');
   const msgsRef = useRef(null), inputRef = useRef(null);
@@ -66,8 +69,8 @@ export default function Khanyiso({ cycleOffset }) {
 
   async function send() {
     if (busy || !text.trim() || !signedIn) return;
-    const next = [...history, { role: 'user', content: text.trim() }];
-    setHistory(next); saveKhHistory(next); setText(''); setBusy(true);
+    const next = [...history, { role: 'user', content: text.trim() }].slice(-MAX_KH_HISTORY);
+    setHistory(next); setText(''); setBusy(true);
     try {
       const token = await ensureToken();
       const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/khanyiso-chat', {
@@ -77,11 +80,11 @@ export default function Khanyiso({ cycleOffset }) {
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || 'Khanyiso could not reply.');
-      const withReply = [...next, { role: 'assistant', content: data.reply || "I'm not sure how to answer that." }];
-      setHistory(withReply); saveKhHistory(withReply);
+      const withReply = [...next, { role: 'assistant', content: data.reply || "I'm not sure how to answer that." }].slice(-MAX_KH_HISTORY);
+      setHistory(withReply);
     } catch (e) {
-      const withErr = [...next, { role: 'system', content: 'Could not reach Khanyiso: ' + (e.message || 'unknown error') + '. Try again in a moment.' }];
-      setHistory(withErr); saveKhHistory(withErr);
+      const withErr = [...next, { role: 'system', content: 'Could not reach Khanyiso: ' + (e.message || 'unknown error') + '. Try again in a moment.' }].slice(-MAX_KH_HISTORY);
+      setHistory(withErr);
     } finally { setBusy(false); }
   }
 
