@@ -80,6 +80,7 @@ function ScanReceipt({ onDone }) {
       <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files[0]; if (f) handleFile(f); e.target.value = ''; }} />
       {progress && <div className="prog" style={{ display: 'block' }}><i style={{ width: progress.pct + '%' }} /></div>}
+      {progress?.label && <div className="msg i">{progress.label}</div>}
       {err && <div className="msg e">{err}</div>}
     </div>
   );
