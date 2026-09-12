@@ -13,7 +13,17 @@
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW failed', e));
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // An installed Android PWA is usually *resumed* from the background,
+      // not freshly loaded - 'load' only fires on a real navigation, so an
+      // update pushed while someone's app sits open in their recent-apps
+      // tray could otherwise go undetected for days. Force a check every
+      // time the app comes back to the foreground instead of waiting on
+      // the browser's own (much lazier) update schedule.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(e => console.warn('SW failed', e));
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (reloaded) return;
