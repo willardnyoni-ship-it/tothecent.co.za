@@ -23,6 +23,17 @@ export function useBudget() {
 
 export function BudgetProvider({ children }) {
   const [S, setS] = useState(loadState);
+  // The periodic auto-sync effect below only depends on [syncCfg.auto,
+  // syncCfg.token], so its setInterval callback keeps calling whichever
+  // syncNow closure existed when that effect last ran - not a fresh one for
+  // every render. Since syncNow used to close over S directly, every 20s
+  // tick synced (and could revert local state to) a snapshot of S from
+  // however long ago sign-in happened, silently undoing anything typed
+  // since then - confirmed live as the cause of budget numbers reverting
+  // mid-edit. Reading sRef.current instead of S inside syncNow means it
+  // always sees the latest state no matter how old the closure is.
+  const sRef = useRef(S);
+  sRef.current = S;
   const [syncCfg, setSyncCfgState] = useState(loadSync);
   const [lockCfg, setLockCfgState] = useState(loadLock);
   const [locked, setLocked] = useState(() => !!loadLock().on);
@@ -221,7 +232,7 @@ export function BudgetProvider({ children }) {
     setSyncStatus('Syncing…');
     try {
       const token = await ensureToken();
-      const merged = await pullAndMergeAndPush(syncCfg, token, S);
+      const merged = await pullAndMergeAndPush(syncCfg, token, sRef.current);
       setS(s => ({ ...s, ...merged }));
       setSyncCfg({ last: Date.now() });
       setSyncStatus('Synced ' + new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }));
@@ -230,7 +241,7 @@ export function BudgetProvider({ children }) {
       setSyncStatus('Sync failed');
       if (!silent) alert(err.message);
     } finally { syncBusyRef.current = false; }
-  }, [syncCfg, S, ensureToken, setSyncCfg]);
+  }, [syncCfg, ensureToken, setSyncCfg]);
 
   // Auto-sync every 20s while signed in and the tab is visible.
   useEffect(() => {
