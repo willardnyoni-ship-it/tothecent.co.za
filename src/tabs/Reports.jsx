@@ -11,6 +11,15 @@ function dl(blob, name) {
   a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1500);
 }
 
+// A category that only had a stray R1 or two last month, and real spending
+// this month, produces a mathematically "correct" but useless-looking swing
+// like 49900% - same failure mode as Home's budget-percentage display, just
+// with `was` instead of budTot as the tiny denominator. Cap it the same way.
+function pctLabel(pct) {
+  const a = Math.abs(pct);
+  return a > 999 ? '999%+' : a + '%';
+}
+
 function Overview({ S }) {
   const active = S.tx.filter(t => !t.mt);
   if (!active.length) return <div className="card" style={{ marginBottom: 16 }}><div className="mini">Import a statement or log a few transactions to see your monthly review.</div></div>;
@@ -52,7 +61,7 @@ function Overview({ S }) {
       {changes.length > 0 && (
         <>
           <h2>Your biggest changes</h2>
-          <div className="mini">{changes.map(x => <div key={x.n}>{catEmoji(x.n)} {x.n} {x.delta > 0 ? '↑' : '↓'} {Math.abs(x.pct)}%</div>)}</div>
+          <div className="mini">{changes.map(x => <div key={x.n}>{catEmoji(x.n)} {x.n} {x.delta > 0 ? '↑' : '↓'} {pctLabel(x.pct)}</div>)}</div>
         </>
       )}
 
@@ -70,7 +79,7 @@ function Overview({ S }) {
       {worsening.length > 0 && (
         <>
           <h2>Watch this</h2>
-          <div className="warnbox">{catEmoji(worsening[0].n)} Your {worsening[0].n} spending is up {worsening[0].pct}% vs {prevLbl}.</div>
+          <div className="warnbox">{catEmoji(worsening[0].n)} Your {worsening[0].n} spending is up {pctLabel(worsening[0].pct)} vs {prevLbl}.</div>
         </>
       )}
 
@@ -147,7 +156,7 @@ function ViewRecurring({ S }) {
       <div className="card">
         <div className="row">
           <div><div className="mini">Repeating charges</div><div className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{R(monthly)}<span style={{ fontSize: 18, color: 'var(--dim)' }}>/mo</span></div></div>
-          <div style={{ textAlign: 'right' }}><div className="mini">Committed</div><div className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{S.income ? Math.round(monthly / S.income * 100) + '%' : '-'}</div></div>
+          <div style={{ textAlign: 'right' }}><div className="mini">Committed</div><div className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{S.income ? pctLabel(Math.round(monthly / S.income * 100)) : '-'}</div></div>
         </div>
       </div>
       <div className="card"><table><tbody>{r.map(x => (

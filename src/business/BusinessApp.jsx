@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
-import { useSheet } from '../components/Sheet.jsx';
+import { useSheet, SheetOutlet } from '../components/Sheet.jsx';
 import { AccountSheetContent } from '../components/SettingsSheets.jsx';
 import { useHashTab } from '../app/useHashTab.js';
 import BusinessNav from './BusinessNav.jsx';
@@ -41,6 +41,7 @@ export default function BusinessApp({ onSwitchMode }) {
         <button className="b" onClick={() => open(() => <AccountSheetContent />)}>Sign in or create an account</button>
         <div style={{ height: 8 }} />
         <button className="b g" onClick={onSwitchMode}>Back to personal budget</button>
+        <SheetOutlet />
       </div>
     );
   }
@@ -81,6 +82,7 @@ export default function BusinessApp({ onSwitchMode }) {
           { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
         ]}
       />
+      <SheetOutlet />
     </>
   );
 }

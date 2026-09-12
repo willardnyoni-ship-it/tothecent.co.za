@@ -101,8 +101,15 @@ export function BusinessProvider({ children }) {
 
   const addCustomer = useCallback(async (fields) => {
     const token = await ensureToken();
-    await businessApi.insert(syncCfg, token, 'customers', [withBiz(fields)]);
+    // Returns the created row - callers that need to act on this specific
+    // customer right away (e.g. CreateInvoiceSheet attaching an invoice to
+    // a customer just added inline) can't assume where it lands in the
+    // customers array: refreshAll() re-fetches ordered by name, not
+    // creation time, so "the last item" is often a different customer
+    // entirely.
+    const [created] = await businessApi.insert(syncCfg, token, 'customers', [withBiz(fields)]);
     await refreshAll();
+    return created;
   }, [syncCfg, ensureToken, business, refreshAll]);
 
   const updateCustomer = useCallback(async (id, patch) => {
@@ -183,7 +190,10 @@ export function BusinessProvider({ children }) {
     const due = data.recurringInvoices.filter(r => r.status === 'active' && r.next_run_date <= new Date().toISOString().slice(0, 10));
     if (!due.length) return;
     generatingRef.current = true;
-    let generated = 0;
+    // Total invoices created across every series in this run, used for
+    // numbering - not reset per series, so numbers stay sequential across
+    // however many recurring series are due at once.
+    let createdSoFar = 0;
     try {
       const token = await ensureToken();
       for (const rec of due) {
@@ -195,7 +205,7 @@ export function BusinessProvider({ children }) {
         while (runDate <= today && runs < MAX_CATCHUP_RUNS) {
           const dueDate = new Date(new Date(runDate + 'T00:00:00Z').getTime() + rec.due_days * 86400000).toISOString().slice(0, 10);
           const totals = computeInvoiceTotals(rec.items, rec.vat_enabled, rec.discount);
-          const invoiceNumber = (business.invoice_prefix || 'INV-') + String((business.next_invoice_number || 1) + generated + runs).padStart(4, '0');
+          const invoiceNumber = (business.invoice_prefix || 'INV-') + String((business.next_invoice_number || 1) + createdSoFar).padStart(4, '0');
           const [inv] = await businessApi.insert(syncCfg, token, 'invoices', [withBiz({
             customer_id: rec.customer_id, invoice_number: invoiceNumber,
             issue_date: runDate, due_date: dueDate, status: 'sent',
@@ -210,17 +220,38 @@ export function BusinessProvider({ children }) {
           lastInvoiceId = inv.id;
           runs++;
           runDate = advanceDate(runDate, rec.frequency);
-        }
-        if (runs > 0) {
-          generated += runs;
-          await businessApi.update(syncCfg, token, 'businesses', `id=eq.${business.id}`, { next_invoice_number: (business.next_invoice_number || 1) + runs });
+          // Persist progress after EACH invoice, not only once the whole
+          // catch-up batch for this series finishes. Previously, if a
+          // network failure hit partway through (e.g. invoice #4 of a
+          // 6-invoice catch-up), the exception skipped straight past the
+          // next_run_date/generated_count update below - so on the next
+          // run, invoices #1-3 (which had already been created and were
+          // sitting in the invoices table) would be silently regenerated
+          // as duplicates, since the series still thought it hadn't billed
+          // that period. Updating after every single invoice means a later
+          // failure only leaves the *next* period pending, never replays
+          // one that's already been billed.
+          createdSoFar++;
+          const nextInvoiceNumber = (business.next_invoice_number || 1) + createdSoFar;
+          await businessApi.update(syncCfg, token, 'businesses', `id=eq.${business.id}`, { next_invoice_number: nextInvoiceNumber });
+          // Also mirror it into local state right away, not just on success
+          // at the end of the whole run - business is a closure over
+          // whatever React state existed when this call started, so if a
+          // LATER invoice in this same batch throws, the component's
+          // business.next_invoice_number would otherwise stay stuck at its
+          // pre-run value for the rest of the session (nothing else
+          // refreshes it from the server), and the next retry would hand
+          // out numbers that collide with ones already created above.
+          setBusiness(b => ({ ...b, next_invoice_number: nextInvoiceNumber }));
           await businessApi.update(syncCfg, token, 'recurring_invoices', `id=eq.${rec.id}`,
             { next_run_date: runDate, generated_count: count + runs, last_generated_invoice_id: lastInvoiceId });
         }
       }
-      if (generated > 0) {
-        setBusiness(b => ({ ...b, next_invoice_number: (b.next_invoice_number || 1) + generated }));
-        setJustGenerated(g => g + generated);
+      if (createdSoFar > 0) {
+        // next_invoice_number is already current - each invoice above
+        // updated it incrementally as it was created, so adding
+        // createdSoFar again here would double it.
+        setJustGenerated(g => g + createdSoFar);
         await refreshAll();
       }
     } catch (e) { console.warn('recurring invoice generation failed', e); } finally { generatingRef.current = false; }

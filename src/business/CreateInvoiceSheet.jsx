@@ -11,6 +11,7 @@ export function CreateInvoiceContent() {
   const [customerId, setCustomerId] = useState('');
   const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '', address: '', tax_number: '' });
   const [addingCustomer, setAddingCustomer] = useState(!customers.length);
+  const [newCustomerId, setNewCustomerId] = useState(null);
   const [invoiceNumber, setInvoiceNumber] = useState(nextInvoiceNumber(business));
   const [issueDate, setIssueDate] = useState(iso(new Date()));
   const [dueDate, setDueDate] = useState(iso(new Date(Date.now() + 20 * 86400000)));
@@ -34,7 +35,8 @@ export function CreateInvoiceContent() {
       if (!newCustomer.name.trim()) { setErr('Customer name is required.'); return; }
       setBusy(true);
       try {
-        await addCustomer(newCustomer);
+        const created = await addCustomer(newCustomer);
+        setNewCustomerId(created?.id || null);
         setErr(''); setStep(2);
       } catch (e) { setErr(e.message); } finally { setBusy(false); }
     } else {
@@ -47,7 +49,7 @@ export function CreateInvoiceContent() {
     if (!items.some(i => i.description.trim() && +i.price > 0)) { setErr('Add at least one line item.'); return; }
     setBusy(true);
     try {
-      const cust = addingCustomer ? customers[customers.length - 1] : customers.find(c => c.id === customerId);
+      const cust = addingCustomer ? customers.find(c => c.id === newCustomerId) : customers.find(c => c.id === customerId);
       const inv = await createInvoice({
         customer_id: cust?.id || null, invoice_number: invoiceNumber, issue_date: issueDate, due_date: dueDate,
         status: sendAfter ? 'sent' : 'draft', subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0,

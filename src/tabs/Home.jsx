@@ -98,6 +98,13 @@ export default function Home() {
   const totalDays = Math.round((c.e - c.s) / msDay) + 1;
   const daysLeft = Math.max(1, totalDays - dayN + 1);
   const remaining = (budTot || 0) - spent;
+  // A tiny or barely-set budget (someone still setting up categories, or a
+  // recommendation computed off almost no history) divided into real
+  // spending produces a mathematically "correct" but useless-looking
+  // percentage - confirmed live as "31070%" on a real account. Past 999%
+  // the exact figure stops telling anyone anything; show a ceiling instead
+  // of a number that just reads as broken.
+  const pctDisplay = pct > 999 ? '999%+' : Math.round(pct) + '%';
   // Safe-to-spend is the pace-adjusted daily allowance for the days left in
   // the cycle, after setting aside upcoming bills (dueTot) and this cycle's
   // savings goal - not just whatever's left in the budget divided by days.
@@ -150,7 +157,7 @@ export default function Home() {
 
       <div className="card zh-budgetStatus" style={{ marginBottom: 12 }}>
         {budTot > 0
-          ? <><span className={'zh-statusDot ' + (pct > 100 ? 'bd' : pct > 85 ? 'wn' : 'ok')} /> You&rsquo;ve spent <b>{Math.round(pct)}%</b> of your monthly budget</>
+          ? <><span className={'zh-statusDot ' + (pct > 100 ? 'bd' : pct > 85 ? 'wn' : 'ok')} /> You&rsquo;ve spent <b>{pctDisplay}</b> of your monthly budget</>
           : <><span className="zh-statusDot wn" /> Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</>}
       </div>
 
@@ -176,7 +183,7 @@ export default function Home() {
       </div>
       <div className="bar"><i style={{ width: Math.min(100, pct) + '%', background: pct > 100 ? 'var(--bad)' : pct > 85 ? 'var(--warn)' : 'var(--acc)' }} /></div>
       <div className="row" style={{ marginTop: 8, marginBottom: 16 }}>
-        <div className="mini">{Math.round(pct)}% of budget used</div>
+        <div className="mini">{pctDisplay} of budget used</div>
         <div className="mini">{budTot - spent >= 0 ? R(budTot - spent) + ' left' : R(spent - budTot) + ' over'}</div>
       </div>
 

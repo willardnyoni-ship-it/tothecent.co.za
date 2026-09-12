@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { NavContext } from './NavContext.jsx';
-import { SheetProvider, useSheet } from '../components/Sheet.jsx';
+import { SheetProvider, SheetOutlet, useSheet } from '../components/Sheet.jsx';
 import TopNav from '../components/TopNav.jsx';
 import LockScreen from '../components/LockScreen.jsx';
 import Khanyiso from '../components/Khanyiso.jsx';
@@ -116,6 +116,7 @@ function Shell({ onSwitchToBusiness }) {
           { tab: 'insight', title: 'Reports', body: 'Monthly reviews, recurring payments, and CSV export whenever you want your numbers elsewhere.' },
         ]}
       />
+      <SheetOutlet />
     </NavContext.Provider>
   );
 }
