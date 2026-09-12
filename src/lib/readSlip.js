@@ -52,7 +52,7 @@ async function readSlipViaHaiku(file, syncCfg, ensureToken, memory, rules) {
     const cat = classify([merchant, d.category_hint, ...items.map(i => i.d)].filter(Boolean).join(' '), memory, rules);
     const rec = reconcileItems(items, total);
     if (total == null && !items.length) return { hk: null, signedOut: false };
-    return { hk: { total, date, merchant, cat, how: 'read by Claude', text: '', items, rec, totalConf: null }, signedOut: false };
+    return { hk: { total, date, merchant, cat, how: 'the slip image', text: '', items, rec, totalConf: null }, signedOut: false };
   } catch (e) { return { hk: null, signedOut: false }; }
 }
 
@@ -63,7 +63,7 @@ export async function readSlip(file, onProg, syncCfg, ensureToken, memory, rules
     const { hk, signedOut } = await readSlipViaHaiku(file, syncCfg, ensureToken, memory, rules);
     if (hk) { hk.readable = true; onProg(1, 'Done'); return { r: hk, thumb }; }
     onProg(0.05, signedOut
-      ? "You've been signed out - reading on this device instead. Sign in again under Settings for Claude-powered scanning."
+      ? "You've been signed out - reading on this device instead. Sign in again under Settings for more accurate scanning."
       : 'Reading on this device instead…');
   }
   const ocrImg = await forOcr(file);

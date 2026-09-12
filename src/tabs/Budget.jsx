@@ -141,7 +141,7 @@ export default function Budget() {
         <div className="mini" style={{ lineHeight: 1.6 }}>
           &bull; <b>No bank login, ever.</b> At any tier. This app cannot see your accounts and never asks to.<br />
           &bull; <b>Statements are read in your phone's memory either way.</b> Signed out, discarded the moment they're parsed, never uploaded. Signed in, the file itself is kept in your account once you confirm the import.<br />
-          &bull; <b>Slip photos read on-device when signed out.</b> Signed in, they're read by Claude for better accuracy instead, falling back to on-device reading if that's ever unavailable.<br />
+          &bull; <b>Slip photos read on-device when signed out.</b> Signed in, they're read with better accuracy on our server instead, falling back to on-device reading if that's ever unavailable.<br />
           &bull; <b>Signing in is optional.</b> Skip it, and everything stays on this device only.<br />
           &bull; <b>Slip photos expire after 45 days</b>, on this device and in your account either way. Imported statements don't expire automatically.<br />
           &bull; <b>You can take it with you.</b> Export a full backup or a plain CSV at any time under Settings &rarr; Data.

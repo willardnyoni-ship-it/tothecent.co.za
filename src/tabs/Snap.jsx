@@ -71,7 +71,7 @@ export default function Snap() {
     <section className="tab on light-tab" id="t-snap">
       <h1>Capture a slip</h1>
       <div className="sub">Photograph the till slip. Signed out, it is read entirely on your phone. Signed in, it is
-        read by Claude for better accuracy, falling back to on-device reading if that's ever unavailable &mdash;
+        read with better accuracy on our server, falling back to on-device reading if that's ever unavailable &mdash;
         and a private copy is kept in your account, visible only to you. Deleted automatically 45 days after it is
         taken, on every device and in your account either way.</div>
 
