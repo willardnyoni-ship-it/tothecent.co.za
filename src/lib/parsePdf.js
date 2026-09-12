@@ -44,7 +44,53 @@ function rowToTx(row) {
   return { day: +dm[1], mon: MON[dm[2]], a: value, cr: isCr, desc };
 }
 
-export async function parsePdf(file, memory, rules) {
+const MAX_STATEMENT_TEXT = 20000; // keeps the AI fallback's token cost bounded
+
+async function extractPlainText(pdf) {
+  let text = '';
+  for (let p = 1; p <= pdf.numPages && text.length < MAX_STATEMENT_TEXT; p++) {
+    const content = await (await pdf.getPage(p)).getTextContent();
+    text += content.items.map(i => i.str).join(' ') + '\n';
+  }
+  return text.slice(0, MAX_STATEMENT_TEXT);
+}
+
+// Any bank other than FNB (or an FNB layout the fixed parser above doesn't
+// recognise) lands here instead of failing outright - signed-in only, since
+// it needs a network round trip to read the extracted text server-side.
+async function parseViaAi(text, syncCfg, ensureToken, memory, rules) {
+  if (!syncCfg || !syncCfg.token || !syncCfg.userId) return null;
+  let token;
+  try { token = await ensureToken(); } catch { return null; }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    let resp;
+    try {
+      resp = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/read-statement', {
+        method: 'POST', signal: ctrl.signal,
+        headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+    } finally { clearTimeout(timer); }
+    if (!resp.ok) return null;
+    const d = await resp.json();
+    if (!d || d.error || !Array.isArray(d.transactions)) return null;
+
+    const out = [], skipped = [];
+    for (const row of d.transactions) {
+      if (!row || typeof row.amount !== 'number' || !isFinite(row.amount) || row.amount <= 0) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date || '')) continue;
+      const desc = String(row.desc || '').replace(/\s+/g, ' ').trim();
+      const isCr = !!row.is_credit;
+      if (isCr || SKIP.test(desc)) skipped.push({ d: row.date, a: row.amount, desc, cr: isCr, kind: flowKind(desc, isCr) });
+      else out.push({ d: row.date, a: row.amount, desc, c: classify(desc, memory, rules) });
+    }
+    return { tx: out, skipped, bank: typeof d.bank === 'string' && d.bank ? d.bank : 'Unknown' };
+  } catch { return null; }
+}
+
+export async function parsePdf(file, memory, rules, syncCfg, ensureToken) {
   // pdf.js loads as a plain <script> from the CDN (see app.html's <head>),
   // not an npm dependency - it ships its own worker as a separate file that
   // Vite would otherwise need special handling to bundle correctly.
@@ -80,5 +126,14 @@ export async function parsePdf(file, memory, rules) {
     }
     out.push({ d, a: t.a, desc: t.desc, c: classify(t.desc, memory, rules) });
   }
-  return { tx: out, skipped, header };
+  if (out.length) return { tx: out, skipped, header, bank: 'FNB' };
+
+  // FNB's fixed-column layout parser found nothing - this may well be a
+  // different bank's PDF (or an FNB layout change), so fall back to reading
+  // the extracted text with the general statement reader, which can handle
+  // any bank's format.
+  const text = await extractPlainText(pdf);
+  const ai = await parseViaAi(text, syncCfg, ensureToken, memory, rules);
+  if (ai && ai.tx.length) return { tx: ai.tx, skipped: ai.skipped, header, bank: ai.bank };
+  return { tx: [], skipped: [], header, needsSignIn: !(syncCfg && syncCfg.token) };
 }

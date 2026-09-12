@@ -39,9 +39,13 @@ export default function Statement() {
     setMsg({ kind: 'i', text: `Reading ${f.name} …` });
     setPreview(null);
     try {
-      const r = await parsePdf(f, S.memory, S.rules);
-      if (!r.tx.length) return setMsg({ kind: 'e', text: 'No spending transactions found. Is this an FNB statement PDF rather than a screenshot?' });
-      buildPreview(r.tx, r.skipped, f, 'FNB', 'pdf');
+      const r = await parsePdf(f, S.memory, S.rules, syncCfg, ensureToken);
+      if (!r.tx.length) {
+        return setMsg({ kind: 'e', text: r.needsSignIn
+          ? "Could not read this statement. Sign in under Settings to read any of the big five banks' PDFs automatically, or use \"Import a CSV instead\" below."
+          : 'No spending transactions found in that statement. Try "Import a CSV instead" below, or check the PDF opens normally.' });
+      }
+      buildPreview(r.tx, r.skipped, f, r.bank || 'FNB', 'pdf');
       setMsg({ kind: 's', text: `Parsed ${r.tx.length} debits` });
     } catch (err) {
       setMsg({ kind: 'e', text: 'Could not read that PDF: ' + err.message });
@@ -85,7 +89,9 @@ export default function Statement() {
     <section className="tab on light-tab" id="t-stmt">
       <h1>Upload a bank statement</h1>
       <h2>Import a statement</h2>
-      <div className="sub">Download the statement PDF from your bank's app, then drop it here. Parsed on your phone; nothing is uploaded unless you're signed in and confirm the import.</div>
+      <div className="sub">Download the statement PDF from your bank's app, then drop it here. Read on your phone when the
+        layout is recognised straight away; signed in, an unrecognised PDF is read more accurately on our server instead so any
+        of the big five still works.</div>
 
       <div style={{ height: 14 }} />
       <div ref={dropRef} className={'drop' + (dragOver ? ' hot' : '')} onClick={() => fileRef.current?.click()}
@@ -95,7 +101,7 @@ export default function Statement() {
         onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handlePdf(f); }}>
         <div style={{ fontSize: 34 }}>&#128196;</div>
         <div style={{ marginTop: 8, fontWeight: 600 }}>Tap to choose a statement</div>
-        <div className="mini" style={{ marginTop: 4 }}>FNB PDF, or a CSV from any of the big five</div>
+        <div className="mini" style={{ marginTop: 4 }}>A PDF or CSV from any of the big five</div>
       </div>
       <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files[0]; if (f) handlePdf(f); e.target.value = ''; }} />
@@ -104,8 +110,8 @@ export default function Statement() {
       <input ref={csvRef} type="file" accept=".csv,.txt,text/csv,text/plain" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files[0]; if (f) handleCsv(f); e.target.value = ''; }} />
       <div className="mini" style={{ marginTop: 9 }}>Capitec &middot; FNB &middot; Standard Bank &middot; Absa &middot; Nedbank.
-        Read in your phone's memory either way. Signed out, discarded the moment it's parsed and never uploaded. Signed in, once
-        you confirm the import the file itself is also kept in your account, visible only to you.</div>
+        Signed out, discarded the moment it's parsed and never uploaded. Signed in, once you confirm the import the file itself
+        is also kept in your account, visible only to you.</div>
 
       {msg && <div className={'msg ' + msg.kind}>{msg.text}</div>}
 
