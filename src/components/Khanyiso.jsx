@@ -87,11 +87,13 @@ export default function Khanyiso({ cycleOffset }) {
 
   return (
     <>
-      <button className="khFab" aria-label="Chat with Khanyiso" onClick={() => setOpen(true)}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4-1L3 20l1.3-4.5A8.5 8.5 0 1 1 21 11.5z" />
-        </svg>
-      </button>
+      {!open && (
+        <button className="khFab" aria-label="Chat with Khanyiso" onClick={() => setOpen(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4-1L3 20l1.3-4.5A8.5 8.5 0 1 1 21 11.5z" />
+          </svg>
+        </button>
+      )}
       <div className={'khPanel' + (open ? ' on' : '')}>
         <div className="khHead">
           <div className="khAvatar">K</div>

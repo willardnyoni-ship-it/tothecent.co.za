@@ -270,8 +270,17 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
   box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;transition:transform .18s var(--pop)}
 .khFab:active{transform:scale(.92)}
 .khFab svg{width:26px;height:26px}
-.khPanel{position:fixed;inset:0;z-index:220;background:var(--bg);display:none;flex-direction:column}
-.khPanel.on{display:flex}
+/* A floating widget anchored bottom-right, not a full-screen takeover - the
+   same on phone and desktop. Capped to the viewport (minus a margin) so it
+   never touches the screen edges even on a narrow phone, which is what
+   keeps it reading as "a panel on the side" rather than fullscreen. */
+.khPanel{position:fixed;z-index:220;background:var(--bg);display:none;flex-direction:column;
+  right:16px;bottom:calc(16px + var(--safe));
+  width:min(380px, calc(100vw - 24px));
+  height:min(600px, calc(100vh - 32px - var(--safe) - var(--safeTop)));
+  border-radius:18px;overflow:hidden;border:1px solid var(--line);
+  box-shadow:0 20px 60px -12px rgba(0,0,0,.45)}
+.khPanel.on{display:flex;animation:acctIn .16s var(--ease) both}
 .khHead{display:flex;align-items:center;gap:10px;padding:14px 14px calc(12px);
   border-bottom:1px solid var(--line);flex:0 0 auto}
 .khHead .khAvatar{width:34px;height:34px;border-radius:50%;background:var(--accC);color:var(--acc);
