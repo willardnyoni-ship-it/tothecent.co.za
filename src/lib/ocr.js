@@ -11,6 +11,7 @@ export async function toBitmap(file) {
 export async function shrink(file, maxW, q) {
   const img = await toBitmap(file);
   const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+  if (!w || !h) throw new Error('That photo could not be read (unsupported or empty image).');
   const sc = Math.min(1, maxW / w);
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
@@ -24,6 +25,7 @@ export async function shrink(file, maxW, q) {
 export async function forOcr(file, scaleTo) {
   const img = await toBitmap(file);
   const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+  if (!w || !h) throw new Error('That photo could not be read (unsupported or empty image).');
   const target = scaleTo || 1900;
   const sc = target / Math.max(w, h);
   const c = document.createElement('canvas');
