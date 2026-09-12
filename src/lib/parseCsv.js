@@ -19,13 +19,27 @@ function csvSplit(line) {
 }
 
 const CSV_COLS = {
-  date: /^(date|transaction date|posting date|trans date|datum|value date|effective date)$/i,
-  desc: /^(description|narrative|details|transaction description|reference|payee|memo|beneficiary)$/i,
-  amount: /^(amount|transaction amount|value|bedrag)$/i,
-  debit: /^(debit|debits|money out|withdrawal|fees|paid out)$/i,
-  credit: /^(credit|credits|money in|deposit|paid in)$/i,
+  date: /^(date|transaction date|posting date|post date|processing date|trans date|datum|value date|effective date)$/i,
+  desc: /^(description|description 1|description 2|narrative|details|transaction description|reference|payee|memo|beneficiary|particulars)$/i,
+  amount: /^(amount|transaction amount|amt|value|bedrag)$/i,
+  debit: /^(debit|debits|debit amount|money out|withdrawal|withdrawals|fees|paid out)$/i,
+  credit: /^(credit|credits|credit amount|money in|deposit|deposits|paid in)$/i,
   balance: /^(balance|running balance|closing balance|saldo)$/i,
 };
+
+// Bank exports vary a lot in how header cells are punctuated - a leading
+// BOM (very common from Excel/Windows exports), a trailing "*"/":", or a
+// "(R)"/"(ZAR)" currency annotation all used to make an otherwise-normal
+// header like "Amount (R)" fail the exact-match regexes above.
+function cleanHeader(c) {
+  return String(c || '')
+    .replace(/^﻿/, '')
+    .replace(/ /g, ' ')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[:*]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function csvNum(v) {
   if (v == null) return null;
@@ -63,6 +77,7 @@ export function detectBank(text) {
 }
 
 export function parseCsv(text, memory, rules) {
+  text = text.replace(/^﻿/, '');
   const rawLines = text.split(/\r?\n/).filter(l => l.trim() !== '');
   const bank = detectBank(text);
   let hdr = -1, map = null;
@@ -70,7 +85,7 @@ export function parseCsv(text, memory, rules) {
     const cells = csvSplit(rawLines[i]);
     if (cells.length < 2) continue;
     const m = {};
-    cells.forEach((c, idx) => { for (const k in CSV_COLS) if (CSV_COLS[k].test(c) && m[k] === undefined) m[k] = idx; });
+    cells.forEach((c, idx) => { const cc = cleanHeader(c); for (const k in CSV_COLS) if (CSV_COLS[k].test(cc) && m[k] === undefined) m[k] = idx; });
     if (m.date !== undefined && (m.amount !== undefined || m.debit !== undefined || m.credit !== undefined)) {
       hdr = i; map = m; break;
     }
