@@ -154,6 +154,52 @@ export default function Home() {
           : <><span className="zh-statusDot wn" /> Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</>}
       </div>
 
+      <div className="zh-statrow" style={{ marginBottom: 12 }}>
+        <div className="zh-stat sage">
+          <div className="zh-lbl">Safe to spend today</div>
+          <div className="zh-val">{R(safeToday)}</div>
+          <div className="zh-sub">
+            {remaining < 0 ? `You are ${R(-remaining)} over for this month.` : `${R(remaining)} left for this month`}
+            {dueTot > 0 && ` · ${R(dueTot)} of bills still to come`}
+          </div>
+        </div>
+        <div className="zh-stat mustard">
+          <div className="zh-lbl">Spent this month</div>
+          <div className="zh-val">{R(spent)}</div>
+          <div className="zh-sub">of {R(budTot)} budget</div>
+        </div>
+        <div className="zh-stat lav">
+          <div className="zh-lbl">Snap a slip</div>
+          <div className="zh-sub">Photograph a till slip &mdash; OCR reads the total for you</div>
+          <button className="zh-cta" onClick={() => { setSnapAction('camera'); go('snap'); }}>Open camera</button>
+        </div>
+      </div>
+      <div className="bar"><i style={{ width: Math.min(100, pct) + '%', background: pct > 100 ? 'var(--bad)' : pct > 85 ? 'var(--warn)' : 'var(--acc)' }} /></div>
+      <div className="row" style={{ marginTop: 8, marginBottom: 16 }}>
+        <div className="mini">{Math.round(pct)}% of budget used</div>
+        <div className="mini">{budTot - spent >= 0 ? R(budTot - spent) + ' left' : R(spent - budTot) + ' over'}</div>
+      </div>
+
+      <div className="zh-grid">
+        <section className="zh-sec"><h2>Spending this week</h2><WeeklyChart active={active} budTot={budTot} totalDays={totalDays} /></section>
+        <section className="zh-sec"><h2>Category breakdown</h2><CategoryDonut spentBy={spentBy} cats={S.cats} /></section>
+        <section className="zh-sec">
+          <h2>Categories</h2>
+          <div className="card">
+            {catTargets.filter(x => x.t > 0 || (spentBy[x.n] || 0) > 0).map(x => {
+              const sp = spentBy[x.n] || 0, p = x.t ? sp / x.t * 100 : (sp ? 100 : 0);
+              const col = x.t === 0 ? 'var(--dim)' : p > 100 ? 'var(--bad)' : p > 85 ? 'var(--warn)' : 'var(--acc)';
+              return (
+                <div className="cat" key={x.n}>
+                  <div className="row"><div className="n">{catEmoji(x.n)} {x.n}{x.fixed && <span className="tag">fixed</span>}{x.rollover > 0 && <span className="tag">+{R(x.rollover)} rolled over</span>}</div><div className="v">{R(sp)} <span style={{ color: '#9AA0AA' }}>/</span> {R(x.t)}</div></div>
+                  <div className="bar"><i style={{ width: Math.min(100, p) + '%', background: col }} /></div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+
       {spendingFast && (
         <div className="card zh-insight" style={{ marginBottom: 16 }}>
           <span className="ic">&#9888;&#65039;</span>
@@ -198,54 +244,6 @@ export default function Home() {
         </tbody></table></div>
       </section>
 
-      <details className="zh-more">
-        <summary>More detail</summary>
-        <div className="zh-statrow" style={{ marginTop: 14 }}>
-          <div className="zh-stat sage">
-            <div className="zh-lbl">Safe to spend today</div>
-            <div className="zh-val">{R(safeToday)}</div>
-            <div className="zh-sub">
-              {remaining < 0 ? `You are ${R(-remaining)} over for this month.` : `${R(remaining)} left for this month`}
-              {dueTot > 0 && ` · ${R(dueTot)} of bills still to come`}
-            </div>
-          </div>
-          <div className="zh-stat mustard">
-            <div className="zh-lbl">Spent this month</div>
-            <div className="zh-val">{R(spent)}</div>
-            <div className="zh-sub">of {R(budTot)} budget</div>
-          </div>
-          <div className="zh-stat lav">
-            <div className="zh-lbl">Snap a slip</div>
-            <div className="zh-sub">Photograph a till slip &mdash; OCR reads the total for you</div>
-            <button className="zh-cta" onClick={() => { setSnapAction('camera'); go('snap'); }}>Open camera</button>
-          </div>
-        </div>
-        <div className="bar"><i style={{ width: Math.min(100, pct) + '%', background: pct > 100 ? 'var(--bad)' : pct > 85 ? 'var(--warn)' : 'var(--acc)' }} /></div>
-        <div className="row" style={{ marginTop: 8, marginBottom: 16 }}>
-          <div className="mini">{Math.round(pct)}% of budget used</div>
-          <div className="mini">{budTot - spent >= 0 ? R(budTot - spent) + ' left' : R(spent - budTot) + ' over'}</div>
-        </div>
-
-        <div className="zh-grid">
-          <section className="zh-sec"><h2>Spending this week</h2><WeeklyChart active={active} budTot={budTot} totalDays={totalDays} /></section>
-          <section className="zh-sec"><h2>Category breakdown</h2><CategoryDonut spentBy={spentBy} cats={S.cats} /></section>
-          <section className="zh-sec">
-            <h2>Categories</h2>
-            <div className="card">
-              {catTargets.filter(x => x.t > 0 || (spentBy[x.n] || 0) > 0).map(x => {
-                const sp = spentBy[x.n] || 0, p = x.t ? sp / x.t * 100 : (sp ? 100 : 0);
-                const col = x.t === 0 ? 'var(--dim)' : p > 100 ? 'var(--bad)' : p > 85 ? 'var(--warn)' : 'var(--acc)';
-                return (
-                  <div className="cat" key={x.n}>
-                    <div className="row"><div className="n">{catEmoji(x.n)} {x.n}{x.fixed && <span className="tag">fixed</span>}{x.rollover > 0 && <span className="tag">+{R(x.rollover)} rolled over</span>}</div><div className="v">{R(sp)} <span style={{ color: '#9AA0AA' }}>/</span> {R(x.t)}</div></div>
-                    <div className="bar"><i style={{ width: Math.min(100, p) + '%', background: col }} /></div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      </details>
       <div style={{ height: 20 }} />
     </section>
   );

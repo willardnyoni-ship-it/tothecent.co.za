@@ -435,12 +435,6 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
   font-weight:700;color:var(--zink);cursor:pointer;text-align:center}
 .zh-qaBtn:hover{border-color:var(--zink)}
 .zh-qaIc{font-size:22px;line-height:1}
-.zh-more{margin-top:8px}
-.zh-more summary{cursor:pointer;font-weight:700;color:var(--zink);padding:10px 2px;list-style:none}
-.zh-more summary::-webkit-details-marker{display:none}
-.zh-more summary::before{content:'\25B8';display:inline-block;margin-right:6px;transition:transform .15s var(--ease)}
-.zh-more[open] summary::before{transform:rotate(90deg)}
-
 /* The five primary tabs run full-bleed rather than as a panel floating
    inside the page. The nav is styled once, globally, and is the same
    dark blue on every tab - the per-tab nav overrides that used to live
