@@ -1,7 +1,13 @@
 import { dayDiff } from './format.js';
 
 export const MATCH_DAYS = 4;
-export const isStmt = t => t.src === 'pdf';
+// A CSV import sets src:'csv', a PDF import sets src:'pdf' - both are
+// "statement truth" for reconciliation and re-import dedup. This used to
+// check only 'pdf', from before CSV import existed - since then, every
+// bank except FNB's fast PDF path relies on CSV, so reconciliation
+// (Receipts tab) and duplicate detection on re-import were silently broken
+// for all of them.
+export const isStmt = t => t.src === 'pdf' || t.src === 'csv';
 // Cash-marked receipts are excluded - the user has said no bank line will
 // ever appear for them, so they shouldn't sit in "logged, not on statement".
 export const isLog = t => !isStmt(t) && !t.mt && !t.cash;

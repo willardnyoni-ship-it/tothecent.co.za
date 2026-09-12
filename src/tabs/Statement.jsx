@@ -120,6 +120,7 @@ export default function Statement() {
           <div className="card">
             <div className="row"><div style={{ fontWeight: 700 }}>{preview.pending.length} new statement lines</div><div className="mono" style={{ fontWeight: 700 }}>{R2(preview.tot)}</div></div>
             <div className="mini" style={{ marginTop: 4 }}>Credits, transfers between your own accounts and payments to Investment were excluded - they are not spending.</div>
+            {preview.dupes > 0 && <div className="infobox" style={{ marginTop: 11 }}>{preview.dupes} line{preview.dupes === 1 ? '' : 's'} already in your account were skipped - not added twice.</div>}
             {preview.pairs.length > 0 && <div className="infobox" style={{ marginTop: 11 }}>{preview.pairs.length} of these already match slips you logged. They will be folded together, not double-counted.</div>}
             {preview.pendingFlows.length > 0 && <div className="infobox" style={{ marginTop: 11 }}>{preview.pendingFlows.length} savings movement(s) also found - tracked separately under Reports, not counted as spending.</div>}
             <table style={{ marginTop: 10 }}><tbody>

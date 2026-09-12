@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useSheet } from './Sheet.jsx';
 import { useNav } from '../app/NavContext.jsx';
@@ -22,6 +22,17 @@ export function ConfirmSlipContent({ r, thumb }) {
   const total = Math.round((amtN + tipN) * 100) / 100;
   const vatAmt = vat ? Math.round(vatOf(amtN) * 100) / 100 : 0;
 
+  // Scanning the same physical slip twice (easy to do by mistake - a slip
+  // left in a pocket, or tapping Camera again after the sheet reopened)
+  // used to sail through with no warning at all, unlike CSV/PDF statement
+  // re-imports which have always deduped against S.tx. Same date + same
+  // amount + same merchant is the same signal used there.
+  const possibleDupe = useMemo(() => {
+    if (!date || !amtN) return null;
+    const noteKey = note.trim().toLowerCase();
+    return S.tx.find(t => t.d === date && Math.abs(t.a - amtN) < 0.01 && (t.note || '').trim().toLowerCase() === noteKey);
+  }, [S.tx, date, amtN, note]);
+
   async function save() {
     if (!total || total <= 0) return alert('Enter an amount greater than zero.');
     const pid = uid();
@@ -38,6 +49,11 @@ export function ConfirmSlipContent({ r, thumb }) {
   return (
     <>
       <div className="row"><h1>Check before saving</h1><button className="b g sm" onClick={close}>Cancel</button></div>
+      {possibleDupe && (
+        <div className="warnbox" style={{ marginTop: 10 }}>
+          You already logged {R2(possibleDupe.a)} at {possibleDupe.note || 'this place'} on {possibleDupe.d} - this looks like the same slip scanned twice.
+        </div>
+      )}
       {r.total == null
         ? <div className="warnbox" style={{ marginTop: 10 }}>No total found. Type the amount in.</div>
         : rec?.ok
