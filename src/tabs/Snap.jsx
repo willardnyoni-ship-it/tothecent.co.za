@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useNav } from '../app/NavContext.jsx';
-import { R2, iso, uid } from '../lib/format.js';
+import { R2, iso, uid, vatOf } from '../lib/format.js';
 import { readSlip } from '../lib/readSlip.js';
 import { useConfirmSlip } from '../components/ConfirmSlipSheet.jsx';
-
-const VAT_RATE = 0.15;
-const vatOf = total => total * VAT_RATE / (1 + VAT_RATE);
 
 export default function Snap() {
   const { S, addTx, syncCfg, ensureToken } = useBudget();

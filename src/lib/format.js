@@ -16,3 +16,6 @@ export const CAT_EMOJI = {
   'Accommodation': '🛏️', 'Uncategorised': '❓',
 };
 export const catEmoji = n => CAT_EMOJI[n] || '💳';
+
+export const VAT_RATE = 0.15;
+export const vatOf = total => total * VAT_RATE / (1 + VAT_RATE);
