@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy - Budget</title>
+<meta name="description" content="How Budget collects, stores and protects your data.">
+<meta name="theme-color" content="#13294B">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#E5E7EB;--card:#FFFFFF;--line:#C7CBD2;--tx:#000000;--dim:#3A3D44;--acc:#12833A;--blue:#0B5FCC}
+  body{background:var(--bg);color:var(--tx);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 22px 80px}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:20px 0 10px}
+  .top a{color:var(--dim);text-decoration:none;font-weight:700;font-size:15px}
+  .top a:hover{color:var(--tx)}
+  h1{font-size:clamp(28px,5vw,40px);letter-spacing:-1px;margin:18px 0 6px}
+  .updated{color:var(--dim);font-size:15px;margin-bottom:34px}
+  h2{font-size:22px;margin:34px 0 10px;letter-spacing:-.3px}
+  p,li{margin-bottom:13px;color:#1a1c20}
+  ul{padding-left:22px;margin-bottom:13px}
+  a{color:var(--blue)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:18px 0}
+  .foot{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/">&larr; Budget</a><a href="/terms/">Terms of Service</a></div>
+  <h1>Privacy Policy</h1>
+  <div class="updated">Last updated 15 September 2026</div>
+
+  <p>This describes what Budget ("the app", "we", "us") does with your information, in plain language. It's written to match exactly what the app actually does - not a generic template. If anything here is unclear, email us (details at the bottom) rather than guess.</p>
+
+  <h2>The short version</h2>
+  <div class="card">
+    <ul>
+      <li>We never ask for your online banking login, and can't access your bank account.</li>
+      <li>Signing in is optional. Without it, everything you enter stays only on your own device.</li>
+      <li>Slip photos and statement files are read to extract the numbers, then either discarded or kept only in your own account - never sold, and never used to build a profile of you for advertising.</li>
+      <li>You can export everything you've entered, or erase it from a device, at any time.</li>
+    </ul>
+  </div>
+
+  <h2>What we collect</h2>
+  <p><b>If you never sign in (Personal mode):</b> nothing leaves your device. Your transactions, budget, categories and settings are stored only in that browser's local storage, on that device. We have no copy of it and no way to see it.</p>
+  <p><b>If you sign in:</b> creating an account collects your email address and a password (which we never see in plain text - it's handled by our authentication provider). Signing in also lets your budget data sync across your own devices, which means it's stored on our servers, encrypted in transit and scoped so only you can read it.</p>
+  <p><b>Business mode</b> is inherently shared - team members, customers and invoices are stored on our servers so everyone on the team can see the right things, gated by the role each person is given (owner, admin, employee, or accountant).</p>
+
+  <h2>Slip photos</h2>
+  <p>When you photograph a till slip: if you're signed out, the photo is read entirely on your own device and never uploaded anywhere. If you're signed in, the photo is sent to a secure server-side process for more accurate reading (falling back to on-device reading if that's ever unavailable), and a copy is kept in your account so you can review it later. Either way, slip photos are deleted automatically 45 days after they were taken, on every device and in your account.</p>
+
+  <h2>Bank statements</h2>
+  <p>We never ask for your online banking username or password, and we have no way to connect to your bank directly. You download your own statement (PDF or CSV) from your bank's app or website and upload it yourself.</p>
+  <p>Statement files are read in your device's memory. If you're signed out, the file is discarded the moment it's been read and is never uploaded. If you're signed in, the file itself is kept in your account once you confirm the import, so you can re-download it later.</p>
+  <p>Most statement formats are read entirely on your device. If a PDF's layout isn't one we recognise automatically, and you're signed in, its text is sent to a secure server-side process to identify the bank and extract the transactions - this only happens for signed-in users, and only for a file that couldn't be read locally.</p>
+
+  <h2>Who else sees it</h2>
+  <p>We use a small number of specialist providers to run the app - for example, our cloud database and authentication provider, and (for signed-in users) a secure service used to read receipts and statements more accurately. They only ever see what's needed to do that specific job, are contractually required to protect it, and none of them are permitted to use your data for their own purposes, including advertising.</p>
+  <p>We do not sell your data, and we do not share it with advertisers.</p>
+
+  <h2>Your controls</h2>
+  <ul>
+    <li><b>Export:</b> download a full backup (JSON) or a plain CSV of your transactions at any time, from Settings.</li>
+    <li><b>Delete photos:</b> remove all stored slip photos from a device on demand, rather than waiting for the 45-day expiry.</li>
+    <li><b>Erase a device:</b> wipe all transactions, budget settings and photos from that device at any time.</li>
+    <li><b>Delete your account:</b> if you're signed in and want your synced account data deleted entirely, email us and we'll action it.</li>
+  </ul>
+
+  <h2>Security</h2>
+  <p>Data in transit is encrypted (HTTPS). Signed-in data is stored with access controls scoped so only your own account can read it. An optional device PIN/passphrase is available as a local screen-lock, but it's a gate on that device, not encryption of the underlying data - treat it as a convenience, not a vault.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes in a way that matters, we'll update the date at the top. Continuing to use the app after a change means you're okay with the update; if you're not, you can export your data and stop using the app at any time.</p>
+
+  <div class="foot">
+    Questions about your data, or a request to delete it? Email <a href="mailto:info@tothecent.co.za">info@tothecent.co.za</a>.
+  </div>
+</div>
+</body>
+</html>

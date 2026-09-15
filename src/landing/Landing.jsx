@@ -270,7 +270,41 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <section className="reveal">
+          <h2 className="sec-h">How it works</h2>
+          <p className="sec-sub">Four things, in either order - snap slips as you spend, drop in a statement whenever suits you.</p>
+          <div className="grid four">
+            <div className="feature"><div className="num">1</div><h3>Snap a slip</h3><p>Photograph a till slip and the amount, date and merchant are read for you - on your phone if you're signed out, more accurately on our server if you're signed in.</p></div>
+            <div className="feature"><div className="num">2</div><h3>Import a statement</h3><p>Download a CSV or PDF from your bank's own app and drop it in. Capitec, FNB, Standard Bank, Absa, Nedbank - no bank login, ever.</p></div>
+            <div className="feature"><div className="num">3</div><h3>It reconciles itself</h3><p>Slips you logged are matched against the statement automatically, so you can see what's accounted for and what still needs a receipt.</p></div>
+            <div className="feature"><div className="num">4</div><h3>See what matters</h3><p>A daily safe-to-spend number that already accounts for upcoming bills, category budgets, and a monthly review of where it actually went.</p></div>
+          </div>
+        </section>
+
+        <section className="reveal" style={{ paddingTop: 10 }}>
+          <h2 className="sec-h">About</h2>
+          <div className="about-card">
+            <p>Budget is built in South Africa, for the way people actually get paid and spend here - pay-day-to-pay-day budgeting, till slips, and bank statements from the big five, not a generic monthly calendar built for somewhere else.</p>
+            <p>It works fully without an account. Signing in only adds sync across your devices and more accurate slip/statement reading - it never adds a requirement to hand over a bank login, which this app will never ask for.</p>
+            <p style={{ marginTop: 16 }}>Questions, feedback, or something not working right? <a href="mailto:info@tothecent.co.za">info@tothecent.co.za</a></p>
+          </div>
+        </section>
       </div>
+
+      <footer className="site">
+        <div className="wrap">
+          <div className="frow">
+            <div className="fbrand">Budget</div>
+            <div className="flinks">
+              <a href="mailto:info@tothecent.co.za">Contact</a>
+              <a href="/privacy/">Privacy Policy</a>
+              <a href="/terms/">Terms of Service</a>
+            </div>
+          </div>
+          <div className="fcopy">&copy; {new Date().getFullYear()} Budget. Built in South Africa.</div>
+        </div>
+      </footer>
     </div>
   );
 }
