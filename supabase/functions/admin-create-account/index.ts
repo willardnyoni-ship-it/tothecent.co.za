@@ -1,3 +1,6 @@
+// Deployed on Supabase under the URL slug 'quick-function' (display name
+// admin-create-account) - see CREATE_ACCOUNT_FN in src/admin/AdminApp.jsx.
+//
 // Lets an app owner (a user listed in public.app_admins) create an account
 // for someone else - optionally with a business already set up - and get
 // back a one-time link where that person chooses their own password.

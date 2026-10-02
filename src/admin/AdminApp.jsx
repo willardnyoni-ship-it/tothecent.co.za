@@ -9,6 +9,11 @@ import { TABLE_GROUPS, TABLE_INFO, describePolicy, fmtBytes } from './tableInfo.
 import './portal.css';
 
 const SITE = 'https://tothecent.co.za/';
+// The admin-create-account Edge Function (supabase/functions/admin-create-account)
+// was deployed from the dashboard editor, which gave it the URL slug
+// 'quick-function' - its display name is admin-create-account, but calls
+// go by slug. Change this if it's ever redeployed under its own slug.
+const CREATE_ACCOUNT_FN = 'quick-function';
 const DAY = 864e5;
 
 // ---------- small helpers ----------
@@ -469,7 +474,7 @@ function SignUp({ onCreated, initialKind = 'person' }) {
     setBusy(true);
     try {
       const token = await ensureToken();
-      const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/admin-create-account', {
+      const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/' + CREATE_ACCOUNT_FN, {
         method: 'POST',
         headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({
