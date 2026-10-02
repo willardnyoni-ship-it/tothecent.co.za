@@ -2,21 +2,35 @@ import { useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso, uid } from '../lib/format.js';
-import { computeInvoiceTotals, nextInvoiceNumber } from '../lib/businessMath.js';
+import { computeInvoiceTotals, nextInvoiceNumber, nextQuoteNumber } from '../lib/businessMath.js';
 
-export function CreateInvoiceContent() {
+const blankItem = () => ({ id: uid(), description: '', qty: 1, price: 0 });
+
+// One form for both invoices and quotes - a quote is an invoice that hasn't
+// happened yet, so it has the same customer/items/notes steps, with a
+// "valid until" date and an optional deposit instead of a due date.
+// `prefill` lets other screens start it part-filled (e.g. Time turning
+// unbilled hours into invoice lines, or a job's "New quote" button).
+export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated }) {
+  const isQuote = mode === 'quote';
   const { close } = useSheet();
-  const { business, customers, addCustomer, createInvoice } = useBusiness();
-  const [step, setStep] = useState(1);
-  const [customerId, setCustomerId] = useState('');
+  const { business, customers, jobs, addCustomer, createInvoice, createQuote, hasFeature } = useBusiness();
+  const [step, setStep] = useState(prefill.customerId ? 2 : 1);
+  const [customerId, setCustomerId] = useState(prefill.customerId || '');
   const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '', address: '', tax_number: '' });
   const [addingCustomer, setAddingCustomer] = useState(!customers.length);
   const [newCustomerId, setNewCustomerId] = useState(null);
-  const [invoiceNumber, setInvoiceNumber] = useState(nextInvoiceNumber(business));
+  const [invoiceNumber, setInvoiceNumber] = useState(isQuote ? nextQuoteNumber(business) : nextInvoiceNumber(business));
   const [issueDate, setIssueDate] = useState(iso(new Date()));
-  const [dueDate, setDueDate] = useState(iso(new Date(Date.now() + 20 * 86400000)));
-  const [items, setItems] = useState([{ id: uid(), description: '', qty: 1, price: 0 }]);
-  const [vatEnabled, setVatEnabled] = useState(true);
+  const [dueDate, setDueDate] = useState(iso(new Date(Date.now() + (isQuote ? 30 : 20) * 86400000)));
+  const [items, setItems] = useState(prefill.items?.length ? prefill.items.map(it => ({ ...it, id: uid() })) : [blankItem()]);
+  const [jobId, setJobId] = useState(prefill.jobId || '');
+  const [depositPct, setDepositPct] = useState(0);
+  const showJobs = hasFeature('jobs') && jobs.length > 0;
+  // Only VAT-registered vendors may charge VAT, so a business that told us
+  // it isn't registered starts with VAT off. Businesses from before the
+  // VAT question existed keep the old default (on).
+  const [vatEnabled, setVatEnabled] = useState(prefill.vatEnabled ?? (business.business_profile ? hasFeature('vat') : true));
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState(business.default_payment_terms || '');
@@ -27,7 +41,7 @@ export function CreateInvoiceContent() {
   const totals = computeInvoiceTotals(items, vatEnabled, discount);
 
   function setItem(i, patch) { setItems(list => list.map((it, idx) => idx === i ? { ...it, ...patch } : it)); }
-  function addItem() { setItems(list => [...list, { id: uid(), description: '', qty: 1, price: 0 }]); }
+  function addItem() { setItems(list => [...list, blankItem()]); }
   function removeItem(i) { setItems(list => list.filter((_, idx) => idx !== i)); }
 
   async function saveCustomerAndContinue() {
@@ -50,18 +64,30 @@ export function CreateInvoiceContent() {
     setBusy(true);
     try {
       const cust = addingCustomer ? customers.find(c => c.id === newCustomerId) : customers.find(c => c.id === customerId);
-      const inv = await createInvoice({
-        customer_id: cust?.id || null, invoice_number: invoiceNumber, issue_date: issueDate, due_date: dueDate,
-        status: sendAfter ? 'sent' : 'draft', subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0,
-        total: totals.total, notes, payment_terms: terms, banking_details: banking,
-      }, items.filter(i => i.description.trim()).map(i => ({ description: i.description, qty: +i.qty || 1, price: +i.price || 0, total: (+i.qty || 1) * (+i.price || 0) })));
+      const lines = items.filter(i => i.description.trim()).map(i => ({ description: i.description, qty: +i.qty || 1, price: +i.price || 0, total: (+i.qty || 1) * (+i.price || 0) }));
+      let created;
+      if (isQuote) {
+        created = await createQuote({
+          customer_id: cust?.id || null, job_id: jobId || null, quote_number: invoiceNumber, issue_date: issueDate, valid_until: dueDate,
+          status: sendAfter ? 'sent' : 'draft', items: lines, vat_enabled: vatEnabled,
+          subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0, total: totals.total,
+          deposit_pct: Math.min(100, Math.max(0, +depositPct || 0)), notes, payment_terms: terms, banking_details: banking,
+        });
+      } else {
+        created = await createInvoice({
+          customer_id: cust?.id || null, job_id: jobId || null, invoice_number: invoiceNumber, issue_date: issueDate, due_date: dueDate,
+          status: sendAfter ? 'sent' : 'draft', subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0,
+          total: totals.total, notes, payment_terms: terms, banking_details: banking,
+        }, lines);
+      }
+      await onCreated?.(created);
       close();
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 
   return (
     <>
-      <div className="row"><h1>Create Invoice</h1><button className="b g sm" onClick={close}>Cancel</button></div>
+      <div className="row"><h1>{isQuote ? 'Create Quote' : 'Create Invoice'}</h1><button className="b g sm" onClick={close}>Cancel</button></div>
       <div className="sub">Step {step} of 3</div>
 
       {step === 1 && (
@@ -100,13 +126,22 @@ export function CreateInvoiceContent() {
 
       {step === 2 && (
         <div className="card" style={{ marginTop: 12 }}>
-          <h2 style={{ marginTop: 0 }}>Invoice</h2>
-          <label>Invoice Number</label>
+          <h2 style={{ marginTop: 0 }}>{isQuote ? 'Quote' : 'Invoice'}</h2>
+          <label>{isQuote ? 'Quote Number' : 'Invoice Number'}</label>
           <input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} />
           <label>Issue Date</label>
           <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} />
-          <label>Due Date</label>
+          <label>{isQuote ? 'Valid Until' : 'Due Date'}</label>
           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          {showJobs && (
+            <>
+              <label>Job <span className="mini">(optional)</span></label>
+              <select value={jobId} onChange={e => setJobId(e.target.value)}>
+                <option value="">No job</option>
+                {jobs.filter(j => j.status !== 'cancelled').map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
+              </select>
+            </>
+          )}
 
           <h2>Items</h2>
           {items.map((it, i) => (
@@ -123,12 +158,19 @@ export function CreateInvoiceContent() {
           <label className="chk" style={{ marginTop: 14 }}><input type="checkbox" checked={vatEnabled} onChange={e => setVatEnabled(e.target.checked)} /><span>Add 15% VAT</span></label>
           <label>Discount (R)</label>
           <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} />
+          {isQuote && (
+            <>
+              <label>Deposit required (%) <span className="mini">(0 for none)</span></label>
+              <input type="number" min="0" max="100" value={depositPct} onChange={e => setDepositPct(e.target.value)} />
+            </>
+          )}
 
           <div className="biz-totals">
             <div className="row"><span>Subtotal</span><span className="mono">{R2(totals.subtotal)}</span></div>
             <div className="row"><span>VAT</span><span className="mono">{R2(totals.vat)}</span></div>
             <div className="row"><span>Discount</span><span className="mono">-{R2(+discount || 0)}</span></div>
             <div className="row grand"><span>TOTAL</span><span className="mono">{R2(totals.total)}</span></div>
+            {isQuote && +depositPct > 0 && <div className="row"><span>Deposit ({Math.min(100, +depositPct)}%)</span><span className="mono">{R2(totals.total * Math.min(100, +depositPct) / 100)}</span></div>}
           </div>
           {err && <div className="msg e">{err}</div>}
           <div style={{ height: 12 }} />
@@ -158,5 +200,10 @@ export function CreateInvoiceContent() {
 
 export function useCreateInvoice() {
   const { open } = useSheet();
-  return () => open(() => <CreateInvoiceContent />);
+  return (opts = {}) => open(() => <CreateInvoiceContent {...opts} />);
+}
+
+export function useCreateQuote() {
+  const { open } = useSheet();
+  return (opts = {}) => open(() => <CreateInvoiceContent mode="quote" {...opts} />);
 }

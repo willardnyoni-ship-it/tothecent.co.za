@@ -2,16 +2,30 @@ import { useMemo } from 'react';
 import { useBudget } from '../../store/BudgetStore.jsx';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
-import { invoiceStatusLabel } from '../../lib/businessMath.js';
+import { currentVatPeriod } from '../../lib/saTax.js';
+import { isLow } from './Stock.jsx';
+
+// Shown to businesses created before business types existed, so they can
+// pick one and get the tools that fit.
+function ChooseProfileBanner({ onOpenSettings }) {
+  const { business, myRole } = useBusiness();
+  if (business.business_profile || myRole !== 'owner') return null;
+  return (
+    <div className="infobox" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <div><b>New: tools for your kind of business.</b> Quotes, jobs, stock, bookings, wages and more - tell us what you do and we'll switch on what fits.</div>
+      <button className="b sm" style={{ width: 'auto' }} onClick={onOpenSettings}>Choose</button>
+    </div>
+  );
+}
 
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
-export default function BizHome({ go }) {
+export default function BizHome({ go, onOpenSettings }) {
   const { syncCfg } = useBudget();
-  const { transactions, invoices, expenses } = useBusiness();
+  const { transactions, invoices, expenses, quotes, stockItems, bookings, timeEntries, payRuns, employees, hasFeature } = useBusiness();
   const name = (syncCfg.email || '').split('@')[0].replace(/[._-]+/g, ' ');
 
   const now = new Date();
@@ -65,10 +79,25 @@ export default function BizHome({ go }) {
   const needsReviewTx = transactions.filter(t => t.status === 'needs_review').length;
   const needsReviewExpenses = expenses.filter(e => e.status === 'needs_review' || e.status === 'pending_approval').length;
 
+  // Tool-specific nudges - only for tools this business has switched on.
+  const lowStock = hasFeature('stock') ? stockItems.filter(i => !i.archived && isLow(i)) : [];
+  const todaysBookings = hasFeature('bookings') ? bookings.filter(b => b.date === todayStr && b.status === 'booked') : [];
+  const weekAhead = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+  const expiringQuotes = hasFeature('quotes') ? quotes.filter(q => q.status === 'sent' && q.valid_until && q.valid_until >= todayStr && q.valid_until <= weekAhead) : [];
+  const unbilledHours = hasFeature('time') ? timeEntries.filter(t => !t.invoice_id && +t.rate > 0).reduce((a, t) => a + +t.hours, 0) : 0;
+  const thisPeriod = todayStr.slice(0, 7);
+  const unpaidStaff = hasFeature('payroll') && now.getDate() >= 20
+    ? employees.filter(e => e.active && !payRuns.some(r => r.employee_id === e.id && r.period === thisPeriod)).length : 0;
+  const vatPeriod = hasFeature('vat') ? currentVatPeriod() : null;
+  // Remind about VAT in the last two weeks of a period and until it's due.
+  const vatSoon = vatPeriod && (new Date(vatPeriod.to) - now) / 86400000 <= 14;
+  const toolNudges = lowStock.length || todaysBookings.length || expiringQuotes.length || unbilledHours || unpaidStaff || vatSoon;
+
   return (
     <section className="tab on light-tab">
       <h1>{greeting()}, {name || 'there'}</h1>
       <div className="sub">{monthLbl}</div>
+      <ChooseProfileBanner onOpenSettings={onOpenSettings} />
 
       <div className="biz-cards">
         <div className="biz-card"><div className="lbl">Cash available</div><div className={'val' + (cashAvailable < 0 ? ' bd' : '')}>{cashAvailable < 0 ? '-' : ''}{R(Math.abs(cashAvailable))}</div></div>
@@ -101,10 +130,40 @@ export default function BizHome({ go }) {
         <div style={{ flex: 1 }}><div className="mono" style={{ fontSize: 22, fontWeight: 700 }}>{dueSoon.length}</div><div className="mini">Due Soon</div></div>
       </div>
 
-      {(needsReviewTx > 0 || overdueInvoices.length > 0 || needsReviewExpenses > 0 || missingReceipts > 0 || missingVat > 0) && (
+      {(needsReviewTx > 0 || overdueInvoices.length > 0 || needsReviewExpenses > 0 || missingReceipts > 0 || missingVat > 0 || toolNudges) && (
         <>
           <h2>Needs your attention</h2>
           <div className="biz-attn">
+            {todaysBookings.length > 0 && (
+              <div className="biz-attn-row" onClick={() => go('bookings')}>
+                <span className="ic">📅</span><span>{todaysBookings.length} booking{todaysBookings.length === 1 ? '' : 's'} today &middot; first at {todaysBookings.map(b => b.start_time).sort()[0]}</span>
+              </div>
+            )}
+            {lowStock.length > 0 && (
+              <div className="biz-attn-row" onClick={() => go('stock')}>
+                <span className="ic">📦</span><span>{lowStock.length} stock item{lowStock.length === 1 ? ' is' : 's are'} running low &middot; {lowStock.slice(0, 3).map(i => i.name).join(', ')}{lowStock.length > 3 ? '…' : ''}</span>
+              </div>
+            )}
+            {expiringQuotes.length > 0 && (
+              <div className="biz-attn-row" onClick={() => go('invoices')}>
+                <span className="ic">⏳</span><span>{expiringQuotes.length} quote{expiringQuotes.length === 1 ? '' : 's'} expire{expiringQuotes.length === 1 ? 's' : ''} this week without an answer - follow up</span>
+              </div>
+            )}
+            {unbilledHours > 0 && (
+              <div className="biz-attn-row" onClick={() => go('time')}>
+                <span className="ic">⏱</span><span>{unbilledHours} hour{unbilledHours === 1 ? '' : 's'} of work not invoiced yet</span>
+              </div>
+            )}
+            {unpaidStaff > 0 && (
+              <div className="biz-attn-row" onClick={() => go('team')}>
+                <span className="ic">👥</span><span>Payday is coming - {unpaidStaff} staff member{unpaidStaff === 1 ? " hasn't" : "s haven't"} got a payslip this month</span>
+              </div>
+            )}
+            {vatSoon && (
+              <div className="biz-attn-row" onClick={() => go('reports')}>
+                <span className="ic">🧾</span><span>VAT period {vatPeriod.label} ends {vatPeriod.to} &middot; return due {vatPeriod.due}</span>
+              </div>
+            )}
             {needsReviewTx > 0 && (
               <div className="biz-attn-row" onClick={() => go('money')}>
                 <span className="ic">⚠</span><span>{needsReviewTx} transaction{needsReviewTx === 1 ? '' : 's'} need review</span>

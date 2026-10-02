@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
+import PayrollView from '../Payroll.jsx';
 
 const ROLES = [
   { key: 'owner', label: 'Owner', desc: 'Everything.' },
@@ -9,7 +10,11 @@ const ROLES = [
 ];
 
 export default function Team() {
-  const { members, myRole, inviteMember, updateMemberRole, removeMember } = useBusiness();
+  const { members, myRole, inviteMember, updateMemberRole, removeMember, hasFeature } = useBusiness();
+  // Salaries are private: only owners, admins and the accountant see them
+  // (the database enforces the same rule).
+  const showWages = hasFeature('payroll') && ['owner', 'admin', 'accountant'].includes(myRole);
+  const [view, setView] = useState(showWages ? 'wages' : 'members');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('employee');
   const [msg, setMsg] = useState('');
@@ -27,6 +32,13 @@ export default function Team() {
   return (
     <section className="tab on light-tab">
       <h1>Team</h1>
+      {showWages && (
+        <div className="seg">
+          <button className={view === 'wages' ? 'on' : ''} onClick={() => setView('wages')}>Staff &amp; Wages</button>
+          <button className={view === 'members' ? 'on' : ''} onClick={() => setView('members')}>App Access</button>
+        </div>
+      )}
+      {view === 'wages' && showWages ? <PayrollView /> : <>
 
       <h2>Members</h2>
       <div className="card">
@@ -75,6 +87,7 @@ export default function Team() {
           </div>
         ))}
       </div>
+      </>}
       <div style={{ height: 20 }} />
     </section>
   );

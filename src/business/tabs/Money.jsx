@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import CashUpView from '../CashUp.jsx';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { parsePdf } from '../../lib/parsePdf.js';
@@ -207,12 +208,13 @@ function StatementUploadView() {
   );
 }
 
-export default function Money() {
-  const { myRole } = useBusiness();
+export default function Money({ startSeg }) {
+  const { myRole, hasFeature } = useBusiness();
   const readOnly = myRole === 'accountant';
-  const [seg, setSeg] = useState('transactions');
+  const [seg, setSeg] = useState(startSeg || 'transactions');
   const [filter, setFilter] = useState('all');
-  const segs = readOnly ? ['transactions', 'income'] : ['transactions', 'income', 'add', 'statement'];
+  const segs = (readOnly ? ['transactions', 'income'] : ['transactions', 'income', 'add', 'statement'])
+    .concat(hasFeature('cashup') ? ['cashup'] : []);
 
   return (
     <section className="tab on light-tab">
@@ -221,7 +223,7 @@ export default function Money() {
       <div className="seg">
         {segs.map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
-            {{ transactions: 'Transactions', income: 'Income', add: 'Add', statement: 'Upload Statement' }[s]}
+            {{ transactions: 'Transactions', income: 'Income', add: 'Add', statement: 'Upload Statement', cashup: 'Cash-up' }[s]}
           </button>
         ))}
       </div>
@@ -229,6 +231,7 @@ export default function Money() {
       {seg === 'income' && <IncomeView />}
       {!readOnly && seg === 'add' && <AddTransactionForm />}
       {!readOnly && seg === 'statement' && <StatementUploadView />}
+      {seg === 'cashup' && <CashUpView readOnly={readOnly} />}
       <div style={{ height: 20 }} />
     </section>
   );

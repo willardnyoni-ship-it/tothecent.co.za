@@ -2,18 +2,29 @@ import { useEffect, useRef, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
 
+// `feature` tabs only show when that tool is switched on for this business
+// (see lib/businessProfiles.js); the rest are the same for everyone.
 export const BIZ_TABS = [
   { t: 'home', label: 'Home' },
+  { t: 'bookings', label: 'Bookings', feature: 'bookings' },
   { t: 'money', label: 'Money' },
   { t: 'invoices', label: 'Invoices' },
+  { t: 'jobs', label: 'Jobs', feature: 'jobs' },
+  { t: 'time', label: 'Time', feature: 'time' },
   { t: 'expenses', label: 'Expenses' },
+  { t: 'stock', label: 'Stock', feature: 'stock' },
   { t: 'reports', label: 'Reports' },
   { t: 'team', label: 'Team' },
 ];
 
-export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
+export function visibleTabs(features) {
+  return BIZ_TABS.filter(x => !x.feature || features.includes(x.feature));
+}
+
+export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings, onOpenAdmin }) {
   const { syncCfg, doSignOut } = useBudget();
-  const { business } = useBusiness();
+  const { business, features } = useBusiness();
+  const tabs = visibleTabs(features);
   const [navOpen, setNavOpen] = useState(false);
   const [acctOpen, setAcctOpen] = useState(false);
   const navRef = useRef(null), acctRef = useRef(null);
@@ -27,7 +38,7 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
-  const current = BIZ_TABS.find(x => x.t === tab);
+  const current = tabs.find(x => x.t === tab);
 
   return (
     <header className="topnav">
@@ -38,14 +49,14 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
       </button>
       <div className="navNow">{business?.name || current?.label}</div>
       <div className="navMenu" hidden={!navOpen}>
-        {BIZ_TABS.map(x => (
+        {tabs.map(x => (
           <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => { setNavOpen(false); go(x.t); }}>{x.label}</button>
         ))}
         <hr />
         <button onClick={() => { setNavOpen(false); onOpenSettings(); }}>Settings</button>
       </div>
       <div className="tabs">
-        {BIZ_TABS.map(x => (
+        {tabs.map(x => (
           <button key={x.t} data-tour={x.t} className={x.t === tab ? 'on' : ''} onClick={() => go(x.t)}>{x.label}</button>
         ))}
       </div>
@@ -58,6 +69,7 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings }) {
         <div className="who"><b>{business?.name}</b><span>{syncCfg.email}</span></div>
         <button onClick={() => { setAcctOpen(false); onOpenSettings(); }}>Settings</button>
         <button onClick={() => { setAcctOpen(false); onSwitchMode(); }}>Switch to Personal</button>
+        {onOpenAdmin && <button onClick={() => { setAcctOpen(false); onOpenAdmin(); }}>App owner view</button>}
         <hr />
         <button onClick={doSignOut}>Log out</button>
       </div>

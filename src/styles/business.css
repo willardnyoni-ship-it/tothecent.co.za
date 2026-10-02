@@ -16,7 +16,7 @@
 .biz-attn-row:last-child{border-bottom:0}
 .biz-attn-row .ic{flex:none}
 
-.status-badge{display:inline-block;font-size:18px;font-weight:700;padding:3px 10px;border-radius:99px}
+.status-badge{display:inline-block;font-size:18px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
 .status-badge.draft{background:var(--card2);color:var(--dim)}
 .status-badge.sent{background:rgba(10,132,255,.15);color:var(--blue)}
 .status-badge.viewed{background:rgba(10,132,255,.15);color:var(--blue)}
@@ -44,3 +44,46 @@
   #invoicePrintArea,#invoicePrintArea *{visibility:visible}
   #invoicePrintArea{position:absolute;top:0;left:0;width:100%;background:#fff;color:#000}
 }
+
+/* ---------- tailored business tools ---------- */
+.biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:end;margin-bottom:8px}
+.biz-grid input,.biz-grid select{padding:10px}
+.biz-grid label{margin-top:0}
+
+/* business-type picker (sign-up + Settings -> Features) */
+.biz-profiles{display:grid;gap:8px}
+@media (min-width:560px){ .biz-profiles{grid-template-columns:1fr 1fr} }
+.biz-profile{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card);color:var(--tx);
+  border:1.5px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;font:inherit}
+.biz-profile .ic{font-size:26px;line-height:1}
+.biz-profile b{display:block;font-size:18px}
+.biz-profile .mini{display:block;font-weight:400;opacity:.75;margin-top:2px}
+.biz-profile.on{border-color:var(--acc);background:var(--accC)}
+.biz-feature-list{margin:10px 0 0;padding-left:20px}
+.biz-feature-list li{margin:6px 0}
+.biz-feature-list .mini{display:block}
+
+/* bookings week strip */
+.biz-week{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.biz-week button{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;font:inherit;color:var(--tx);min-width:0}
+.biz-week button span{font-size:13px;color:var(--dim)}
+.biz-week button b{font-size:18px}
+.biz-week button i{font-style:normal;font-size:12px;color:var(--acc);font-weight:700;min-height:14px}
+.biz-week button.today{border-color:var(--blue)}
+.biz-week button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.biz-week button.on span,.biz-week button.on i{color:#fff}
+
+/* quote + booking statuses */
+.status-badge.accepted,.status-badge.done{background:rgba(48,209,88,.15);color:var(--acc)}
+.status-badge.invoiced{background:rgba(10,132,255,.15);color:var(--blue)}
+.status-badge.declined,.status-badge.no_show{background:rgba(255,69,58,.15);color:var(--bad)}
+.status-badge.expired{background:var(--card2);color:var(--dim)}
+.status-badge.booked{background:rgba(10,132,255,.15);color:var(--blue)}
+
+/* ---------- app owner console ---------- */
+.adm-readout{min-height:22px;margin:4px 0 6px}
+.adm-bars{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--line)}
+.adm-bar{flex:1;height:100%;display:flex;align-items:flex-end;background:none;border:0;padding:0;cursor:pointer;min-width:0}
+.adm-bar i{display:block;width:100%;background:var(--acc);border-radius:4px 4px 0 0;opacity:.85}
+.adm-bar.on i,.adm-bar:hover i{opacity:1;outline:2px solid var(--acc);outline-offset:1px}

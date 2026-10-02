@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet, SheetOutlet } from '../components/Sheet.jsx';
 import { AccountSheetContent } from '../components/SettingsSheets.jsx';
 import { useHashTab } from '../app/useHashTab.js';
-import BusinessNav from './BusinessNav.jsx';
+import BusinessNav, { visibleTabs } from './BusinessNav.jsx';
 import BusinessSignup from './BusinessSignup.jsx';
 import BizHome from './tabs/Home.jsx';
 import Money from './tabs/Money.jsx';
@@ -13,15 +13,36 @@ import Expenses from './tabs/Expenses.jsx';
 import Reports from './tabs/Reports.jsx';
 import Team from './tabs/Team.jsx';
 import BizSettings from './tabs/Settings.jsx';
+import Jobs from './tabs/Jobs.jsx';
+import Time from './tabs/Time.jsx';
+import Stock from './tabs/Stock.jsx';
+import Bookings from './tabs/Bookings.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
 
-const TABS = { home: BizHome, money: Money, invoices: Invoices, expenses: Expenses, reports: Reports, team: Team };
+const TABS = { home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, stock: Stock, reports: Reports, team: Team };
 
-export default function BusinessApp({ onSwitchMode }) {
+const TOUR_STEPS = [
+  { tab: 'home', title: 'Home', body: 'Cash available, income vs expenses, and anything that needs your attention - overdue invoices, missing receipts, transactions to review.' },
+  { tab: 'bookings', title: 'Bookings', body: 'Your appointments by day, deposits, no-shows, and what each staff member brought in.' },
+  { tab: 'money', title: 'Money', body: 'Every transaction, income logged separately, manual entry, and importing your bank statement.' },
+  { tab: 'invoices', title: 'Invoices', body: 'Customers, quotes, creating and sending invoices, tracking payments, and recurring invoices.' },
+  { tab: 'jobs', title: 'Jobs', body: 'Everything for one job in one place - the quote, invoices, materials and hours - so you can see what it really made.' },
+  { tab: 'time', title: 'Time', body: 'Start a timer or log hours, then turn unbilled time into an invoice.' },
+  { tab: 'expenses', title: 'Expenses', body: 'Scan a receipt and OCR fills in the amount and category for you, ready for approval.' },
+  { tab: 'stock', title: 'Stock', body: 'What you have on the shelf, what it is worth, and what is running low.' },
+  { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
+  { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
+];
+
+export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
   const { syncCfg } = useBudget();
-  const { loading, checked, hasBusiness, claimInvites, refreshAll } = useBusiness();
+  const { loading, checked, hasBusiness, claimInvites, refreshAll, features } = useBusiness();
   const { open, close } = useSheet();
   const [tab, goHash] = useHashTab(Object.keys(TABS), 'home');
+  // Which section Money should open on - set when sign-up's "Upload Bank
+  // Statement" button sends someone straight there.
+  const [moneyStart, setMoneyStart] = useState(null);
+  const tabs = visibleTabs(features).map(x => x.t);
 
   useEffect(() => { if (syncCfg.token) claimInvites(); }, [syncCfg.token, claimInvites]);
   useEffect(() => {
@@ -54,33 +75,26 @@ export default function BusinessApp({ onSwitchMode }) {
     return (
       <BusinessSignup onDone={async (next) => {
         await refreshAll();
+        setMoneyStart(next === 'statement' ? 'statement' : 'add');
         go('money');
-        if (next === 'statement') setTimeout(() => {
-          // land them on Money's Upload Statement segment
-        }, 0);
       }} />
     );
   }
 
-  const Active = TABS[tab] || BizHome;
+  // A tab whose tool was switched off (or a bookmarked #stock link on a
+  // business without stock) falls back to Home instead of a dead screen.
+  const Active = (tabs.includes(tab) && TABS[tab]) || BizHome;
   return (
     <>
-      <BusinessNav tab={tab} go={go} onSwitchMode={onSwitchMode} onOpenSettings={openSettings} />
+      <BusinessNav tab={tab} go={go} onSwitchMode={onSwitchMode} onOpenSettings={openSettings} onOpenAdmin={onOpenAdmin} />
       <div className="wrap">
-        <Active go={go} />
+        <Active go={go} onOpenSettings={openSettings} startSeg={tab === 'money' ? moneyStart : undefined} />
       </div>
       <GuidedTour
         storageKey="wnTourDone_business"
         tab={tab}
         go={go}
-        steps={[
-          { tab: 'home', title: 'Home', body: 'Cash available, income vs expenses, and anything that needs your attention - overdue invoices, missing receipts, transactions to review.' },
-          { tab: 'money', title: 'Money', body: 'Every transaction, income logged separately, manual entry, and importing your bank statement.' },
-          { tab: 'invoices', title: 'Invoices', body: 'Customers, creating and sending invoices, tracking payments, and recurring invoices.' },
-          { tab: 'expenses', title: 'Expenses', body: 'Scan a receipt and OCR fills in the amount and category for you, ready for approval.' },
-          { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
-          { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
-        ]}
+        steps={TOUR_STEPS.filter(st => tabs.includes(st.tab))}
       />
       <SheetOutlet />
     </>

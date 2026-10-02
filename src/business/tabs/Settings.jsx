@@ -2,6 +2,69 @@ import { useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { useBudget } from '../../store/BudgetStore.jsx';
 import { iso } from '../../lib/format.js';
+import { FEATURES, featuresFor, activeFeatures, profileByKey } from '../../lib/businessProfiles.js';
+import { DEFAULT_MILEAGE_RATE } from '../../lib/saTax.js';
+import { ProfilePicker } from '../BusinessSignup.jsx';
+
+function FeaturesSettings() {
+  const { business, updateBusiness, myRole } = useBusiness();
+  const isOwner = myRole === 'owner';
+  const [profile, setProfile] = useState(business.business_profile || 'general');
+  const [on, setOn] = useState(activeFeatures(business));
+  const [rate, setRate] = useState(business.mileage_rate ?? DEFAULT_MILEAGE_RATE);
+  const [prefix, setPrefix] = useState(business.quote_prefix || 'QUO-');
+  const [msg, setMsg] = useState('');
+
+  // Picking a different business type resets the switches to that type's
+  // tools, keeping payroll and VAT as they were (those depend on staff and
+  // turnover, not on the kind of business).
+  function chooseProfile(p) {
+    setProfile(p);
+    setOn(featuresFor(p, { hasStaff: on.includes('payroll'), vatRegistered: on.includes('vat') }));
+  }
+  const toggle = f => setOn(list => list.includes(f) ? list.filter(x => x !== f) : [...list, f]);
+
+  async function save() {
+    await updateBusiness({ business_profile: profile, features: on, mileage_rate: +rate || DEFAULT_MILEAGE_RATE, quote_prefix: prefix || 'QUO-' });
+    setMsg('Saved - your tabs have been updated.');
+    setTimeout(() => setMsg(''), 2500);
+  }
+
+  return (
+    <>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Kind of business</h2>
+        <div className="sub" style={{ marginBottom: 10 }}>Currently: {profileByKey(business.business_profile)?.label || 'not chosen yet'}</div>
+        {isOwner ? <ProfilePicker value={profile} onChange={chooseProfile} /> : null}
+      </div>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Tools</h2>
+        <div className="sub">Switch on anything useful, whatever kind of business you are. Switching a tool off only hides it - nothing is deleted.</div>
+        {Object.entries(FEATURES).map(([k, f]) => (
+          <label key={k} className="chk" style={{ alignItems: 'flex-start' }}>
+            <input type="checkbox" checked={on.includes(k)} disabled={!isOwner} onChange={() => toggle(k)} />
+            <span><b>{f.label}</b><br /><span className="mini">{f.desc}</span></span>
+          </label>
+        ))}
+        {on.includes('quotes') && (
+          <>
+            <label>Quote prefix</label>
+            <input value={prefix} disabled={!isOwner} onChange={e => setPrefix(e.target.value)} />
+          </>
+        )}
+        {on.includes('mileage') && (
+          <>
+            <label>Mileage rate (R per km)</label>
+            <input type="number" step="0.01" value={rate} disabled={!isOwner} onChange={e => setRate(e.target.value)} />
+            <div className="mini">Defaults to the SARS simplified rate. Update it when SARS publishes a new one.</div>
+          </>
+        )}
+      </div>
+      {msg && <div className="msg s">{msg}</div>}
+      {isOwner ? <button className="b" onClick={save}>Save Tools</button> : <div className="mini">Only the business owner can change these.</div>}
+    </>
+  );
+}
 
 function dl(blob, name) {
   const u = URL.createObjectURL(blob), a = document.createElement('a');
@@ -17,14 +80,20 @@ function fmtWhen(ts) {
 }
 
 export default function BizSettings({ onClose }) {
-  const { business, updateBusiness, customers, invoices, expenses, transactions, recurringInvoices, myRole } = useBusiness();
+  const biz = useBusiness();
+  const { business, updateBusiness, customers, invoices, expenses, transactions, recurringInvoices, myRole } = biz;
   const { trust, markBizBackup } = useBudget();
   const [form, setForm] = useState({ ...business });
-  const [seg, setSeg] = useState('business');
+  const [seg, setSeg] = useState('features');
   const [msg, setMsg] = useState('');
 
   function exportBackup() {
-    const payload = { exportedAt: new Date().toISOString(), business, customers, invoices, expenses, transactions, recurringInvoices };
+    const payload = {
+      exportedAt: new Date().toISOString(), business, customers, invoices, expenses, transactions, recurringInvoices,
+      quotes: biz.quotes, jobs: biz.jobs, timeEntries: biz.timeEntries, mileageTrips: biz.mileageTrips,
+      stockItems: biz.stockItems, stockMovements: biz.stockMovements, cashUps: biz.cashUps, bookings: biz.bookings,
+      employees: biz.employees, payRuns: biz.payRuns,
+    };
     dl(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), 'business-backup-' + iso(new Date()) + '.json');
     markBizBackup();
   }
@@ -45,13 +114,14 @@ export default function BizSettings({ onClose }) {
     <>
       <div className="row"><h1>Settings</h1><button className="b g sm" onClick={onClose}>Close</button></div>
       <div className="seg">
-        {['business', 'invoice', 'tax', 'data', 'notifications', 'subscription'].map(s => (
+        {['features', 'business', 'invoice', 'tax', 'data', 'notifications', 'subscription'].map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
-            {{ business: 'Business', invoice: 'Invoice', tax: 'Tax', data: 'Data', notifications: 'Notifications', subscription: 'Subscription' }[s]}
+            {{ features: 'Features', business: 'Business', invoice: 'Invoice', tax: 'Tax', data: 'Data', notifications: 'Notifications', subscription: 'Subscription' }[s]}
           </button>
         ))}
       </div>
 
+      {seg === 'features' && <FeaturesSettings />}
       {seg === 'business' && (
         <div className="card">
           <label style={{ marginTop: 0 }}>Business Name</label>
@@ -112,10 +182,10 @@ export default function BizSettings({ onClose }) {
         </div>
       )}
       {msg && <div className="msg s">{msg}</div>}
-      {myRole !== 'owner' && seg !== 'notifications' && seg !== 'subscription' && seg !== 'data' && (
+      {myRole !== 'owner' && !['notifications', 'subscription', 'data', 'features'].includes(seg) && (
         <div className="mini" style={{ marginTop: 8 }}>Only the business owner can change these settings.</div>
       )}
-      {myRole === 'owner' && seg !== 'notifications' && seg !== 'subscription' && seg !== 'data' && (
+      {myRole === 'owner' && !['notifications', 'subscription', 'data', 'features'].includes(seg) && (
         <>
           <div style={{ height: 12 }} />
           <button className="b" onClick={save}>Save</button>

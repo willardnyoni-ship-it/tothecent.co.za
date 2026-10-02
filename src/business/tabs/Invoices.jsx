@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
-import { invoiceStatusLabel, findInvoiceMatches, customerLedger, RECURRING_FREQUENCY_LABEL } from '../../lib/businessMath.js';
-import { useCreateInvoice } from '../CreateInvoiceSheet.jsx';
+import { invoiceStatusLabel, quoteStatusLabel, findInvoiceMatches, customerLedger, RECURRING_FREQUENCY_LABEL } from '../../lib/businessMath.js';
+import { useCreateInvoice, useCreateQuote } from '../CreateInvoiceSheet.jsx';
+import { useQuoteDetail } from '../QuoteDetailSheet.jsx';
+import { useSendReminder } from '../InvoiceDetailSheet.jsx';
 import { useInvoiceDetail } from '../InvoiceDetailSheet.jsx';
 import { useCustomerDetail } from '../CustomerDetailSheet.jsx';
 
@@ -111,8 +113,57 @@ function RecurringView({ readOnly }) {
   );
 }
 
+function QuotesView({ readOnly }) {
+  const { quotes, customers } = useBusiness();
+  const createQuote = useCreateQuote();
+  const openQuote = useQuoteDetail();
+  const [filter, setFilter] = useState('open');
+  const withCustomer = quotes.map(q => ({ ...q, customerName: (customers.find(c => c.id === q.customer_id) || {}).name || '' }));
+  const isOpen = q => ['draft', 'sent'].includes(q.status) && quoteStatusLabel(q) !== 'Expired';
+  const shown = withCustomer.filter(q => filter === 'all' ? true
+    : filter === 'open' ? isOpen(q)
+    : filter === 'won' ? ['accepted', 'invoiced'].includes(q.status)
+    : q.status === 'declined' || quoteStatusLabel(q) === 'Expired');
+  const openValue = withCustomer.filter(isOpen).reduce((a, q) => a + +q.total, 0);
+  const decided = withCustomer.filter(q => ['accepted', 'invoiced', 'declined'].includes(q.status));
+  const winRate = decided.length ? Math.round(decided.filter(q => q.status !== 'declined').length / decided.length * 100) : null;
+
+  return (
+    <>
+      <div className="biz-cards">
+        <div className="biz-card"><div className="lbl">Open quotes</div><div className="val">{R(openValue)}</div></div>
+        <div className="biz-card"><div className="lbl">Win rate</div><div className="val">{winRate === null ? '-' : winRate + '%'}</div></div>
+      </div>
+      {!readOnly && <button className="b" onClick={() => createQuote()}>+ Create Quote</button>}
+      <div className="seg" style={{ marginTop: 16 }}>
+        {[['open', 'Open'], ['won', 'Won'], ['lost', 'Declined/Expired'], ['all', 'All']].map(([k, l]) => (
+          <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l}</button>
+        ))}
+      </div>
+      <div className="card">
+        <table><tbody>
+          {shown.length ? shown.map(q => (
+            <tr key={q.id} onClick={() => openQuote(q.id)} style={{ cursor: 'pointer' }}>
+              <td>
+                <div style={{ fontWeight: 600 }}>{q.quote_number} &middot; {q.customerName || 'No customer'}</div>
+                <div className="tag">Valid until {q.valid_until || '-'}{+q.deposit_pct > 0 ? ' · ' + +q.deposit_pct + '% deposit' : ''}</div>
+              </td>
+              <td className="r">
+                {R2(+q.total)}
+                <div><span className={'status-badge ' + q.status}>{quoteStatusLabel(q)}</span></div>
+              </td>
+            </tr>
+          )) : <tr><td className="mini" colSpan={2}>No quotes here yet.</td></tr>}
+        </tbody></table>
+      </div>
+    </>
+  );
+}
+
 export default function Invoices() {
-  const { invoices, customers, transactions, updateInvoice, updateTransaction, myRole } = useBusiness();
+  const { invoices, customers, transactions, updateInvoice, updateTransaction, myRole, hasFeature } = useBusiness();
+  const sendReminder = useSendReminder();
+  const views = ['invoices'].concat(hasFeature('quotes') ? ['quotes'] : [], ['customers', 'recurring']);
   const readOnly = myRole === 'accountant';
   const createInvoice = useCreateInvoice();
   const openInvoice = useInvoiceDetail();
@@ -151,16 +202,16 @@ export default function Invoices() {
       </div>
 
       <div className="seg" style={{ marginTop: 12 }}>
-        {['invoices', 'customers', 'recurring'].map(v => (
+        {views.map(v => (
           <button key={v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>
         ))}
       </div>
 
       {readOnly && <div className="infobox" style={{ marginBottom: 12 }}>You have accountant (view-only) access - review and export here, but editing invoices needs an owner or admin.</div>}
 
-      {view === 'customers' ? <CustomersView readOnly={readOnly} /> : view === 'recurring' ? <RecurringView readOnly={readOnly} /> : (
+      {view === 'quotes' ? <QuotesView readOnly={readOnly} /> : view === 'customers' ? <CustomersView readOnly={readOnly} /> : view === 'recurring' ? <RecurringView readOnly={readOnly} /> : (
         <>
-          {!readOnly && <button className="b" style={{ marginTop: 16 }} onClick={createInvoice}>+ Create Invoice</button>}
+          {!readOnly && <button className="b" style={{ marginTop: 16 }} onClick={() => createInvoice()}>+ Create Invoice</button>}
 
           {matches.length > 0 && (
             <>
@@ -190,6 +241,10 @@ export default function Invoices() {
                   <td className="r">
                     {R2(inv.total)}
                     <div><span className={'status-badge ' + inv.status}>{invoiceStatusLabel(inv)}</span></div>
+                    {!readOnly && hasFeature('reminders') && invoiceStatusLabel(inv) === 'Overdue' && (
+                      <button className="b g sm" style={{ width: 'auto', marginTop: 6 }}
+                        onClick={e => { e.stopPropagation(); sendReminder(inv, 'whatsapp'); }}>Remind</button>
+                    )}
                   </td>
                 </tr>
               )) : <tr><td className="mini" colSpan={2}>No invoices yet.</td></tr>}

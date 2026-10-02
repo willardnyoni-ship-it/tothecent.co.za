@@ -80,6 +80,7 @@ export default function Landing() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [alreadySignedIn, setAlreadySignedIn] = useState(false);
+  const [invite, setInvite] = useState(null); // { email, name } from an ?invite= link
   const recoverRef = useRef({ token: null, refresh: null, expiresIn: null });
   const emailRef = useRef(null), passRef = useRef(null);
 
@@ -102,6 +103,29 @@ export default function Landing() {
       history.replaceState(null, '', location.pathname + location.search);
       openAuth('recover');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Opened from an invite link (tothecent.co.za/?invite=<code>) - look the
+  // code up, greet them by name and open "Create account" with their email
+  // filled in. An unknown or withdrawn code just shows the normal page.
+  useEffect(() => {
+    const code = new URLSearchParams(location.search).get('invite');
+    if (!code || !/^[0-9a-f-]{36}$/i.test(code)) return;
+    (async () => {
+      try {
+        const r = await fetch(HOSTED_SUPA_URL + '/rest/v1/rpc/invite_details', {
+          method: 'POST',
+          headers: { apikey: HOSTED_SUPA_KEY, Authorization: 'Bearer ' + HOSTED_SUPA_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invite_code: code }),
+        });
+        const rows = r.ok ? await r.json() : [];
+        if (!rows || !rows[0]) return;
+        setInvite(rows[0]);
+        setEmail(rows[0].email || '');
+        openAuth('signup');
+      } catch (e) { /* offline or old link - normal landing page */ }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -176,7 +200,9 @@ export default function Landing() {
               <button className="authClose" onClick={closeAuth} aria-label="Close">&times;</button>
             </div>
             <p className="mini" style={{ marginTop: 6 }}>
-              {isRecover ? 'Choose a new password for your account.' : 'Same account, works in the app on any device.'}
+              {isRecover ? 'Choose a new password for your account.'
+                : invite && authMode === 'signup' ? `Welcome${invite.name ? ', ' + invite.name.split(' ')[0] : ''} - you've been invited to To The Cent. Choose a plan and a password to get started.`
+                : 'Same account, works in the app on any device.'}
             </p>
             {!isRecover && (
               <div className="authTabs">

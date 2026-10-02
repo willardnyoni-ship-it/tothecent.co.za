@@ -5,11 +5,14 @@ import { R2, iso, uid } from '../../lib/format.js';
 import { readSlip } from '../../lib/readSlip.js';
 import { uploadBusinessFile } from '../../lib/businessApi.js';
 import { findExpenseMatches } from '../../lib/businessMath.js';
+import MileageView from '../Mileage.jsx';
 
-const CATEGORIES = ['Rent', 'Transport', 'Fuel', 'Telephone', 'Marketing', 'Equipment', 'Supplies', 'Salaries', 'Other'];
+const CATEGORIES = ['Rent', 'Transport', 'Fuel', 'Telephone', 'Marketing', 'Equipment', 'Supplies', 'Materials', 'Stock purchases', 'Salaries', 'Other'];
 
 function AddExpenseForm({ prefill, onSaved }) {
-  const { addExpense } = useBusiness();
+  const { addExpense, jobs, hasFeature } = useBusiness();
+  const [jobId, setJobId] = useState('');
+  const showJobs = hasFeature('jobs') && jobs.some(j => j.status !== 'cancelled' && j.status !== 'done');
   const [amt, setAmt] = useState(prefill?.total || '');
   const [cat, setCat] = useState(prefill?.cat || 'Other');
   const [desc, setDesc] = useState(prefill?.merchant || '');
@@ -22,7 +25,7 @@ function AddExpenseForm({ prefill, onSaved }) {
     await addExpense({
       amount: a, category: cat, description: desc, merchant: desc, date,
       status: 'needs_review', receipt_storage_path: prefill?.receiptPath || null,
-      items: prefill?.items || null, vat: prefill?.vat || 0,
+      items: prefill?.items || null, vat: prefill?.vat || 0, job_id: jobId || null,
     });
     setMsg('Logged.');
     onSaved?.();
@@ -38,6 +41,15 @@ function AddExpenseForm({ prefill, onSaved }) {
       <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Woolworths" />
       <label>Date</label>
       <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+      {showJobs && (
+        <>
+          <label>Job <span className="mini">(optional)</span></label>
+          <select value={jobId} onChange={e => setJobId(e.target.value)}>
+            <option value="">Not for a specific job</option>
+            {jobs.filter(j => j.status !== 'cancelled' && j.status !== 'done').map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
+          </select>
+        </>
+      )}
       {msg && <div className="msg s">{msg}</div>}
       <div style={{ height: 10 }} />
       <button className="b" onClick={save}>Add Expense</button>
@@ -88,9 +100,10 @@ function ScanReceipt({ onDone }) {
 
 export default function Expenses() {
   const { syncCfg } = useBudget();
-  const { expenses, transactions, updateExpense, myRole } = useBusiness();
+  const { expenses, transactions, updateExpense, myRole, hasFeature } = useBusiness();
   const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('all');
+  const [area, setArea] = useState('expenses');
 
   const total = expenses.filter(e => e.status !== 'rejected').reduce((a, e) => a + +e.amount, 0);
   const matches = useMemo(() => findExpenseMatches(expenses, transactions), [expenses, transactions]);
@@ -109,6 +122,13 @@ export default function Expenses() {
   return (
     <section className="tab on light-tab">
       <h1>Expenses</h1>
+      {hasFeature('mileage') && (
+        <div className="seg">
+          <button className={area === 'expenses' ? 'on' : ''} onClick={() => setArea('expenses')}>Expenses</button>
+          <button className={area === 'mileage' ? 'on' : ''} onClick={() => setArea('mileage')}>Mileage</button>
+        </div>
+      )}
+      {area === 'mileage' ? <MileageView readOnly={readOnly} /> : <>
       <div className="card"><div className="mini">Total Expenses</div><div className="mono" style={{ fontSize: 28, fontWeight: 800 }}>{R2(total)}</div></div>
 
       {readOnly && <div className="infobox">You have accountant (view-only) access - review and export here, but logging or approving expenses needs an owner or admin.</div>}
@@ -165,6 +185,7 @@ export default function Expenses() {
           )) : <tr><td className="mini" colSpan={2}>No expenses yet.</td></tr>}
         </tbody></table>
       </div>
+      </>}
       <div style={{ height: 20 }} />
     </section>
   );

@@ -71,6 +71,15 @@ export function nextInvoiceNumber(business) {
   return (business.invoice_prefix || 'INV-') + String(business.next_invoice_number || 1).padStart(4, '0');
 }
 
+export function nextQuoteNumber(business) {
+  return (business.quote_prefix || 'QUO-') + String(business.next_quote_number || 1).padStart(4, '0');
+}
+
+export function quoteStatusLabel(q) {
+  if (['draft', 'sent'].includes(q.status) && q.valid_until && q.valid_until < new Date().toISOString().slice(0, 10)) return 'Expired';
+  return { draft: 'Draft', sent: 'Sent', accepted: 'Accepted', declined: 'Declined', invoiced: 'Invoiced', expired: 'Expired' }[q.status] || q.status;
+}
+
 export const RECURRING_FREQUENCIES = ['weekly', 'monthly', 'quarterly'];
 export const RECURRING_FREQUENCY_LABEL = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
 

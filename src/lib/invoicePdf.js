@@ -1,5 +1,5 @@
 import { R2 } from './format.js';
-import { invoiceStatusLabel } from './businessMath.js';
+import { invoiceStatusLabel, quoteStatusLabel } from './businessMath.js';
 
 // jsPDF loads as a plain global script from the CDN (see app/index.html's
 // <head>), same pattern as pdf.js in parsePdf.js - it's a one-off render
@@ -17,33 +17,50 @@ const RIGHT = PAGE_WIDTH - MARGIN;
 // navigator.share() - Safari in particular revokes the "user activation"
 // a share prompt needs if anything async runs first.
 export function buildInvoicePdfFile(business, customer, inv) {
+  return buildPdf(business, customer, inv, {
+    title: 'Invoice', number: inv.invoice_number, status: invoiceStatusLabel(inv),
+    dateLabel: 'DUE', date: inv.due_date,
+  });
+}
+
+// Same layout as an invoice; a quote shows its expiry date instead of a due
+// date, and a deposit line under the total when one is asked for.
+export function buildQuotePdfFile(business, customer, q) {
+  return buildPdf(business, customer, q, {
+    title: 'Quote', number: q.quote_number, status: quoteStatusLabel(q),
+    dateLabel: 'VALID UNTIL', date: q.valid_until,
+    deposit: +q.deposit_pct > 0 ? { pct: +q.deposit_pct, amount: +q.total * +q.deposit_pct / 100 } : null,
+  });
+}
+
+function buildPdf(business, customer, inv, kind) {
   const doc = jsPDF();
   let y = 56;
 
   doc.setFont('helvetica', 'bold').setFontSize(16);
-  doc.text(business.name || 'Invoice', MARGIN, y);
+  doc.text(business.name || kind.title, MARGIN, y);
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(110);
   if (business.tax_number) { y += 14; doc.text('VAT: ' + business.tax_number, MARGIN, y); }
 
   doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20);
-  doc.text(invoiceStatusLabel(inv).toUpperCase(), RIGHT, 56, { align: 'right' });
+  doc.text(kind.status.toUpperCase(), RIGHT, 56, { align: 'right' });
   doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(80);
-  doc.text('Invoice ' + inv.invoice_number, RIGHT, 72, { align: 'right' });
+  doc.text(kind.title + ' ' + kind.number, RIGHT, 72, { align: 'right' });
 
   y = 100;
   doc.setDrawColor(210).line(MARGIN, y, RIGHT, y);
   y += 24;
 
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(130);
-  doc.text('BILL TO', MARGIN, y);
-  doc.text('ISSUED', RIGHT - 140, y);
-  doc.text('DUE', RIGHT - 60, y);
+  doc.text(kind.title === 'Quote' ? 'PREPARED FOR' : 'BILL TO', MARGIN, y);
+  doc.text('ISSUED', RIGHT - 160, y);
+  doc.text(kind.dateLabel, RIGHT - 70, y);
   y += 14;
   doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20);
   doc.text(customer?.name || 'No customer', MARGIN, y);
   doc.setFont('helvetica', 'normal').setFontSize(10);
-  doc.text(inv.issue_date || '-', RIGHT - 140, y);
-  doc.text(inv.due_date || '-', RIGHT - 60, y);
+  doc.text(inv.issue_date || '-', RIGHT - 160, y);
+  doc.text(kind.date || '-', RIGHT - 70, y);
   if (customer?.email) { y += 14; doc.setFontSize(9).setTextColor(110); doc.text(customer.email, MARGIN, y); }
 
   y += 30;
@@ -79,6 +96,7 @@ export function buildInvoicePdfFile(business, customer, inv) {
   totalsRow('VAT', R2(+inv.vat));
   totalsRow('Discount', '-' + R2(+inv.discount));
   totalsRow('TOTAL', R2(+inv.total), true);
+  if (kind.deposit) totalsRow('Deposit due (' + kind.deposit.pct + '%)', R2(kind.deposit.amount));
 
   if (inv.notes) {
     y += 14; doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(130); doc.text('NOTES', MARGIN, y);
@@ -98,5 +116,5 @@ export function buildInvoicePdfFile(business, customer, inv) {
   }
 
   const blob = doc.output('blob');
-  return new File([blob], `Invoice-${inv.invoice_number}.pdf`, { type: 'application/pdf' });
+  return new File([blob], `${kind.title}-${kind.number}.pdf`, { type: 'application/pdf' });
 }

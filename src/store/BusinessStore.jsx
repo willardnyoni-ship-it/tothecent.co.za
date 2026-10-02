@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useBudget } from './BudgetStore.jsx';
 import { businessApi } from '../lib/businessApi.js';
 import { advanceDate, computeInvoiceTotals } from '../lib/businessMath.js';
+import { activeFeatures } from '../lib/businessProfiles.js';
 
 const BusinessContext = createContext(null);
 export function useBusiness() {
@@ -10,7 +11,26 @@ export function useBusiness() {
   return ctx;
 }
 
-const EMPTY = { customers: [], invoices: [], transactions: [], expenses: [], members: [], bankAccounts: [], categories: [], recurringInvoices: [] };
+const EMPTY_TOOLS = { jobs: [], quotes: [], timeEntries: [], mileageTrips: [], stockItems: [], stockMovements: [], cashUps: [], bookings: [], employees: [], payRuns: [] };
+const EMPTY = { customers: [], invoices: [], transactions: [], expenses: [], members: [], bankAccounts: [], categories: [], recurringInvoices: [], ...EMPTY_TOOLS };
+
+// The tailored-tool tables (see the business_profiles_and_tools migration).
+// Fetched separately from the core tables and each one on its own, so a
+// table that isn't there yet - or one this member's role can't read, like
+// payroll for an employee - just comes back empty instead of failing the
+// whole refresh and blanking every business screen.
+const TOOL_TABLES = [
+  ['jobs', 'jobs', 'order=created_at.desc'],
+  ['quotes', 'quotes', 'order=created_at.desc'],
+  ['timeEntries', 'time_entries', 'order=date.desc'],
+  ['mileageTrips', 'mileage_trips', 'order=date.desc'],
+  ['stockItems', 'stock_items', 'order=name.asc'],
+  ['stockMovements', 'stock_movements', 'order=created_at.desc'],
+  ['cashUps', 'cash_ups', 'order=date.desc'],
+  ['bookings', 'bookings', 'order=date.asc,start_time.asc'],
+  ['employees', 'employees', 'order=name.asc'],
+  ['payRuns', 'pay_runs', 'order=period.desc'],
+];
 
 // Safety cap on how many missed occurrences a single stale recurring series
 // generates in one go (e.g. weekly invoice nobody looked at for a year) -
@@ -63,6 +83,10 @@ export function BusinessProvider({ children }) {
       businessApi.select(syncCfg, token, 'business_categories', `${biz}&select=*&order=name.asc`),
       businessApi.select(syncCfg, token, 'recurring_invoices', `${biz}&select=*&order=next_run_date.asc`),
     ]);
+    const toolRows = await Promise.all(TOOL_TABLES.map(([, table, order]) =>
+      businessApi.select(syncCfg, token, table, `${biz}&select=*&${order}`).catch(() => null)));
+    const tools = {};
+    TOOL_TABLES.forEach(([key], i) => { tools[key] = toolRows[i] || []; });
     const itemsByInvoice = {};
     (items || []).forEach(it => { (itemsByInvoice[it.invoice_id] = itemsByInvoice[it.invoice_id] || []).push(it); });
     setData({
@@ -71,6 +95,7 @@ export function BusinessProvider({ children }) {
       transactions: transactions || [],
       invoices: (invoices || []).map(inv => ({ ...inv, items: itemsByInvoice[inv.id] || [] })),
       recurringInvoices: recurringInvoices || [],
+      ...tools,
     });
   }, [business, syncCfg, ensureToken]);
 
@@ -304,6 +329,46 @@ export function BusinessProvider({ children }) {
     } catch (e) { console.warn('claimInvites failed', e); }
   }, [syncCfg, ensureToken, loadBusiness]);
 
+  // ---------- tailored tools: generic row helpers ----------
+  // Every tool table has the same shape (id + business_id + its own
+  // columns) and the same RLS, so one set of helpers covers them all.
+  const addRow = useCallback(async (table, fields) => {
+    const token = await ensureToken();
+    const rows = Array.isArray(fields) ? fields : [fields];
+    const created = await businessApi.insert(syncCfg, token, table, rows.map(withBiz));
+    await refreshAll();
+    return Array.isArray(fields) ? created : created[0];
+  }, [syncCfg, ensureToken, business, refreshAll]);
+
+  const updateRow = useCallback(async (table, id, patch) => {
+    const token = await ensureToken();
+    await businessApi.update(syncCfg, token, table, `id=eq.${id}`, patch);
+    await refreshAll();
+  }, [syncCfg, ensureToken, refreshAll]);
+
+  const updateRows = useCallback(async (table, ids, patch) => {
+    if (!ids.length) return;
+    const token = await ensureToken();
+    await businessApi.update(syncCfg, token, table, `id=in.(${ids.join(',')})`, patch);
+    await refreshAll();
+  }, [syncCfg, ensureToken, refreshAll]);
+
+  const removeRow = useCallback(async (table, id) => {
+    const token = await ensureToken();
+    await businessApi.remove(syncCfg, token, table, `id=eq.${id}`);
+    await refreshAll();
+  }, [syncCfg, ensureToken, refreshAll]);
+
+  const createQuote = useCallback(async (fields) => {
+    const token = await ensureToken();
+    const [q] = await businessApi.insert(syncCfg, token, 'quotes', [withBiz(fields)]);
+    const next = (business.next_quote_number || 1) + 1;
+    await businessApi.update(syncCfg, token, 'businesses', `id=eq.${business.id}`, { next_quote_number: next });
+    setBusiness(b => ({ ...b, next_quote_number: next }));
+    await refreshAll();
+    return q;
+  }, [syncCfg, ensureToken, business, refreshAll]);
+
   const addBankAccount = useCallback(async (name) => {
     const token = await ensureToken();
     await businessApi.insert(syncCfg, token, 'bank_accounts', [withBiz({ name })]);
@@ -316,6 +381,9 @@ export function BusinessProvider({ children }) {
     addCustomer, updateCustomer, addTransaction, addTransactions, updateTransaction,
     createInvoice, updateInvoice, makeInvoiceRecurring, updateRecurringInvoice, addExpense, updateExpense,
     inviteMember, updateMemberRole, removeMember, claimInvites, addBankAccount,
+    addRow, updateRow, updateRows, removeRow, createQuote,
+    features: activeFeatures(business),
+    hasFeature: (f) => activeFeatures(business).includes(f),
     justGenerated, clearJustGenerated: () => setJustGenerated(0),
     myRole: (data.members.find(m => m.user_id === syncCfg.userId) || {}).role || (business && business.owner_id === syncCfg.userId ? 'owner' : null),
   };

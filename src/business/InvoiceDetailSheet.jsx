@@ -4,6 +4,31 @@ import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso } from '../lib/format.js';
 import { invoiceStatusLabel, RECURRING_FREQUENCIES, RECURRING_FREQUENCY_LABEL } from '../lib/businessMath.js';
 import { buildInvoicePdfFile } from '../lib/invoicePdf.js';
+import { openWhatsApp, openEmail } from './share.js';
+
+// A friendly nudge about an unpaid invoice, as plain text in WhatsApp or
+// email (the invoice itself was already sent). Records when it went out so
+// the invoice shows "Last reminded ..." and nobody double-nags a customer.
+export function reminderText(business, customer, inv) {
+  const owed = +inv.total - +(inv.paid_amount || 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const late = inv.due_date && inv.due_date < today;
+  return `Hi${customer?.name ? ' ' + customer.name.split(' ')[0] : ''}, a friendly reminder that invoice ${inv.invoice_number} from ${business.name} for ${R2(owed)} `
+    + (late ? `was due on ${inv.due_date}` : `is due ${inv.due_date ? 'on ' + inv.due_date : 'now'}`)
+    + `. ${inv.banking_details ? 'Banking details: ' + inv.banking_details.replace(/\s*\n\s*/g, ', ') + '. ' : ''}`
+    + `If you've already paid, thank you - please ignore this message.`;
+}
+
+export function useSendReminder() {
+  const { business, customers, updateInvoice } = useBusiness();
+  return async (inv, via) => {
+    const customer = customers.find(c => c.id === inv.customer_id);
+    const text = reminderText(business, customer, inv);
+    if (via === 'email') openEmail(customer?.email, 'Reminder: invoice ' + inv.invoice_number, text);
+    else openWhatsApp(customer?.phone, text);
+    await updateInvoice(inv.id, { last_reminded_at: new Date().toISOString() });
+  };
+}
 
 function downloadFile(file) {
   const url = URL.createObjectURL(file);
@@ -15,7 +40,8 @@ function downloadFile(file) {
 
 export function InvoiceDetailContent({ invoiceId }) {
   const { close } = useSheet();
-  const { business, invoices, customers, transactions, recurringInvoices, updateInvoice, addTransaction, makeInvoiceRecurring, myRole } = useBusiness();
+  const { business, invoices, customers, transactions, recurringInvoices, jobs, updateInvoice, addTransaction, makeInvoiceRecurring, myRole, hasFeature } = useBusiness();
+  const sendReminder = useSendReminder();
   const readOnly = myRole === 'accountant';
   const inv = invoices.find(i => i.id === invoiceId);
   const [busy, setBusy] = useState(false);
@@ -23,6 +49,8 @@ export function InvoiceDetailContent({ invoiceId }) {
   if (!inv) return null;
   const customer = customers.find(c => c.id === inv.customer_id);
   const series = inv.recurring_invoice_id ? recurringInvoices.find(r => r.id === inv.recurring_invoice_id) : null;
+  const job = inv.job_id ? jobs.find(j => j.id === inv.job_id) : null;
+  const canRemind = !readOnly && hasFeature('reminders') && ['sent', 'viewed', 'partially_paid', 'overdue'].includes(inv.status);
 
   const summary = `Invoice ${inv.invoice_number} from ${business.name} for ${R2(inv.total)}, due ${inv.due_date || 'on receipt'}.`;
 
@@ -97,6 +125,7 @@ export function InvoiceDetailContent({ invoiceId }) {
           <div><b>{business.name}</b><div className="mini">{business.tax_number ? 'VAT: ' + business.tax_number : ''}</div></div>
           <span className={'status-badge ' + inv.status}>{invoiceStatusLabel(inv)}</span>
         </div>
+        {job && <div className="tag">Job: {job.name}</div>}
         {series && <div className="tag">Part of a {RECURRING_FREQUENCY_LABEL[series.frequency].toLowerCase()} recurring series &middot; {series.generated_count} generated so far</div>}
         <div style={{ height: 10 }} />
         <div className="row">
@@ -130,6 +159,18 @@ export function InvoiceDetailContent({ invoiceId }) {
         <button className="b g" disabled={busy} onClick={shareEmail}>Send via Email</button>
         <div style={{ height: 8 }} />
         <button className="b g" disabled={busy} onClick={copySummary}>Copy Summary</button>
+        {canRemind && (
+          <>
+            <h2>Payment reminder</h2>
+            <div className="mini" style={{ marginBottom: 8 }}>
+              {inv.last_reminded_at ? 'Last reminded ' + new Date(inv.last_reminded_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) + '.' : 'No reminder sent yet.'}
+              {!customer?.phone && ' Add a phone number to this customer so WhatsApp opens their chat directly.'}
+            </div>
+            <button className="b g" disabled={busy} onClick={() => sendReminder(inv, 'whatsapp')}>Remind via WhatsApp</button>
+            <div style={{ height: 8 }} />
+            <button className="b g" disabled={busy} onClick={() => sendReminder(inv, 'email')}>Remind via Email</button>
+          </>
+        )}
         {!readOnly && inv.status !== 'paid' && inv.status !== 'cancelled' && (
           <>
             <div style={{ height: 8 }} />

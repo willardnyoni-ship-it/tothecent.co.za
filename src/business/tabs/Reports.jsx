@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
-import { R, R2, iso } from '../../lib/format.js';
+import { R, R2, iso, vatOf } from '../../lib/format.js';
+import { vatPeriods, currentVatPeriod } from '../../lib/saTax.js';
+import { saTaxYear, taxYearLabel } from '../../lib/tax.js';
 
 function dl(blob, name) {
   const u = URL.createObjectURL(blob), a = document.createElement('a');
@@ -9,9 +11,109 @@ function dl(blob, name) {
 
 function monthLabel(d) { return d.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' }); }
 
+// VAT201 figures for one period, on the invoice basis: output VAT on
+// invoices issued in the period, plus VAT inside cash-up / stock / booking
+// sales (those are recorded VAT-inclusive), less input VAT claimed on
+// expenses with a VAT amount captured from the slip.
+export function vatReturn(period, { invoices, expenses, transactions }) {
+  const inP = d => d && d >= period.from && d <= period.to;
+  const inv = invoices.filter(i => inP(i.issue_date) && !['draft', 'cancelled'].includes(i.status));
+  const counterSales = transactions.filter(t => t.kind === 'income' && inP(t.date) && ['cashup', 'stock', 'booking'].includes(t.source));
+  const exp = expenses.filter(e => inP(e.date) && e.status !== 'rejected');
+  const salesExcl = inv.reduce((a, i) => a + +i.total - +i.vat, 0) + counterSales.reduce((a, t) => a + +t.amount - vatOf(+t.amount), 0);
+  const outputVat = inv.reduce((a, i) => a + +i.vat, 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0);
+  const inputVat = exp.reduce((a, e) => a + +(e.vat || 0), 0);
+  const missingVat = exp.filter(e => !+e.vat).length;
+  return { inv, counterSales, exp, salesExcl, outputVat, inputVat, payable: outputVat - inputVat, missingVat };
+}
+
+function VatView() {
+  const biz = useBusiness();
+  const [category, setCategory] = useState('A');
+  const cur = currentVatPeriod(category);
+  const year = new Date().getFullYear();
+  const periods = [...vatPeriods(year - 1, category), ...vatPeriods(year, category)].filter(p => p.from <= iso(new Date())).reverse();
+  const [key, setKey] = useState(cur?.from);
+  const period = periods.find(p => p.from === key) || periods[0];
+  const v = vatReturn(period, biz);
+
+  function exportCsv() {
+    const rows = [['type', 'date', 'reference', 'amount incl VAT', 'VAT']];
+    v.inv.forEach(i => rows.push(['output: invoice', i.issue_date, i.invoice_number, i.total, i.vat]));
+    v.counterSales.forEach(t => rows.push(['output: ' + t.source, t.date, t.description || '', t.amount, vatOf(+t.amount).toFixed(2)]));
+    v.exp.forEach(e => rows.push(['input: expense', e.date, e.description || e.merchant || '', e.amount, e.vat || 0]));
+    dl(new Blob([rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }), 'vat-' + period.from + '.csv');
+  }
+
+  return (
+    <div className="card">
+      <h2 style={{ marginTop: 0 }}>VAT return (VAT201)</h2>
+      <div className="seg">
+        <button className={category === 'A' ? 'on' : ''} onClick={() => { setCategory('A'); setKey(currentVatPeriod('A')?.from); }}>Periods end Feb, Apr...</button>
+        <button className={category === 'B' ? 'on' : ''} onClick={() => { setCategory('B'); setKey(currentVatPeriod('B')?.from); }}>Periods end Jan, Mar...</button>
+      </div>
+      <select value={period.from} onChange={e => setKey(e.target.value)}>
+        {periods.map(p => <option key={p.from} value={p.from}>{p.label}</option>)}
+      </select>
+      <div className="mini" style={{ marginTop: 6 }}>Due by {p_due(period)}.</div>
+      <div className="biz-totals">
+        <div className="row"><span>Sales excl. VAT</span><span className="mono">{R2(v.salesExcl)}</span></div>
+        <div className="row"><span>Output VAT on sales</span><span className="mono">{R2(v.outputVat)}</span></div>
+        <div className="row"><span>Input VAT on expenses</span><span className="mono">-{R2(v.inputVat)}</span></div>
+        <div className="row grand"><span>{v.payable >= 0 ? 'VAT to pay' : 'VAT refund due'}</span><span className="mono">{R2(Math.abs(v.payable))}</span></div>
+      </div>
+      {v.missingVat > 0 && <div className="msg e">{v.missingVat} expense{v.missingVat === 1 ? ' has' : 's have'} no VAT amount - if they came from VAT-registered suppliers, add the VAT from the slip to claim it.</div>}
+      <div className="mini" style={{ marginTop: 8 }}>Invoice basis. Cash-up, stock and booking sales are treated as VAT-inclusive. Check against your records before filing on eFiling - this is a guide, not tax advice.</div>
+      <div style={{ height: 10 }} />
+      <button className="b g" onClick={exportCsv}>Download VAT Detail (CSV)</button>
+    </div>
+  );
+}
+function p_due(p) { return new Date(p.due + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }); }
+
+// For sole traders and freelancers nobody withholds tax, so the profit is
+// all "gross" until SARS takes its share via provisional tax. This shows
+// the tax year so far and a suggested amount to put aside.
+function TaxSetAsideView() {
+  const { business, transactions, expenses, updateBusiness, myRole } = useBusiness();
+  const [pct, setPct] = useState(business.tax_set_aside_pct ?? 25);
+  const ty = saTaxYear();
+  const from = ty.split('-')[0] + '-03-01';
+  const income = transactions.filter(t => t.kind === 'income' && t.date >= from).reduce((a, t) => a + +t.amount, 0);
+  const costs = transactions.filter(t => t.kind === 'expense' && t.date >= from).reduce((a, t) => a + +t.amount, 0)
+    + expenses.filter(e => e.date >= from && e.status !== 'rejected' && !e.matched_transaction_id).reduce((a, e) => a + +e.amount, 0);
+  const profit = income - costs;
+  const setAside = Math.max(0, profit) * (+pct || 0) / 100;
+  const monthKey = iso(new Date()).slice(0, 7);
+  const mIncome = transactions.filter(t => t.kind === 'income' && t.date.slice(0, 7) === monthKey).reduce((a, t) => a + +t.amount, 0);
+  const mCosts = transactions.filter(t => t.kind === 'expense' && t.date.slice(0, 7) === monthKey).reduce((a, t) => a + +t.amount, 0)
+    + expenses.filter(e => e.date.slice(0, 7) === monthKey && e.status !== 'rejected' && !e.matched_transaction_id).reduce((a, e) => a + +e.amount, 0);
+  const mSetAside = Math.max(0, mIncome - mCosts) * (+pct || 0) / 100;
+
+  return (
+    <div className="card">
+      <h2 style={{ marginTop: 0 }}>Tax set-aside</h2>
+      <div className="sub">Tax year {taxYearLabel(ty)}</div>
+      <div className="biz-totals">
+        <div className="row"><span>Profit so far</span><span className="mono">{R2(profit)}</span></div>
+        <div className="row grand"><span>Put aside for SARS ({+pct}%)</span><span className="mono">{R2(setAside)}</span></div>
+        <div className="row"><span>From this month's profit</span><span className="mono">{R2(mSetAside)}</span></div>
+      </div>
+      <label>Percentage to put aside</label>
+      <input type="number" min="0" max="60" value={pct} onChange={e => setPct(e.target.value)} />
+      {myRole === 'owner' && +pct !== +business.tax_set_aside_pct && <><div style={{ height: 8 }} /><button className="b g" onClick={() => updateBusiness({ tax_set_aside_pct: +pct || 0 })}>Remember this percentage</button></>}
+      <div className="mini" style={{ marginTop: 8 }}>
+        Move this into a separate savings account so it's there when provisional tax is due (end of August and end of February).
+        25% is a reasonable starting point for most freelancers; your accountant can give you a closer number.
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
-  const { business, transactions, expenses, invoices } = useBusiness();
+  const { business, transactions, expenses, invoices, hasFeature } = useBusiness();
   const [view, setView] = useState('pl');
+  const views = ['pl', 'income', 'expense', 'tax'].concat(hasFeature('vat') ? ['vat'] : [], hasFeature('taxSavings') ? ['setaside'] : []);
   const monthKey = new Date().toISOString().slice(0, 7);
   const monthTx = useMemo(() => transactions.filter(t => t.date?.slice(0, 7) === monthKey), [transactions, monthKey]);
 
@@ -42,9 +144,9 @@ export default function Reports() {
     <section className="tab on light-tab">
       <h1>Reports</h1>
       <div className="seg">
-        {['pl', 'income', 'expense', 'tax'].map(v => (
+        {views.map(v => (
           <button key={v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-            {{ pl: 'Profit & Loss', income: 'Income', expense: 'Expenses', tax: 'Tax Records' }[v]}
+            {{ pl: 'Profit & Loss', income: 'Income', expense: 'Expenses', tax: 'Tax Records', vat: 'VAT', setaside: 'Tax Set-aside' }[v]}
           </button>
         ))}
       </div>
@@ -95,6 +197,8 @@ export default function Reports() {
           <button className="b g" onClick={exportTaxRecords}>Export Tax Records (CSV)</button>
         </div>
       )}
+      {view === 'vat' && <VatView />}
+      {view === 'setaside' && <TaxSetAsideView />}
       <div style={{ height: 20 }} />
     </section>
   );

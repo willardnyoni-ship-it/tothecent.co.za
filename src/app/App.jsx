@@ -20,6 +20,8 @@ import Reports from '../tabs/Reports.jsx';
 import Snap from '../tabs/Snap.jsx';
 import Statement from '../tabs/Statement.jsx';
 import BusinessApp from '../business/BusinessApp.jsx';
+import AdminApp from '../admin/AdminApp.jsx';
+import { useIsAppAdmin, logDailyActivity } from '../admin/adminApi.js';
 import { useHashTab } from './useHashTab.js';
 
 const TAB_COMPONENTS = {
@@ -54,7 +56,7 @@ function WelcomeBanner({ onDismiss }) {
   );
 }
 
-function Shell({ onSwitchToBusiness }) {
+function Shell({ onSwitchToBusiness, onOpenAdmin }) {
   const { S } = useBudget();
   const { open } = useSheet();
   const [tab, goHash] = useHashTab(Object.keys(TAB_COMPONENTS), 'today');
@@ -97,7 +99,7 @@ function Shell({ onSwitchToBusiness }) {
 
   return (
     <NavContext.Provider value={{ go, snapAction, setSnapAction }}>
-      <TopNav tab={tab} go={go} hasUnreconciled={hasUnreconciled} onOpenMoreMenu={openMoreMenu} onOpenAccountSheet={openAccountSheet} onSwitchToBusiness={onSwitchToBusiness} />
+      <TopNav tab={tab} go={go} hasUnreconciled={hasUnreconciled} onOpenMoreMenu={openMoreMenu} onOpenAccountSheet={openAccountSheet} onSwitchToBusiness={onSwitchToBusiness} onOpenAdmin={onOpenAdmin} />
       <div className="wrap">
         {tab === 'setup' && showWelcome && <WelcomeBanner onDismiss={() => setShowWelcome(false)} />}
         <Active />
@@ -124,8 +126,14 @@ function Shell({ onSwitchToBusiness }) {
 const MODE_KEY = 'wnAppMode';
 
 export default function App() {
-  const { cycleOffset } = useBudget();
+  const { cycleOffset, syncCfg, ensureToken } = useBudget();
   const { hasBusiness, checked } = useBusiness();
+  const isAdmin = useIsAppAdmin();
+  // The owner console is an in-session view only - it's never remembered
+  // as the mode to reopen into, so the app always starts on a real budget.
+  const [adminOpen, setAdminOpen] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('mode') === 'admin'; } catch (e) { return false; }
+  });
   // A within-session choice (explicit "Switch to Business/Personal" click,
   // or having just created a business) - never written to localStorage on
   // its own, so it can't outlive this sign-in.
@@ -156,15 +164,23 @@ export default function App() {
     mode = saved === 'personal' ? 'personal' : 'business';
   } else mode = 'personal';
 
+  // Once a day per device: "this account used the app today" - feeds the
+  // owner console's active-user numbers.
+  useEffect(() => {
+    if (mode) logDailyActivity(syncCfg, ensureToken, mode);
+  }, [syncCfg.token, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (mode === null) {
     return <div className="light-tab" style={{ padding: 40, textAlign: 'center' }}><div className="mini">Loading…</div></div>;
   }
 
   return (
     <SheetProvider>
-      {mode === 'business'
-        ? <BusinessApp onSwitchMode={() => setMode('personal')} />
-        : <Shell onSwitchToBusiness={() => setMode('business')} />}
+      {adminOpen && isAdmin
+        ? <AdminApp onExit={() => setAdminOpen(false)} />
+        : mode === 'business'
+          ? <BusinessApp onSwitchMode={() => setMode('personal')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />
+          : <Shell onSwitchToBusiness={() => setMode('business')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />}
       <Khanyiso cycleOffset={cycleOffset} />
     </SheetProvider>
   );
