@@ -131,6 +131,13 @@ label{display:block;font-size:18px;color:var(--dim);text-transform:uppercase;let
 a{color:var(--blue)}
 .glow{position:absolute;width:460px;height:460px;border-radius:50%;filter:blur(110px);
   background:rgba(48,209,88,.14);top:-160px;right:-160px;pointer-events:none;z-index:-1}
+/* Phones still widened the page around the glow despite overflow-x:hidden
+   on html/body (mobile browsers size their layout viewport to the widest
+   box, then shrink the page to fit - the "floating" feeling). Keeping the
+   box inside the right edge on small screens fixes it; overflow off the
+   left edge never adds scroll width, and the blur still fades into the
+   corner the same way. */
+@media (max-width:760px){ .glow{right:0;top:-200px;width:340px;height:340px} }
 .hero-grid{display:grid;gap:44px;align-items:center}
 @media(min-width:880px){.hero-grid{grid-template-columns:1.05fr .95fr}}
 

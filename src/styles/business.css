@@ -80,3 +80,17 @@
 .status-badge.declined,.status-badge.no_show{background:rgba(255,69,58,.15);color:var(--bad)}
 .status-badge.expired{background:var(--card2);color:var(--dim)}
 .status-badge.booked{background:rgba(10,132,255,.15);color:var(--blue)}
+
+/* ---------- phone fit (see the matching block at the end of app.css) ---------- */
+@media (max-width:560px){
+  .biz-cards{gap:8px;margin:12px 0 14px}
+  .biz-card{padding:12px 13px;border-radius:14px}
+  .biz-card .lbl{font-size:13px}
+  .biz-card .val{font-size:21px}
+  .status-badge{font-size:13px;padding:2px 9px}
+  .biz-totals .row.grand{font-size:19px}
+  .biz-attn-row{font-size:15px}
+  .biz-profile b{font-size:16px}
+  .biz-week button span{font-size:12px}
+  .biz-week button b{font-size:16px}
+}

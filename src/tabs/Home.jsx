@@ -157,8 +157,8 @@ export default function Home() {
 
       <div className="card zh-budgetStatus" style={{ marginBottom: 12 }}>
         {budTot > 0
-          ? <><span className={'zh-statusDot ' + (pct > 100 ? 'bd' : pct > 85 ? 'wn' : 'ok')} /> You&rsquo;ve spent <b>{pctDisplay}</b> of your monthly budget</>
-          : <><span className="zh-statusDot wn" /> Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</>}
+          ? <><span className={'zh-statusDot ' + (pct > 100 ? 'bd' : pct > 85 ? 'wn' : 'ok')} /><span>You&rsquo;ve spent <b>{pctDisplay}</b> of your monthly budget</span></>
+          : <><span className="zh-statusDot wn" /><span>Set a monthly budget under <a href="#" onClick={e => { e.preventDefault(); go('setup'); }} style={{ color: 'var(--zblue)' }}>Budget</a> to track your spending.</span></>}
       </div>
 
       <div className="zh-statrow" style={{ marginBottom: 12 }}>

@@ -65,6 +65,9 @@
 .op-card-h .op-meta{margin:0}
 .op-card-b{padding:16px}
 .op-grid{display:grid;gap:16px}
+/* Grid columns default to their content's width; let wide tables scroll
+   inside their own card instead of stretching the column past the screen. */
+.op-grid>*{min-width:0}
 .op-grid.k4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .op-grid.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .op-grid.c3{grid-template-columns:2fr 1fr}

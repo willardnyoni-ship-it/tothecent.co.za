@@ -492,3 +492,52 @@ body.zh-home .light-tab{border-radius:0;margin-bottom:0;padding:16px 0 22px;back
   .zh-legrow .ln{font-size:18px} .zh-legrow .lv{font-size:19px}
   .zh-donutwrap{gap:22px}
 }
+
+/* ============================================================
+   Phone fit. Two problems made pages feel like they were floating:
+   rows of section buttons (.seg) wider than the screen pushed the
+   whole page sideways so it slid under the finger, and 18px bold text
+   on every label made phrases wrap into tall, uneven blocks. These
+   rules come last so they win over everything above.
+   ============================================================ */
+/* Nothing is ever allowed to make the page wider than the screen. */
+html,body{overflow-x:hidden}
+@supports (overflow:clip){ html,body{overflow-x:clip} }
+.wrap{overflow-wrap:break-word}
+
+/* Section buttons scroll sideways inside their own pill when they don't
+   fit, instead of stretching the page. Wide screens look the same as
+   before (buttons still share the row). */
+.seg{overflow-x:auto;max-width:100%;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;white-space:nowrap;padding-left:12px;padding-right:12px;scroll-snap-align:start}
+
+@media (max-width:560px){
+  html,body{font-size:16px}
+  h1{font-size:22px}
+  h2{font-size:14px;letter-spacing:.7px;margin:20px 0 8px}
+  .sub,.mini,summary,pre,.msg,.infobox,.chk span{font-size:15px}
+  .light-tab .sub,.light-tab .mini{font-weight:500}
+  label{font-size:13px;margin:12px 0 5px}
+  .tag{font-size:13px;padding:2px 7px}
+  table{font-size:16px}
+  td{padding-top:10px;padding-bottom:10px}
+  button.b{font-size:16px;padding:13px}
+  button.sm{font-size:15px;padding:7px 12px}
+  .seg button{font-size:15px;padding:8px 12px}
+  /* 16px is the smallest size iPhones accept without zooming the whole
+     page in when a box is tapped - another source of the drifting. */
+  input,select,textarea{font-size:16px;padding:12px}
+  .card{padding:15px;border-radius:16px}
+  .zh-lbl{font-size:15px}
+  .zh-val{font-size:22px}
+  .hero .big{font-size:40px}
+  .hero .lbl,.hero .note{font-size:15px}
+  .cat .n,.cat .v{font-size:16px}
+  .navNow{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zh-sub,.zh-cta,.zh-budgetStatus{font-size:15px}
+  .zh-tip{font-size:13px}
+  .d-long,.d-short{font-size:13px}
+  .khFab{width:52px;height:52px}
+  .khBub,.khHead .khTitle,.khHead .khSub,.khNote,.khRow.sys .khBub{font-size:16px}
+}
