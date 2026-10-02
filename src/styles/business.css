@@ -80,10 +80,3 @@
 .status-badge.declined,.status-badge.no_show{background:rgba(255,69,58,.15);color:var(--bad)}
 .status-badge.expired{background:var(--card2);color:var(--dim)}
 .status-badge.booked{background:rgba(10,132,255,.15);color:var(--blue)}
-
-/* ---------- app owner console ---------- */
-.adm-readout{min-height:22px;margin:4px 0 6px}
-.adm-bars{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--line)}
-.adm-bar{flex:1;height:100%;display:flex;align-items:flex-end;background:none;border:0;padding:0;cursor:pointer;min-width:0}
-.adm-bar i{display:block;width:100%;background:var(--acc);border-radius:4px 4px 0 0;opacity:.85}
-.adm-bar.on i,.adm-bar:hover i{opacity:1;outline:2px solid var(--acc);outline-offset:1px}

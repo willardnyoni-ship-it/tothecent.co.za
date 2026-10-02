@@ -98,8 +98,10 @@ export default function Landing() {
   useEffect(() => {
     if (!location.hash) return;
     const hp = new URLSearchParams(location.hash.slice(1));
-    if (hp.get('type') === 'recovery' && hp.get('access_token')) {
-      recoverRef.current = { token: hp.get('access_token'), refresh: hp.get('refresh_token'), expiresIn: hp.get('expires_in') };
+    // An account created for someone from the owner portal arrives the same
+    // way with type=invite - they likewise just need to choose a password.
+    if ((hp.get('type') === 'recovery' || hp.get('type') === 'invite') && hp.get('access_token')) {
+      recoverRef.current = { token: hp.get('access_token'), refresh: hp.get('refresh_token'), expiresIn: hp.get('expires_in'), invited: hp.get('type') === 'invite' };
       history.replaceState(null, '', location.pathname + location.search);
       openAuth('recover');
     }
@@ -162,7 +164,8 @@ export default function Landing() {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d.msg || d.error_description || d.message || 'Request failed (' + r.status + ')');
         saveSession({ access_token: token, refresh_token: refresh, expires_in: expiresIn, user: d });
-        location.href = '/app/';
+        // Someone whose business was set up for them lands in it directly.
+        location.href = d.user_metadata && d.user_metadata.segment === 'business' ? '/app/?mode=business' : '/app/';
       } catch (err) { setMsg(err.message); } finally { setBusy(false); }
       return;
     }
@@ -196,11 +199,11 @@ export default function Landing() {
         <div className="authOverlay on" id="authOverlay" onClick={e => { if (e.target.id === 'authOverlay') closeAuth(); }}>
           <div className="authBox">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>{isRecover ? 'Set a new password' : 'Your account'}</h3>
+              <h3 style={{ margin: 0 }}>{isRecover ? (recoverRef.current.invited ? 'Welcome to To The Cent' : 'Set a new password') : 'Your account'}</h3>
               <button className="authClose" onClick={closeAuth} aria-label="Close">&times;</button>
             </div>
             <p className="mini" style={{ marginTop: 6 }}>
-              {isRecover ? 'Choose a new password for your account.'
+              {isRecover ? (recoverRef.current.invited ? 'Your account is ready - choose a password to finish setting it up.' : 'Choose a new password for your account.')
                 : invite && authMode === 'signup' ? `Welcome${invite.name ? ', ' + invite.name.split(' ')[0] : ''} - you've been invited to To The Cent. Choose a plan and a password to get started.`
                 : 'Same account, works in the app on any device.'}
             </p>

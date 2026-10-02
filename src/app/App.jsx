@@ -181,7 +181,7 @@ export default function App() {
         : mode === 'business'
           ? <BusinessApp onSwitchMode={() => setMode('personal')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />
           : <Shell onSwitchToBusiness={() => setMode('business')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />}
-      <Khanyiso cycleOffset={cycleOffset} />
+      {!(adminOpen && isAdmin) && <Khanyiso cycleOffset={cycleOffset} />}
     </SheetProvider>
   );
 }
