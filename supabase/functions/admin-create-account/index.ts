@@ -51,6 +51,12 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json(400, { error: "Bad request" }); }
 
+  // Account actions on an existing person. No "action" means the original
+  // behaviour below: create a new account.
+  if (body.action && body.action !== "create") {
+    return accountAction(admin, caller.user, body);
+  }
+
   const email = String(body.email || "").trim().toLowerCase();
   const name = String(body.name || "").trim().slice(0, 120);
   const segment = body.segment === "business" ? "business" : "personal";
@@ -109,3 +115,89 @@ Deno.serve(async (req: Request) => {
 
   return json(200, { link: link.properties?.action_link, user_id: userId, business_id: businessId });
 });
+
+// ---------- account actions on an existing person ----------
+// signin_link: one-time link where they set a (new) password - works for
+//   anyone who never finished signing up and anyone locked out.
+// suspend / unsuspend: block or allow sign-in; no data is touched.
+// delete: personal accounts only. A business owner can't be deleted here,
+//   because businesses.owner_id cascades - deleting the account would wipe
+//   their whole business and every record in it.
+// Never on yourself, and only sign-in links for other app owners.
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+type Person = { id: string; email?: string | null };
+
+async function logAction(admin: Admin, actor: Person, action: string, target: Person | null, details?: string) {
+  await admin.from("app_admin_log").insert({
+    actor_id: actor.id, actor_email: actor.email ?? null, action,
+    target_id: target?.id ?? null, target_email: target?.email ?? null, details: details ?? null,
+  });
+}
+
+async function accountAction(admin: Admin, actor: Person, body: Record<string, unknown>) {
+  const action = String(body.action);
+  const userId = String(body.user_id || "");
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return json(400, { error: "Missing person." });
+
+  const { data: got, error: getErr } = await admin.auth.admin.getUserById(userId);
+  if (getErr || !got?.user) return json(404, { error: "That account no longer exists." });
+  const target: Person = { id: got.user.id, email: got.user.email };
+  if (target.id === actor.id) return json(400, { error: "You can't do that to your own account." });
+
+  const { data: targetIsOwner } = await admin.from("app_admins").select("user_id").eq("user_id", target.id).maybeSingle();
+  if (targetIsOwner && action !== "signin_link") {
+    return json(400, { error: "That person is an app owner. Remove their owner access first." });
+  }
+
+  if (action === "signin_link") {
+    const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: target.email, options: { redirectTo: SITE } });
+    if (error) return json(400, { error: error.message });
+    await logAction(admin, actor, "sent_signin_link", target);
+    return json(200, { link: data?.properties?.action_link });
+  }
+
+  if (action === "suspend" || action === "unsuspend") {
+    const reason = String(body.reason || "").trim().slice(0, 300);
+    // ~100 years; Supabase has no "forever". 'none' lifts it.
+    const { error } = await admin.auth.admin.updateUserById(target.id, { ban_duration: action === "suspend" ? "876000h" : "none" });
+    if (error) return json(400, { error: error.message });
+    await logAction(admin, actor, action === "suspend" ? "suspended" : "unsuspended", target, reason || undefined);
+    return json(200, { ok: true });
+  }
+
+  if (action === "delete") {
+    if (String(body.confirm_email || "").trim().toLowerCase() !== String(target.email || "").toLowerCase()) {
+      return json(400, { error: "Type their email address exactly to confirm." });
+    }
+    const { count: owned } = await admin.from("businesses").select("id", { count: "exact", head: true }).eq("owner_id", target.id);
+    if (owned) {
+      return json(409, { error: "They own a business. Deleting the account would also delete the whole business and all its records. Suspend them instead." });
+    }
+
+    // Personal budget: leave households they share with someone else; remove
+    // the synced budget only where they were the last member.
+    const { data: memberships } = await admin.from("household_members").select("household").eq("user_id", target.id);
+    await admin.from("household_members").delete().eq("user_id", target.id);
+    let budgetsRemoved = 0;
+    for (const h of memberships || []) {
+      const { count: left } = await admin.from("household_members").select("user_id", { count: "exact", head: true }).eq("household", h.household);
+      if (!left) {
+        await admin.from("budget_sync").delete().eq("household", h.household);
+        budgetsRemoved++;
+      }
+    }
+    // Staff/accountant seats in other people's businesses.
+    await admin.from("business_members").delete().eq("user_id", target.id);
+    // Uploaded files are deliberately left in Storage: slip photos expire on
+    // their own after 45 days, and anything else is removed by hand from the
+    // Supabase dashboard if needed.
+
+    const { error } = await admin.auth.admin.deleteUser(target.id);
+    if (error) return json(500, { error: "Could not delete the account: " + error.message });
+    await logAction(admin, actor, "deleted", target, budgetsRemoved ? `${budgetsRemoved} personal budget removed` : undefined);
+    return json(200, { ok: true });
+  }
+
+  return json(400, { error: "Unknown action." });
+}

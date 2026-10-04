@@ -32,7 +32,10 @@ const dateTime = ts => ts ? new Date(ts).toLocaleString('en-ZA', { day: 'numeric
 const profileLabel = k => (PROFILES.find(p => p.key === k) || {}).label || 'Not chosen yet';
 const num = n => (+n || 0).toLocaleString('en-ZA');
 
+const isSuspended = u => !!u.banned_until && new Date(u.banned_until) > new Date();
+
 function personStatus(u) {
+  if (isSuspended(u)) return ['Suspended', 'bad'];
   if (!u.confirmed) return ['Email not confirmed', 'warn'];
   if (!u.last_sign_in_at) return ['Never signed in', 'muted'];
   const since = Date.now() - new Date(u.last_sign_in_at);
@@ -111,6 +114,8 @@ function ShareLink({ link, email, name, kind = 'invite' }) {
   const first = name ? ' ' + name.split(' ')[0] : '';
   const msg = kind === 'account'
     ? `Hi${first}, I've set up your To The Cent account. Open this link to choose your password and get started: ${link}`
+    : kind === 'signin'
+    ? `Hi${first}, here's a link to set a new password and sign in to To The Cent. It works once: ${link}`
     : `Hi${first}, I'd like you to try To The Cent - a simple way to track your money and run your business finances. Create your account here: ${link}`;
   return (
     <>
@@ -120,8 +125,119 @@ function ShareLink({ link, email, name, kind = 'invite' }) {
       </div>
       <div className="op-actions" style={{ marginTop: 8 }}>
         <button className="op-btn primary" onClick={() => openWhatsApp('', msg)}>Send by WhatsApp</button>
-        <button className="op-btn" onClick={() => openEmail(email, kind === 'account' ? 'Your To The Cent account' : "You're invited to To The Cent", msg)}>Send by email</button>
+        <button className="op-btn" onClick={() => openEmail(email, kind === 'account' ? 'Your To The Cent account' : kind === 'signin' ? 'Sign in to To The Cent' : "You're invited to To The Cent", msg)}>Send by email</button>
       </div>
+    </>
+  );
+}
+
+// Calls the owner-only account Edge Function (create, sign-in link,
+// suspend, unsuspend, delete). Throws with the function's own message.
+function useAccountFn() {
+  const { syncCfg, ensureToken } = useBudget();
+  return useCallback(async (payload) => {
+    const token = await ensureToken();
+    const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/' + CREATE_ACCOUNT_FN, {
+      method: 'POST',
+      headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || `Request failed (${r.status})`);
+    return body;
+  }, [syncCfg, ensureToken]);
+}
+
+const ACTION_LABEL = { sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
+
+// The "Account actions" block in a person's detail panel.
+function AccountActions({ person, me, onChanged, onDeleted }) {
+  const { syncCfg, ensureToken } = useBudget();
+  const call = useAccountFn();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [link, setLink] = useState(null);
+  const [confirming, setConfirming] = useState(null); // 'suspend' | 'delete'
+  const [typed, setTyped] = useState('');
+  const [reason, setReason] = useState('');
+  const [log, setLog] = useState([]);
+  const suspended = isSuspended(person);
+  const isMe = person.email === me;
+
+  const loadLog = useCallback(async () => {
+    try {
+      const token = await ensureToken();
+      setLog(await adminApi.select(syncCfg, token, 'app_admin_log', `target_id=eq.${person.id}&select=*&order=created_at.desc&limit=20`) || []);
+    } catch { setLog([]); }
+  }, [person.id, syncCfg, ensureToken]);
+  useEffect(() => { loadLog(); }, [loadLog]);
+
+  async function run(payload, done) {
+    setBusy(true); setMsg(null);
+    try { const r = await call({ ...payload, user_id: person.id }); await done(r); await loadLog(); }
+    catch (e) { setMsg({ e: true, t: e.message }); }
+    finally { setBusy(false); }
+  }
+
+  if (isMe) return <div className="op-note">This is your own account - account actions aren't available on it.</div>;
+  if (person.is_admin) return <div className="op-note">This person is an app owner, so they can't be suspended or deleted from here.</div>;
+
+  return (
+    <>
+      <div className="op-actions" style={{ flexWrap: 'wrap' }}>
+        <button className="op-btn" disabled={busy} onClick={() => run({ action: 'signin_link' }, r => { setLink(r.link); setConfirming(null); })}>Create sign-in link</button>
+        {suspended
+          ? <button className="op-btn" disabled={busy} onClick={() => run({ action: 'unsuspend' }, async () => { setMsg({ t: 'Re-enabled - they can sign in again.' }); await onChanged(); })}>Re-enable account</button>
+          : <button className="op-btn danger" disabled={busy} onClick={() => { setConfirming('suspend'); setLink(null); }}>Suspend</button>}
+        {!person.owns_business && <button className="op-btn danger" disabled={busy} onClick={() => { setConfirming('delete'); setTyped(''); setLink(null); }}>Delete account</button>}
+      </div>
+
+      {link && (
+        <div className="op-msg i">
+          One-time link for <b>{person.email}</b> to set a new password and sign in:
+          <ShareLink link={link} email={person.email} kind="signin" />
+        </div>
+      )}
+
+      {confirming === 'suspend' && (
+        <div className="op-msg e">
+          <b>Suspend {person.email}?</b> They won't be able to sign in. Nothing is deleted, and you can re-enable them any time.
+          {person.owns_business && <> Their business stays as it is, but its team won't be able to reach the owner's account.</>}
+          <label className="op-lbl">Reason (optional, for your records)</label>
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Asked to pause their account" />
+          <div className="op-actions" style={{ marginTop: 10 }}>
+            <button className="op-btn danger" disabled={busy} onClick={() => run({ action: 'suspend', reason }, async () => { setConfirming(null); setReason(''); setMsg({ t: 'Suspended.' }); await onChanged(); })}>Yes, suspend</button>
+            <button className="op-btn" disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {confirming === 'delete' && (
+        <div className="op-msg e">
+          <b>Permanently delete {person.email}?</b> This removes their account and their personal budget (unless a partner still shares it). It can't be undone.
+          <label className="op-lbl">Type their email to confirm</label>
+          <input value={typed} onChange={e => setTyped(e.target.value)} placeholder={person.email} autoComplete="off" />
+          <div className="op-actions" style={{ marginTop: 10 }}>
+            <button className="op-btn danger" disabled={busy || typed.trim().toLowerCase() !== (person.email || '').toLowerCase()}
+              onClick={() => run({ action: 'delete', confirm_email: typed }, async () => { setConfirming(null); await onDeleted(); })}>Delete permanently</button>
+            <button className="op-btn" disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {person.owns_business && <div className="op-note">They own a business, so the account can't be deleted here - that would also erase the whole business. Suspend instead if needed.</div>}
+      {msg && <div className={'op-msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
+
+      {log.length > 0 && (
+        <>
+          <div className="op-sec">History</div>
+          <table className="op-table" style={{ border: '1px solid var(--op-line)', borderRadius: 8 }}><tbody>
+            {log.map(l => (
+              <tr key={l.id}><td><span className="strong">{ACTION_LABEL[l.action] || l.action}</span><span className="sub">by {l.actor_email}{l.details ? ' · ' + l.details : ''}</span></td><td className="num op-meta">{dateTime(l.created_at)}</td></tr>
+            ))}
+          </tbody></table>
+        </>
+      )}
     </>
   );
 }
@@ -186,7 +302,7 @@ function Dashboard({ d, go }) {
   );
 }
 
-function People({ users, businesses, onNew }) {
+function People({ users, businesses, onNew, onChanged, me }) {
   const [q, setQ] = useState('');
   const [f, setF] = useState('all');
   const [open, setOpen] = useState(null);
@@ -195,7 +311,9 @@ function People({ users, businesses, onNew }) {
     && (f === 'all' || (f === 'business' ? u.business_name : f === 'personal' ? !u.business_name : u.status[0] === f)));
   const [sorted, th] = useSort(filtered, 'signin_sort');
   const counts = s => rows.filter(u => u.status[0] === s).length;
-  const biz = open && businesses.find(b => b.owner_email === open.email);
+  // Keep the open panel in step with refreshed data (e.g. after suspending).
+  const current = open && (rows.find(u => u.id === open.id) || open);
+  const biz = current && businesses.find(b => b.owner_email === current.email);
 
   function exportCsv() {
     downloadCsv('people.csv', [['email', 'status', 'type', 'business', 'business type', 'joined', 'last sign-in', 'days active (30d)', 'devices']]
@@ -212,7 +330,7 @@ function People({ users, businesses, onNew }) {
         <div className="op-toolbar">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email or business" />
           <div className="op-chips">
-            {[['all', `All ${rows.length}`], ['Active', `Active ${counts('Active')}`], ['Dormant', `Dormant ${counts('Dormant')}`], ['Never signed in', `Never signed in ${counts('Never signed in')}`], ['business', 'Business'], ['personal', 'Personal']].map(([k, l]) => (
+            {[['all', `All ${rows.length}`], ['Active', `Active ${counts('Active')}`], ['Dormant', `Dormant ${counts('Dormant')}`], ['Never signed in', `Never signed in ${counts('Never signed in')}`], ['Suspended', `Suspended ${counts('Suspended')}`], ['business', 'Business'], ['personal', 'Personal']].filter(([k]) => k !== 'Suspended' || counts('Suspended')).map(([k, l]) => (
               <button key={k} className={'op-chip' + (f === k ? ' on' : '')} onClick={() => setF(k)}>{l}</button>
             ))}
           </div>
@@ -234,7 +352,7 @@ function People({ users, businesses, onNew }) {
         </table></div>
       </div>
       {open && (
-        <Drawer title={open.email} subtitle={<span className={'op-pill ' + open.status[1]}>{open.status[0]}</span>} onClose={() => setOpen(null)}>
+        <Drawer title={open.email} subtitle={<span className={'op-pill ' + current.status[1]}>{current.status[0]}</span>} onClose={() => setOpen(null)}>
           <dl className="op-dl">
             <dt>Joined</dt><dd>{dateTime(open.created_at)}</dd>
             <dt>Last sign-in</dt><dd>{dateTime(open.last_sign_in_at)}</dd>
@@ -258,6 +376,8 @@ function People({ users, businesses, onNew }) {
               </dl>
             </>
           )}
+          <div className="op-sec">Account actions</div>
+          <AccountActions person={current} me={me} onChanged={onChanged} onDeleted={async () => { setOpen(null); await onChanged(); }} />
           <div className="op-sec">Get in touch</div>
           <button className="op-btn" onClick={() => openEmail(open.email, 'To The Cent', '')}>Email {open.email}</button>
           <div className="op-note">You see accounts and activity counts only - never what is inside someone's budget or books.</div>
@@ -755,7 +875,7 @@ export default function AdminApp({ onExit }) {
                 <button className="op-btn" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
               </div>}
               {page === 'dashboard' && <Dashboard d={data} go={go} />}
-              {page === 'people' && <People users={data.users} businesses={data.businesses} onNew={() => startSignup('person')} />}
+              {page === 'people' && <People users={data.users} businesses={data.businesses} onNew={() => startSignup('person')} onChanged={load} me={syncCfg.email} />}
               {page === 'businesses' && <Businesses businesses={data.businesses} onNew={() => startSignup('business')} />}
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
