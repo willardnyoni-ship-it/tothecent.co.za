@@ -320,6 +320,7 @@ export default function Landing() {
 
       <header className="hero">
         <div className="wrap">
+          <div className="hero-split">
           <div className="hero-top">
             <h1 className="reveal">Every rand,<br /><em>down to the cent.</em></h1>
             <p className="lede reveal d1">Money slips away for families and small businesses alike - late-paying clients, lost receipts, surprise debit orders, SARS deadlines. To The Cent puts your personal budget and your business books in one app, so you always know where you stand.</p>
@@ -333,7 +334,8 @@ export default function Landing() {
               <span><Ic d={I.check} /> Personal &amp; business</span>
             </div>
           </div>
-          <div className="reveal d3"><HeroScene /></div>
+          <div className="hero-art reveal d3"><HeroScene /></div>
+          </div>
           <p className="scene-note">Example data, shown for illustration.</p>
         </div>
       </header>

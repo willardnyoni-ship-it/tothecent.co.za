@@ -173,11 +173,12 @@ export function BizStory({ kind }) {
 }
 
 // ---------- hero: a full, detailed picture of the app ----------
-// Drawn at a fixed design size and scaled to whatever width it's given. On
-// narrow screens the scene is cropped to just the two devices and the
-// problem notes move underneath as readable cards.
+// Drawn at a fixed design size and scaled to whatever width it's given. When
+// the space is narrow (a phone, or the hero's right-hand column) the scene is
+// cropped to just the two devices and the problem notes move underneath as
+// readable cards.
 const SCENE_W = 1160, SCENE_H = 640;
-const CROP_X = 120, CROP_W = 970, COMPACT_BELOW = 700;
+const CROP_X = 120, CROP_W = 970, COMPACT_BELOW = 1000;
 const CALLOUTS = [
   ['c1', 'Clients pay me late', 'Reminder sent on WhatsApp', 'INV-0042 paid 2 days later'],
   ['c2', 'Receipts lost in a shoebox', 'Every slip scanned & matched', '34 of 36 bank lines accounted for'],
@@ -201,9 +202,9 @@ export function HeroScene() {
     if (!el) return undefined;
     const fit = () => {
       const w = el.clientWidth;
-      if (window.innerWidth < COMPACT_BELOW) {
-        const scale = w / CROP_W;
-        setFit({ scale, left: -CROP_X * scale, compact: true });
+      if (w < COMPACT_BELOW) {
+        const scale = Math.min(1, w / CROP_W);
+        setFit({ scale, left: (w - CROP_W * scale) / 2 - CROP_X * scale, compact: true });
       } else {
         const scale = Math.min(1, w / SCENE_W);
         setFit({ scale, left: Math.max(0, (w - SCENE_W * scale) / 2), compact: false });
