@@ -16,13 +16,13 @@ function toBase64(blob) {
 // where there's no server: a plausible delivery for each kind of business.
 const SAMPLES = {
   retail: { supplier: 'Makro Wholesale', invoice_number: 'MK-20417', prices_include_vat: true, lines: [
-    { description: 'COCA COLA 2L PET', qty: 24, unit: 'each', unit_price: 24.7 }, { description: 'Maize Meal 5kg', qty: 10, unit: 'each', unit_price: 64.4 },
-    { description: 'White Bread Loaf', qty: 20, unit: 'each', unit_price: 16.3 }, { description: 'Simba Chips 120g', qty: 36, unit: 'each', unit_price: 14.95 },
-    { description: 'Handy Andy 750ml', qty: 12, unit: 'each', unit_price: 31.5 }] },
+    { description: 'COCA COLA 2L PET', name: 'Coca-Cola 2L', category: 'Drinks', qty: 24, unit: 'each', unit_price: 24.7 }, { description: 'Maize Meal 5kg', name: 'Maize meal 5kg', category: 'Groceries', qty: 10, unit: 'each', unit_price: 64.4 },
+    { description: 'White Bread Loaf', name: 'White bread', category: 'Groceries', qty: 20, unit: 'each', unit_price: 16.3 }, { description: 'Simba Chips 120g', name: 'Simba Chips 120g', category: 'Snacks', qty: 36, unit: 'each', unit_price: 14.95 },
+    { description: 'Handy Andy 750ml', name: 'Handy Andy 750ml', category: 'Household', qty: 12, unit: 'each', unit_price: 31.5 }, { description: 'Sunlight Dish Liq 750ml (12 pk)', name: 'Sunlight dish liquid 750ml', category: 'Household', pack_size: 12, qty: 2, unit: 'case', unit_price: 336 }] },
   food: { supplier: 'Fresh Produce Market', invoice_number: 'FP-8834', prices_include_vat: false, lines: [
-    { description: 'Avocados (box of 20)', qty: 3, unit: 'box', unit_price: 220 }, { description: 'Full-cream milk 2L', qty: 24, unit: 'each', unit_price: 31.2 },
-    { description: 'Free range eggs tray 30', qty: 6, unit: 'tray', unit_price: 68 }, { description: 'Baby spinach 200g', qty: 15, unit: 'each', unit_price: 22 },
-    { description: 'Takeaway cups 50pk', qty: 4, unit: 'pack', unit_price: 92 }] },
+    { description: 'Avocados (box of 20)', name: 'Avocados', category: 'Fresh produce', pack_size: 20, qty: 3, unit: 'box', unit_price: 220 }, { description: 'Full-cream milk 2L', name: 'Full-cream milk 2L', category: 'Dairy & eggs', qty: 24, unit: 'each', unit_price: 31.2 },
+    { description: 'Free range eggs tray 30', name: 'Free-range eggs (tray of 30)', category: 'Dairy & eggs', qty: 6, unit: 'tray', unit_price: 68 }, { description: 'Baby spinach 200g', name: 'Baby spinach 200g', category: 'Fresh produce', qty: 15, unit: 'each', unit_price: 22 },
+    { description: 'Takeaway cups 50pk', name: 'Takeaway cups (50)', category: 'Packaging', qty: 4, unit: 'pack', unit_price: 92 }, { description: 'Halloumi 250g', name: 'Halloumi 250g', category: 'Dairy & eggs', qty: 12, unit: 'each', unit_price: 54 }] },
   appointments: { supplier: 'Beauty Wholesale SA', invoice_number: 'BW-5521', prices_include_vat: true, lines: [
     { description: 'Braiding hair pack', qty: 30, unit: 'pack', unit_price: 41.4 }, { description: 'Relaxer kit', qty: 6, unit: 'each', unit_price: 94.3 },
     { description: 'Nail polish gel', qty: 24, unit: 'each', unit_price: 32.2 }, { description: 'Edge control 250ml', qty: 12, unit: 'each', unit_price: 58 }] },
@@ -33,7 +33,7 @@ const sampleFor = () => SAMPLES[demoProfile()] || { supplier: 'Builders Warehous
 // Sends a supplier invoice (photo or PDF) to the reader and returns what it
 // found (see supabase/functions/read-supplier-invoice). Throws an Error with
 // a message that's fine to show the person.
-export async function readSupplierInvoice(file, syncCfg, ensureToken) {
+export async function readSupplierInvoice(file, syncCfg, ensureToken, categories = []) {
   if (isDemo()) { await new Promise(r => setTimeout(r, 1400)); return { ...sampleFor(), date: new Date().toISOString().slice(0, 10) }; }
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
   let blob = file, mime = 'application/pdf';
@@ -52,7 +52,7 @@ export async function readSupplierInvoice(file, syncCfg, ensureToken) {
     resp = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/read-supplier-invoice', {
       method: 'POST', signal: ctrl.signal,
       headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: await toBase64(blob), mimeType: mime }),
+      body: JSON.stringify({ file: await toBase64(blob), mimeType: mime, categories: categories.slice(0, 30) }),
     });
   } catch (e) {
     throw new Error(e && e.name === 'AbortError' ? 'Reading took too long. Try again, or type the invoice in.' : "Couldn't reach the reader - check your connection, or type the invoice in.");

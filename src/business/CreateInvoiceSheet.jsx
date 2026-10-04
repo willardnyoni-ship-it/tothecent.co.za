@@ -3,8 +3,9 @@ import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso, uid } from '../lib/format.js';
 import { computeInvoiceTotals, nextInvoiceNumber, nextQuoteNumber } from '../lib/businessMath.js';
+import { SaleOptionList, useSaleOptions } from './StockSales.jsx';
 
-const blankItem = () => ({ id: uid(), description: '', qty: 1, price: 0 });
+const blankItem = () => ({ id: uid(), description: '', qty: 1, price: 0, stock_item_id: null, recipe_id: null });
 
 // One form for both invoices and quotes - a quote is an invoice that hasn't
 // happened yet, so it has the same customer/items/notes steps, with a
@@ -39,6 +40,18 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
   const [err, setErr] = useState('');
 
   const totals = computeInvoiceTotals(items, vatEnabled, discount);
+  // Lines can be picked from stock (or a dish): the price fills in, and the
+  // sale takes the stock off once the invoice is sent.
+  const opts = useSaleOptions();
+  const canPick = opts.items.length > 0 || opts.dishes.length > 0;
+  const refOf = it => (it.recipe_id ? 'r:' + it.recipe_id : it.stock_item_id ? 's:' + it.stock_item_id : '');
+  function pick(i, ref) {
+    if (!ref) { setItem(i, { stock_item_id: null, recipe_id: null }); return; }
+    const x = opts.find(ref);
+    if (!x) return;
+    setItem(i, { description: x.name, price: opts.priceOf(ref), stock_item_id: ref.startsWith('s:') ? x.id : null, recipe_id: ref.startsWith('r:') ? x.id : null });
+  }
+  const shortOn = it => { const x = it.stock_item_id ? opts.items.find(s => s.id === it.stock_item_id) : null; return x && +it.qty > +x.qty_on_hand ? x : null; };
 
   function setItem(i, patch) { setItems(list => list.map((it, idx) => idx === i ? { ...it, ...patch } : it)); }
   function addItem() { setItems(list => [...list, blankItem()]); }
@@ -64,7 +77,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
     setBusy(true);
     try {
       const cust = addingCustomer ? customers.find(c => c.id === newCustomerId) : customers.find(c => c.id === customerId);
-      const lines = items.filter(i => i.description.trim()).map(i => ({ description: i.description, qty: +i.qty || 1, price: +i.price || 0, total: (+i.qty || 1) * (+i.price || 0) }));
+      const lines = items.filter(i => i.description.trim()).map(i => ({ description: i.description, qty: +i.qty || 1, price: +i.price || 0, total: (+i.qty || 1) * (+i.price || 0), stock_item_id: i.stock_item_id || null, recipe_id: i.recipe_id || null }));
       let created;
       if (isQuote) {
         created = await createQuote({
@@ -145,12 +158,23 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
 
           <h2>Items</h2>
           {items.map((it, i) => (
-            <div className="biz-item-row" key={it.id}>
+            <div className="biz-item-wrap" key={it.id}>
+            {canPick ? (
+              <select className="biz-pick" value={refOf(it)} onChange={e => pick(i, e.target.value)}>
+                <option value="">Type it in, or pick from stock…</option>
+                {opts.dishes.length > 0 && <optgroup label="Dishes & services">{opts.dishes.map(r => <option key={r.id} value={'r:' + r.id}>{r.name} - {R2(+r.selling_price)}</option>)}</optgroup>}
+                <optgroup label="Stock items">{opts.items.map(s => <option key={s.id} value={'s:' + s.id}>{s.name} - {R2(+s.sell_price)} (have {+s.qty_on_hand})</option>)}</optgroup>
+              </select>
+            ) : null}
+            <div className="biz-item-row">
               <input placeholder="Description" value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
               <input type="number" placeholder="Qty" value={it.qty} onChange={e => setItem(i, { qty: e.target.value })} />
               <input type="number" placeholder="Price" value={it.price} onChange={e => setItem(i, { price: e.target.value })} />
               <div className="mono r" style={{ fontWeight: 600 }}>{R2((+it.qty || 0) * (+it.price || 0))}</div>
               <button className="b d sm" onClick={() => removeItem(i)}>&times;</button>
+            </div>
+            {refOf(it) && !shortOn(it) && !isQuote && <div className="mini biz-stk-note">Takes {it.recipe_id ? 'its ingredients' : 'this'} off your stock when the invoice is sent.</div>}
+            {shortOn(it) && <div className="msg e biz-stk-note">You only have {+shortOn(it).qty_on_hand} {shortOn(it).unit} of {shortOn(it).name} - stock will go below zero.</div>}
             </div>
           ))}
           <button className="b g sm" onClick={addItem}>+ Add item</button>

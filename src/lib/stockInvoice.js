@@ -70,7 +70,12 @@ export function normaliseInvoice(raw) {
     const total = num(l.line_total);
     if (price == null && total != null) price = total / qty;
     if (!(price >= 0)) price = 0;
-    lines.push({ description, qty, unit: String((l && l.unit) || 'each').trim().slice(0, 20) || 'each', price: r2(price) });
+    const pack = Math.round(num(l && l.pack_size) || 0);
+    lines.push({
+      description, qty, unit: String((l && l.unit) || 'each').trim().slice(0, 20) || 'each', price: r2(price),
+      name: String((l && l.name) || '').trim().slice(0, 120), category: String((l && l.category) || '').trim().slice(0, 40),
+      pack: pack > 1 && pack <= 1000 ? pack : 0,
+    });
   }
   const date = /^\d{4}-\d{2}-\d{2}$/.test((raw && raw.date) || '') ? raw.date : '';
   return {

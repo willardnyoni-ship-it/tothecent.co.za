@@ -128,3 +128,28 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .stk-lvl{display:block;width:64px;height:5px;background:#E5E7EB;border-radius:9px;overflow:hidden;margin:5px 0 0 auto}
 .stk-lvl i{display:block;height:100%;background:#94AF66}
 .stk-lvl.low i{background:#9C3626}
+
+/* Costing: recipes, margins, stock profit */
+.stk-margins{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.stk-profit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stk-profit-grid div{background:#F4F5F7;border-radius:12px;padding:10px 12px}
+.stk-profit-grid span{display:block;font-size:12px;font-weight:700;opacity:.7}
+.stk-profit-grid b{display:block;font-size:18px;margin-top:2px;font-variant-numeric:tabular-nums}
+.stk-profit-grid em{font-style:normal;font-size:12px;font-weight:700;opacity:.7}
+.rc-pill{display:inline-block;font-size:12px;font-weight:800;border-radius:99px;padding:2px 9px;margin-top:4px}
+.rc-pill.good{background:#DDEBCF;color:#33421F}
+.rc-pill.warn{background:#FBE9C0;color:#5E3F0C}
+.rc-pill.bad{background:#F6D5CF;color:#9C3626}
+.rc-pill.muted{background:#E5E7EB;color:#4B5563}
+.val.rc-good{color:#33421F}.val.rc-warn{color:#8A5300}.val.rc-bad{color:#9C3626}
+.rc-sum .row{padding:5px 0}
+.rc-target{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(22,24,27,.1)}
+.rc-target button:not(.b){border:1px solid rgba(22,24,27,.18);background:#fff;border-radius:99px;padding:4px 12px;font-weight:700;cursor:pointer;width:auto}
+.rc-target button.on{background:#16181B;color:#fff;border-color:#16181B}
+
+/* Invoice lines picked from stock */
+.biz-item-wrap{margin-bottom:10px}
+.biz-pick{font-size:13px;padding:7px 10px;border-radius:10px;margin-bottom:6px;width:100%}
+.biz-stk-note{margin:4px 2px 0;font-size:12px}
+
+.sc-nums .sc-wide{grid-column:1 / -1}

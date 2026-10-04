@@ -4,6 +4,9 @@ import { useSheet } from '../../components/Sheet.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { categoriesFor } from '../../lib/stockInvoice.js';
 import { useStockCapture } from '../StockCapture.jsx';
+import { useStockSales } from '../StockSales.jsx';
+import Recipes, { costingWords } from '../Recipes.jsx';
+import { priceForMargin } from '../../lib/recipeMath.js';
 
 const ACTIONS = {
   purchase: { label: 'Stock in', verb: 'Received', sign: 1, priceLabel: 'Cost per unit (R)' },
@@ -147,7 +150,14 @@ function StockItemContent({ itemId }) {
             {item.sku && <div className="row"><span className="mini">Code</span><span>{item.sku}</span></div>}
             <div className="row"><span className="mini">Cost / Selling price</span><span>{R2(+item.cost_price)} / {R2(+item.sell_price)}</span></div>
             <div className="row"><span className="mini">Markup</span><span>{+item.cost_price > 0 ? Math.round((+item.sell_price - +item.cost_price) / +item.cost_price * 100) + '%' : '-'}</span></div>
+            <div className="row"><span className="mini">Margin</span><span>{+item.sell_price > 0 && +item.cost_price > 0 ? Math.round((+item.sell_price - +item.cost_price) / +item.sell_price * 100) + '%' : '-'}</span></div>
             <div className="row"><span className="mini">Reorder level</span><span>{+item.reorder_level || '-'}</span></div>
+            {!readOnly && +item.cost_price > 0 && (
+              <div className="stk-margins">
+                <span className="mini">Price it for a margin of</span>
+                {[30, 40, 50].map(m => <button key={m} className="b g sm" onClick={() => updateRow('stock_items', item.id, { sell_price: priceForMargin(+item.cost_price, m) })}>{m}% → {R2(priceForMargin(+item.cost_price, m))}</button>)}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -176,10 +186,14 @@ export function useStockItem() {
 const NONE = 'Uncategorised';
 
 export default function Stock() {
-  const { business, stockItems, stockMovements, addRow, myRole } = useBusiness();
+  const { business, stockItems, stockMovements, recipes, addRow, myRole } = useBusiness();
   const readOnly = myRole === 'accountant';
+  const showRecipes = ['food', 'appointments'].includes(business.business_profile) || recipes.some(r => !r.archived);
   const openItem = useStockItem();
   const openCapture = useStockCapture();
+  const openSales = useStockSales();
+  const words = costingWords(business.business_profile);
+  const [view, setView] = useState('items'); // items | recipes
   const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('all'); // all | low | a category name
@@ -222,6 +236,13 @@ export default function Stock() {
 
   const maxValue = Math.max(1, ...Object.values(byCat).map(e => e.value));
 
+  // What selling stock earned this month: takings from the movements, less
+  // what that stock cost when it left the shelf.
+  const soldNow = stockMovements.filter(m => m.reason === 'sale' && m.date.slice(0, 7) === monthKey);
+  const soldRevenue = soldNow.reduce((a, m) => a + Math.abs(+m.qty_change) * (+m.unit_price || 0), 0);
+  const soldCost = soldNow.reduce((a, m) => { const it = stockItems.find(i => i.id === m.item_id); return a + Math.abs(+m.qty_change) * (m.unit_cost != null ? +m.unit_cost : it ? +it.cost_price : 0); }, 0);
+  const grossProfit = soldRevenue - soldCost;
+
   return (
     <section className="tab on light-tab">
       <h1>Stock</h1>
@@ -231,6 +252,25 @@ export default function Stock() {
         <div className="biz-card"><div className="lbl">Items</div><div className="val">{items.length}</div></div>
         <div className="biz-card"><div className="lbl">Waste this month</div><div className="val">{R(wasteMonth)}</div></div>
       </div>
+
+      {showRecipes && (
+        <div className="seg">
+          <button className={view === 'items' ? 'on' : ''} onClick={() => setView('items')}>Stock items</button>
+          <button className={view === 'recipes' ? 'on' : ''} onClick={() => setView('recipes')}>{words.tab}</button>
+        </div>
+      )}
+      {view === 'recipes' ? <Recipes /> : <>
+
+      {soldNow.length > 0 && (
+        <div className="card stk-profit">
+          <div className="row"><h2 style={{ marginTop: 0 }}>Stock sold this month</h2><span className="mini">Takings less cost</span></div>
+          <div className="stk-profit-grid">
+            <div><span>Sales</span><b>{R(soldRevenue)}</b></div>
+            <div><span>Cost of stock</span><b>{R(soldCost)}</b></div>
+            <div><span>Gross profit</span><b className={grossProfit < 0 ? 'bd' : ''}>{R(grossProfit)}{soldRevenue > 0 ? <em> {Math.round(grossProfit / soldRevenue * 100)}%</em> : null}</b></div>
+          </div>
+        </div>
+      )}
 
       {low.length > 0 && (
         <div className="infobox" style={{ marginBottom: 12 }}>
@@ -252,7 +292,10 @@ export default function Stock() {
       )}
 
       {!readOnly && (
-        <button className="b" onClick={openCapture}>Capture stock from an invoice</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="b" style={{ flex: 1.4 }} onClick={openCapture}>Capture from an invoice</button>
+          <button className="b g" style={{ flex: 1 }} onClick={openSales}>Record sales</button>
+        </div>
       )}
       {!readOnly && adding ? (
         <div className="card" style={{ marginTop: 10 }}>
@@ -315,6 +358,7 @@ export default function Stock() {
           ]) : <tr><td className="mini" colSpan={2}>{items.length ? 'Nothing matches.' : 'No stock items yet. Capture an invoice or add an item to start.'}</td></tr>}
         </tbody></table>
       </div>
+      </>}
       <div style={{ height: 20 }} />
     </section>
   );

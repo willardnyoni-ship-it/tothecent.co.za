@@ -53,4 +53,8 @@ assert.equal(guessPack('Avocados (box of 20)'), 20); assert.equal(guessPack('Tak
 assert.equal(guessPack('Cola 6 x 2L'), 6); assert.equal(guessPack('Cake flour 2.5kg'), 0); assert.equal(guessPack(''), 0); assert.equal(guessPack('Coke 2L'), 0);
 assert.equal(unitsDiffer('box', 'each'), true); assert.equal(unitsDiffer('each', 'ea'), false); assert.equal(unitsDiffer('', 'each'), false); assert.equal(unitsDiffer('tray', 'tray'), false);
 
+const ai = normaliseInvoice({ lines: [{ description: 'AVO BOX 20', name: ' Avocados ', category: 'Fresh produce', pack_size: 20, qty: 3, unit: 'box', unit_price: 220 }, { description: 'Milk', qty: 1, unit_price: 30, pack_size: 1 }, { description: 'Cups', qty: 2, unit_price: 5, pack_size: 'x' }] });
+assert.equal(ai.lines[0].name, 'Avocados'); assert.equal(ai.lines[0].category, 'Fresh produce'); assert.equal(ai.lines[0].pack, 20);
+assert.equal(ai.lines[1].pack, 0, 'a pack of 1 is just one'); assert.equal(ai.lines[2].pack, 0, 'junk pack size ignored'); assert.equal(ai.lines[1].name, '');
+
 console.log('stockInvoice: all checks passed');

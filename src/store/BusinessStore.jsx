@@ -3,6 +3,7 @@ import { useBudget } from './BudgetStore.jsx';
 import { businessApi } from '../lib/businessApi.js';
 import { advanceDate, computeInvoiceTotals } from '../lib/businessMath.js';
 import { activeFeatures } from '../lib/businessProfiles.js';
+import { syncInvoiceStock } from '../lib/stockSales.js';
 
 const BusinessContext = createContext(null);
 export function useBusiness() {
@@ -11,7 +12,7 @@ export function useBusiness() {
   return ctx;
 }
 
-const EMPTY_TOOLS = { jobs: [], quotes: [], timeEntries: [], mileageTrips: [], stockItems: [], stockMovements: [], cashUps: [], bookings: [], employees: [], payRuns: [] };
+const EMPTY_TOOLS = { jobs: [], quotes: [], timeEntries: [], mileageTrips: [], stockItems: [], stockMovements: [], cashUps: [], bookings: [], employees: [], payRuns: [], recipes: [], recipeLines: [] };
 const EMPTY = { customers: [], invoices: [], transactions: [], expenses: [], members: [], bankAccounts: [], categories: [], recurringInvoices: [], ...EMPTY_TOOLS };
 
 // The tailored-tool tables (see the business_profiles_and_tools migration).
@@ -30,6 +31,8 @@ const TOOL_TABLES = [
   ['bookings', 'bookings', 'order=date.asc,start_time.asc'],
   ['employees', 'employees', 'order=name.asc'],
   ['payRuns', 'pay_runs', 'order=period.desc'],
+  ['recipes', 'recipes', 'order=name.asc'],
+  ['recipeLines', 'recipe_lines', 'order=sort_order.asc'],
 ];
 
 // Safety cap on how many missed occurrences a single stale recurring series
@@ -170,6 +173,11 @@ export function BusinessProvider({ children }) {
     }
     await businessApi.update(syncCfg, token, 'businesses', `id=eq.${business.id}`, { next_invoice_number: (business.next_invoice_number || 1) + 1 });
     setBusiness(b => ({ ...b, next_invoice_number: (b.next_invoice_number || 1) + 1 }));
+    // Lines picked from stock take it off the shelf as soon as the invoice
+    // is sent (a draft takes nothing until it is).
+    if (items.some(it => it.stock_item_id || it.recipe_id) && inv.status !== 'draft') {
+      try { await syncInvoiceStock(syncCfg, token, business.id, inv.id); } catch (e) { console.warn('stock update failed', e); }
+    }
     await refreshAll();
     return inv;
   }, [syncCfg, ensureToken, business, refreshAll]);
@@ -177,8 +185,12 @@ export function BusinessProvider({ children }) {
   const updateInvoice = useCallback(async (id, patch) => {
     const token = await ensureToken();
     await businessApi.update(syncCfg, token, 'invoices', `id=eq.${id}`, patch);
+    // Sending a draft takes stock off; cancelling puts it back (idempotent).
+    if (patch.status && business) {
+      try { await syncInvoiceStock(syncCfg, token, business.id, id); } catch (e) { console.warn('stock update failed', e); }
+    }
     await refreshAll();
-  }, [syncCfg, ensureToken, refreshAll]);
+  }, [syncCfg, ensureToken, refreshAll, business]);
 
   // Templates a recurring series off an existing invoice's items/terms.
   // next_run_date starts one period after that invoice's issue date, since

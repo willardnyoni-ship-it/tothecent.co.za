@@ -5,6 +5,7 @@ import { useSheet } from '../components/Sheet.jsx';
 import { businessApi } from '../lib/businessApi.js';
 import { R2, iso } from '../lib/format.js';
 import { categoriesFor, costing, guessPack, matchItem, normaliseInvoice, unitsDiffer } from '../lib/stockInvoice.js';
+import { markupPrice } from '../lib/recipeMath.js';
 import { readSupplierInvoice } from '../lib/stockScan.js';
 
 const r2 = n => Math.round(n * 100) / 100;
@@ -29,6 +30,8 @@ export function StockCaptureContent() {
   const [vatMode, setVatMode] = useState('incl');
   const [lines, setLines] = useState([]);
   const [expense, setExpense] = useState(true);
+  // Shops price what they buy; a café's ingredients aren't sold on their own.
+  const [markup, setMarkup] = useState(business.business_profile === 'retail' ? '35' : '0');
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState(null);
   const seq = useRef(0);
@@ -37,7 +40,8 @@ export function StockCaptureContent() {
   const blank = () => ({ id: ++seq.current, description: '', qty: '1', unit: 'each', price: '', match: 'new', pinned: false, category: '', sell: '', per: '' });
   const withMatch = l => {
     const m = matchItem(l.description, items);
-    const pack = m && unitsDiffer(l.unit, m.item.unit) ? guessPack(l.description) : 0;
+    const known = +l.per > 0 ? +l.per : guessPack(l.description);
+    const pack = m ? (unitsDiffer(l.unit, m.item.unit) ? known : 0) : known;
     return { ...l, match: m ? m.item.id : 'new', category: m && m.item.category ? m.item.category : l.category, per: pack ? String(pack) : '' };
   };
 
@@ -45,10 +49,10 @@ export function StockCaptureContent() {
     if (!file) return;
     setErr(''); setReading(true);
     try {
-      const n = normaliseInvoice(await readSupplierInvoice(file, syncCfg, ensureToken));
+      const n = normaliseInvoice(await readSupplierInvoice(file, syncCfg, ensureToken, cats));
       setHead({ supplier: n.supplier, reference: n.reference, date: n.date || iso(new Date()) });
       setVatMode(n.vatMode);
-      setLines(n.lines.map(l => withMatch({ ...blank(), description: l.description, qty: String(l.qty), unit: l.unit, price: String(l.price) })));
+      setLines(n.lines.map(l => withMatch({ ...blank(), description: l.name || l.description, qty: String(l.qty), unit: l.unit, price: String(l.price), category: l.category, per: l.pack ? String(l.pack) : '' })));
       setStep('review');
     } catch (e) { setErr(e.message); } finally { setReading(false); }
   }
@@ -59,7 +63,8 @@ export function StockCaptureContent() {
   const c = costing(valid.map(l => ({ qty: +l.qty, price: +l.price || 0 })), vatMode, vatRegistered);
   // Invoice says "box", stock counts "each": one box = `per` of them.
   const itemOf = l => (l.match === 'new' ? null : items.find(i => i.id === l.match));
-  const per = l => { const it = itemOf(l); return it && unitsDiffer(l.unit, it.unit) && +l.per > 0 ? +l.per : 1; };
+  const per = l => { const it = itemOf(l); return it ? (unitsDiffer(l.unit, it.unit) && +l.per > 0 ? +l.per : 1) : (+l.per > 1 ? +l.per : 1); };
+  const sellFor = l => (l.sell !== '' ? +l.sell || 0 : +markup > 0 ? markupPrice(stockUnit(l), +markup) : 0);
   const qtyIn = l => (+l.qty || 0) * per(l);
   const stockUnit = l => r2(c.stockUnit({ price: +l.price || 0 }) / per(l));
 
@@ -71,8 +76,8 @@ export function StockCaptureContent() {
       const biz = business.id, date = head.date || iso(new Date());
       const fresh = valid.filter(l => l.match === 'new');
       const created = fresh.length ? await businessApi.insert(syncCfg, token, 'stock_items', fresh.map(l => ({
-        business_id: biz, name: l.description.trim(), category: l.category.trim() || null, unit: l.unit.trim() || 'each',
-        qty_on_hand: qtyIn(l), reorder_level: 0, cost_price: stockUnit(l), sell_price: +l.sell || 0,
+        business_id: biz, name: l.description.trim(), category: l.category.trim() || null, unit: per(l) > 1 ? 'each' : (l.unit.trim() || 'each'),
+        qty_on_hand: qtyIn(l), reorder_level: qtyIn(l) >= 4 ? Math.ceil(qtyIn(l) * 0.25) : 0, cost_price: stockUnit(l), sell_price: sellFor(l),
       }))) : [];
       const idFor = new Map(fresh.map((l, i) => [l.id, created[i].id]));
 
@@ -156,6 +161,8 @@ export function StockCaptureContent() {
           <div><label style={{ marginTop: 0 }}>Invoice no.</label><input value={head.reference} onChange={e => setHead({ ...head, reference: e.target.value })} /></div>
         </div>
         <label>Date</label><input type="date" value={head.date} onChange={e => setHead({ ...head, date: e.target.value })} />
+        <label>Price new items at cost plus <span className="mini">(% markup - 0 for no selling price)</span></label>
+        <input type="number" inputMode="decimal" value={markup} onChange={e => setMarkup(e.target.value)} />
         <label>VAT on this invoice</label>
         <div className="seg" style={{ margin: 0 }}>{VAT_MODES.map(([k, l]) => <button key={k} className={vatMode === k ? 'on' : ''} onClick={() => setVatMode(k)}>{l}</button>)}</div>
         {vatMode !== 'none' && !vatRegistered && <div className="mini" style={{ marginTop: 6 }}>You're not VAT-registered, so the VAT is part of what you paid and is included in each item's cost.</div>}
@@ -182,10 +189,14 @@ export function StockCaptureContent() {
               </select>
             </label>
             {l.match === 'new' ? (
+              <>
               <div className="sc-nums two">
                 <label>Category<input list="sc-cats" value={l.category} onChange={e => setLine(l.id, { category: e.target.value })} placeholder="e.g. Drinks" /></label>
-                <label>Selling price (R)<input type="number" inputMode="decimal" value={l.sell} onChange={e => setLine(l.id, { sell: e.target.value })} placeholder="optional" /></label>
+                <label>Selling price (R)<input type="number" inputMode="decimal" value={l.sell} onChange={e => setLine(l.id, { sell: e.target.value })} placeholder={sellFor(l) > 0 ? String(sellFor(l)) : 'optional'} /></label>
+                <label className="sc-wide">Singles in one {l.unit || 'unit'} <span className="mini">(optional - counts them one by one)</span><input type="number" inputMode="numeric" value={l.per} onChange={e => setLine(l.id, { per: e.target.value })} placeholder="e.g. 20" /></label>
               </div>
+              {per(l) > 1 && <div className="mini">Added as {qtyIn(l)} single units at {R2(stockUnit(l))} each.</div>}
+              </>
             ) : (
               <>
               {m && unitsDiffer(l.unit, m.unit) && (

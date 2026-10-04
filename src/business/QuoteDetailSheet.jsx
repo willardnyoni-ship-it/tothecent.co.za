@@ -59,7 +59,7 @@ export function QuoteDetailContent({ quoteId }) {
   });
 
   const convert = () => run(async () => {
-    const items = (q.items || []).map(it => ({ description: it.description, qty: +it.qty || 1, price: +it.price || 0, total: (+it.qty || 1) * (+it.price || 0) }));
+    const items = (q.items || []).map(it => ({ description: it.description, qty: +it.qty || 1, price: +it.price || 0, total: (+it.qty || 1) * (+it.price || 0), stock_item_id: it.stock_item_id || null, recipe_id: it.recipe_id || null }));
     if (depositInv) {
       const less = -(+depositInv.subtotal);
       items.push({ description: 'Less deposit already invoiced (' + depositInv.invoice_number + ')', qty: 1, price: less, total: less });

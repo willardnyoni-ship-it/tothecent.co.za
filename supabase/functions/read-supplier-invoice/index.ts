@@ -35,6 +35,9 @@ Reply with ONLY one JSON object - no markdown fences, no commentary. Shape exact
   "lines": [
     {
       "description": string,        // the product as printed, cleaned of obvious codes, e.g. "Coca-Cola 2L"
+      "name": string,               // a short, tidy product name a shopkeeper would use, e.g. "Coca-Cola 2L" or "Maize meal 5kg"
+      "category": string,           // the best category for it (see the list below), or a short new one if none fit
+      "pack_size": number or null,  // if one invoice unit is a pack/box/tray/case holding several single items, how many (e.g. "box of 20" -> 20); null if unclear or it is a single item
       "qty": number,                // quantity of units bought
       "unit": string,               // "each", "kg", "box", "tray", "case", "pack" ... what a unit is; "each" if unclear
       "unit_price": number or null, // price per ONE unit as printed, null if only a line total is shown
@@ -47,7 +50,8 @@ Rules:
 - Include only goods (things that go on a shelf or into a recipe). Leave out delivery fees, discounts, VAT lines, subtotals, deposits and payment details.
 - If an item is sold in a pack (e.g. "6 x 2L"), report the number of PACKS as qty and put the pack in the description, so qty x unit_price equals the line total.
 - Amounts are South African Rand. Never add or remove VAT yourself - report what is printed and set prices_include_vat.
-- If this is not an invoice or you cannot read any lines, return "lines": [] rather than guessing.`;
+- If this is not an invoice or you cannot read any lines, return "lines": [] rather than guessing.
+- For "category", use exactly one of the business's own categories when one fits: CATEGORY_LIST. Only invent a new short category (1-3 words) if none of them fit.`;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -62,13 +66,19 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   if (!requireAuthenticatedUser(req)) return json({ error: "Sign in required" }, 401);
 
-  let body: { file?: string; mimeType?: string };
+  let body: { file?: string; mimeType?: string; categories?: unknown };
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
   const { file } = body;
   const mime = String(body.mimeType || "image/jpeg").toLowerCase();
   if (!file || typeof file !== "string") return json({ error: "Missing file" }, 400);
   if (!ALLOWED.has(mime)) return json({ error: "Unsupported file type" }, 415);
   if (file.length > MAX_B64_LEN) return json({ error: "File too large" }, 413);
+
+  // The business's own stock categories, so the reader files things where they
+  // already file them. Cleaned, because they go into the prompt.
+  const cats = (Array.isArray(body.categories) ? body.categories : [])
+    .map((c) => String(c).replace(/[^\p{L}\p{N} &,'/-]/gu, "").trim().slice(0, 40)).filter(Boolean).slice(0, 30);
+  const prompt = PROMPT.replace("CATEGORY_LIST", cats.length ? cats.map((c) => `"${c}"`).join(", ") : "(none yet - suggest sensible ones such as Drinks, Groceries, Dry goods, Dairy, Fresh produce, Packaging, Cleaning)");
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) return json({ error: "Server not configured" }, 500);
@@ -82,7 +92,7 @@ Deno.serve(async (req: Request) => {
     upstream = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 4096, messages: [{ role: "user", content: [block, { type: "text", text: PROMPT }] }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 4096, messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }] }),
       signal: AbortSignal.timeout(50000),
     });
   } catch (e) {
