@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
-import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory, HeroScene, PROBLEMS } from './content.jsx';
+import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory, HeroScene, PROBLEMS, PLANS } from './content.jsx';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
 const HOSTED_SUPA_KEY = 'sb_publishable_foyO2Py6QAR3oG8IK4OyzQ_WOFBcuiN';
@@ -235,9 +235,9 @@ export default function Landing() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function openAuth(mode) {
+  function openAuth(mode, seg) {
     setAuthModeState(mode || 'signin');
-    setSegment('');
+    setSegment(seg || '');
     setMsg('');
     setAuthOpen(true);
     setTimeout(() => (mode === 'recover' ? passRef : emailRef).current?.focus(), 150);
@@ -408,6 +408,7 @@ export default function Landing() {
           <div className="links">
             <a href="#personal">Personal</a>
             <a href="#business">Business</a>
+            <a href="#pricing">Pricing</a>
             <a href="#how">How it works</a>
             <a href="#security">Security</a>
             <a href="#faq">FAQ</a>
@@ -592,6 +593,40 @@ export default function Landing() {
         </div>
       </section>
 
+      <section id="pricing" className="pricing">
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">Pricing</span>
+            <h2 className="sec">Simple pricing. Your first month is free.</h2>
+            <p className="sub">Try either plan free for a month. After that it's a monthly debit order, and you can cancel any time.</p>
+          </div>
+          <div className="plans">
+            {PLANS.map((pl, i) => (
+              <div className={'plan reveal d' + i + (pl.dark ? ' dark' : '')} key={pl.key}>
+                <div className="pname">{pl.name}</div>
+                <p className="ptag">{pl.tagline}</p>
+                <div className="pprice"><span className="rand">R</span>{pl.price}<span className="per">/ month</span></div>
+                <div className="pfree">1 month free, then R{pl.price} a month</div>
+                {alreadySignedIn
+                  ? <a className="btn primary" href="/app/">Open the app <Ic d={I.arrow} /></a>
+                  : <button className="btn primary" type="button" onClick={() => openAuth('signup', pl.segment)}>Start your free month <Ic d={I.arrow} /></button>}
+                {pl.includes && <div className="pinc">{pl.includes}</div>}
+                <ul>
+                  {pl.features.map(f => <li key={f}><Ic d={I.check} />{f}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="pnotes reveal">
+            <span><Ic d={I.check} /> One month free on either plan</span>
+            <span><Ic d={I.check} /> Monthly debit order</span>
+            <span><Ic d={I.check} /> Cancel any time</span>
+            <span><Ic d={I.check} /> No bank login, ever</span>
+          </div>
+          <p className="pfoot">All prices are in South African rand. Questions about which plan fits? <a href="mailto:info@tothecent.co.za">Email us</a>.</p>
+        </div>
+      </section>
+
       <section id="security">
         <div className="wrap">
           <div className="center reveal">
@@ -638,6 +673,7 @@ export default function Landing() {
             <div className="flinks">
               <a href="#personal">Personal</a>
               <a href="#business">Business</a>
+              <a href="#pricing">Pricing</a>
               <a href="mailto:info@tothecent.co.za">Contact</a>
               <a href="/privacy/">Privacy Policy</a>
               <a href="/terms/">Terms of Service</a>

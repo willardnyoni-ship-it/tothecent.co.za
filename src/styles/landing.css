@@ -440,3 +440,32 @@ footer.site .fcopy{color:var(--ink3);font-size:13.5px;margin-top:18px}
 .oauthBtn:disabled{opacity:.6;cursor:default}
 .orline{display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:12.5px;margin-top:4px}
 .orline::before,.orline::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ---------- pricing ---------- */
+.pricing{background:#fff}
+.plans{display:grid;grid-template-columns:1fr;gap:22px;margin:48px auto 0;max-width:920px}
+@media (min-width:860px){ .plans{grid-template-columns:1fr 1fr;align-items:stretch} }
+.plan{border:1px solid var(--line);border-radius:24px;padding:28px;background:var(--bg);display:flex;flex-direction:column}
+.plan .pname{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--green)}
+.plan .ptag{color:var(--ink2);font-size:15px;margin:8px 0 18px;min-height:3em}
+.plan .pprice{font-size:56px;font-weight:700;letter-spacing:-.03em;line-height:1;display:flex;align-items:baseline;gap:4px}
+.plan .pprice .rand{font-size:28px;font-weight:600;margin-right:1px}
+.plan .pprice .per{font-size:16px;font-weight:500;color:var(--ink3);letter-spacing:0;margin-left:6px}
+.plan .pfree{display:inline-block;align-self:flex-start;margin:12px 0 20px;font-size:13px;font-weight:600;color:var(--green);background:var(--greenSoft);border-radius:99px;padding:4px 12px}
+.plan .btn{width:100%;justify-content:center}
+.plan .pinc{margin-top:22px;font-size:13px;font-weight:700;color:var(--ink)}
+.plan ul{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:11px}
+.plan li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--ink2);line-height:1.45}
+.plan li svg{width:17px;height:17px;flex:none;margin-top:2px;color:var(--green)}
+.plan.dark{background:var(--navy);border-color:var(--navy);color:#fff}
+.plan.dark .pname{color:var(--mint)}
+.plan.dark .ptag,.plan.dark li{color:#C9D1DA}
+.plan.dark .pprice .per{color:#9AA5B1}
+.plan.dark .pfree{background:rgba(124,207,164,.16);color:var(--mint)}
+.plan.dark .pinc{color:#fff}
+.plan.dark li svg{color:var(--mint)}
+.pnotes{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 26px;margin-top:34px;color:var(--ink2);font-size:14px;font-weight:600}
+.pnotes span{display:inline-flex;align-items:center;gap:7px}
+.pnotes svg{width:16px;height:16px;color:var(--green)}
+.pfoot{text-align:center;color:var(--ink3);font-size:13px;margin-top:14px}
+@media (max-width:560px){ .plan{padding:22px} .plan .pprice{font-size:48px} }
