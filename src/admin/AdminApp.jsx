@@ -199,7 +199,7 @@ function useSendReset() {
   }, [syncCfg, ensureToken]);
 }
 
-const ACTION_LABEL = { reset_email_sent: 'Password reset email sent', billing_updated: 'Plan / subscription updated', sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
+const ACTION_LABEL = { reset_email_sent: 'Password reset email sent', billing_updated: 'Plan / subscription updated', sent_signin_link: 'Sign-in link created', team_added: 'Portal team member added', team_removed: 'Portal team member removed', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
 
 // The "Account actions" block in a person's detail panel.
 function AccountActions({ person, me, onChanged, onDeleted }) {
@@ -623,6 +623,95 @@ function SignIns({ users, sessions }) {
             )) : <tr><td className="op-empty">Nobody is signed in.</td></tr>}
           </tbody></table></div>
           <div className="op-card-b op-note" style={{ marginTop: 0 }}>A device leaves this list when that person logs out.</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// The To The Cent staff who can open this portal. "Owner" can also change the team;
+// "Team member" can use the portal but not add or remove people here.
+function Team({ me, onCreateFor }) {
+  const { syncCfg, ensureToken } = useBudget();
+  const [rows, setRows] = useState(null);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('team');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [missing, setMissing] = useState('');
+  const [sure, setSure] = useState('');
+
+  const load = useCallback(async () => {
+    try { const token = await ensureToken(); setRows(await adminApi.rpc(syncCfg, token, 'admin_team')); }
+    catch (e) { setMsg({ e: true, t: e.message }); }
+  }, [syncCfg, ensureToken]);
+  useEffect(() => { load(); }, [load]);
+
+  const mine = (rows || []).find(r => (r.email || '').toLowerCase() === (me || '').toLowerCase());
+  const isOwner = !!mine && mine.role === 'owner';
+
+  async function run(fn, ok) {
+    setBusy(true); setMsg(null); setMissing('');
+    try { const token = await ensureToken(); await fn(token); setMsg({ t: ok }); await load(); }
+    catch (e) {
+      setMsg({ e: true, t: e.message });
+      if (/no account for that email/i.test(e.message)) setMissing(email.trim().toLowerCase());
+    } finally { setBusy(false); setSure(''); }
+  }
+  const add = () => {
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setMsg({ e: true, t: 'Enter a valid email address.' }); return; }
+    run(t => adminApi.rpc(syncCfg, t, 'admin_add_team_member', { p_email: email.trim(), p_role: role }), `${email.trim()} can now open the portal.`).then(() => setEmail(''));
+  };
+  const remove = r => run(t => adminApi.rpc(syncCfg, t, 'admin_remove_team_member', { p_user: r.user_id }), `${r.email} can no longer open the portal.`);
+  const setRoleFor = (r, nr) => run(t => adminApi.rpc(syncCfg, t, 'admin_add_team_member', { p_email: r.email, p_role: nr }), `${r.email} is now ${nr === 'owner' ? 'an owner' : 'a team member'}.`);
+
+  return (
+    <>
+      <PageHead title="Team" subtitle="People at To The Cent who can open this portal." />
+      <div className="op-grid c3">
+        <div className="op-card">
+          <div className="op-card-h"><h2>Who has access</h2><span className="op-meta">{rows ? rows.length : ''}</span></div>
+          <div className="op-tablewrap"><table className="op-table">
+            <thead><tr><th>Person</th><th>Access</th><th>Added</th><th>Last sign-in</th><th /></tr></thead>
+            <tbody>
+              {rows ? rows.map(r => (
+                <tr key={r.user_id}>
+                  <td><span className="strong">{r.email}</span>{r.added_by_email && <span className="sub">Added by {r.added_by_email}</span>}</td>
+                  <td><span className={'op-pill ' + (r.role === 'owner' ? 'good' : 'info')}>{r.role === 'owner' ? 'Owner' : 'Team member'}</span></td>
+                  <td>{ago(r.added_at)}</td>
+                  <td>{ago(r.last_sign_in_at)}</td>
+                  <td className="num">
+                    {isOwner && r.email.toLowerCase() !== (me || '').toLowerCase() && (sure === r.user_id
+                      ? <><button className="op-link" style={{ color: 'var(--op-bad)' }} disabled={busy} onClick={() => remove(r)}>Yes, remove</button>{' · '}<button className="op-link" onClick={() => setSure('')}>Keep</button></>
+                      : <><button className="op-link" disabled={busy} onClick={() => setRoleFor(r, r.role === 'owner' ? 'team' : 'owner')}>{r.role === 'owner' ? 'Make team member' : 'Make owner'}</button>{' · '}<button className="op-link" style={{ color: 'var(--op-bad)' }} onClick={() => setSure(r.user_id)}>Remove</button></>)}
+                  </td>
+                </tr>
+              )) : <tr><td colSpan={5} className="op-empty">Loading…</td></tr>}
+            </tbody>
+          </table></div>
+        </div>
+        <div className="op-card">
+          <div className="op-card-h"><h2>Add a team member</h2></div>
+          <div className="op-card-b">
+            {isOwner ? (
+              <>
+                <label className="op-lbl" style={{ marginTop: 0 }}>Their email</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
+                <label className="op-lbl">Access</label>
+                <select value={role} onChange={e => setRole(e.target.value)}>
+                  <option value="team">Team member - uses the portal</option>
+                  <option value="owner">Owner - also manages the team</option>
+                </select>
+                {msg && <div className={'op-msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
+                {missing && <div style={{ marginTop: 8 }}><button className="op-btn" onClick={() => onCreateFor(missing)}>Create their account</button></div>}
+                <div style={{ height: 12 }} />
+                <button className="op-btn primary" disabled={busy} onClick={add}>Add to portal</button>
+                <div className="op-note" style={{ marginTop: 12 }}>They need a To The Cent account first (use Sign up or Invites). Team members never pay or get locked out, and can see everything in this portal, including customers' totals.</div>
+              </>
+            ) : (
+              <div className="op-note">Only an owner can add or remove team members.{msg && msg.e ? ' ' + msg.t : ''}</div>
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -1054,10 +1143,11 @@ const I = {
   biz: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" /></>,
   signin: <><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></>,
   invite: <><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" /><path d="M3 6l9 7 9-7" /></>,
+  team: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.7-3.7 3.4-5.5 7-5.5s6.3 1.8 7 5.5" /><path d="M18 3v4M16 5h4" /></>,
   add: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>,
   db: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
 };
-const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['alerts', 'Alerts', I.alert], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['preview', 'Preview types', I.preview], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
+const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['alerts', 'Alerts', I.alert], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['preview', 'Preview types', I.preview], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['team', 'Team', I.team], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
 
 export default function AdminApp({ onExit }) {
   const { syncCfg, ensureToken } = useBudget();
@@ -1168,6 +1258,7 @@ export default function AdminApp({ onExit }) {
               {page === 'preview' && <Preview />}
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
+              {page === 'team' && <Team me={syncCfg.email} onCreateFor={email => startSignup('person', email)} />}
               {page === 'signup' && <SignUp key={signupKind + signupEmail} initialKind={signupKind} initialEmail={signupEmail} onCreated={load} />}
               {page === 'alerts' && <Alerts attempts={data.attempts} users={data.users} onCreateFor={email => startSignup('person', email)} onSeen={markAlertsSeen} />}
               {page === 'retention' && <Retention r={ret} loading={retLoading} onLoad={loadRet} />}

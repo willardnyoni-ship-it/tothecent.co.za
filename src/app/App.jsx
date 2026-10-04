@@ -25,6 +25,8 @@ import SignInRequired from '../components/SignInRequired.jsx';
 import { useIsAppAdmin, logDailyActivity } from '../admin/adminApi.js';
 import { isDemo } from '../lib/demo.js';
 import { useHashTab } from './useHashTab.js';
+import { useSubscription } from '../lib/subscription.js';
+import Paywall, { TrialBar } from '../components/Paywall.jsx';
 
 const TAB_COMPONENTS = {
   today: Home, spending: Spending, setup: Budget, receipts: Receipts, insight: Reports, snap: Snap, stmt: Statement,
@@ -70,6 +72,7 @@ function PaidReturn() {
       } catch { /* shown below */ }
       setState(ok ? 'done' : 'failed');
       history.replaceState(null, '', window.location.pathname + window.location.hash);
+      if (ok) setTimeout(() => window.location.reload(), 1800); // open the app now that it is paid
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!state) return null;
@@ -165,6 +168,7 @@ export default function App() {
   const { cycleOffset, syncCfg, ensureToken, S } = useBudget();
   const { hasBusiness, checked } = useBusiness();
   const isAdmin = useIsAppAdmin();
+  const { b: billing } = useSubscription();
   // The owner console is an in-session view only - it's never remembered
   // as the mode to reopen into, so the app always starts on a real budget.
   const [adminOpen, setAdminOpen] = useState(() => {
@@ -213,6 +217,12 @@ export default function App() {
     return <SignInRequired hasLocalData={!!(S && ((S.tx && S.tx.length) || S.income))} />;
   }
 
+  // After the free month, and nobody paying: the app is locked (the person's data is kept).
+  // If the plan can't be read (offline), the app stays open.
+  if (!isDemo() && billing && billing.access === 'locked' && !isAdmin) {
+    return <SheetProvider><PaidReturn /><Paywall /></SheetProvider>;
+  }
+
   if (mode === null) {
     return <div className="light-tab" style={{ padding: 40, textAlign: 'center' }}><div className="mini">Loading…</div></div>;
   }
@@ -220,6 +230,10 @@ export default function App() {
   return (
     <SheetProvider>
       <PaidReturn />
+      {!isDemo() && billing && billing.access === 'ok' && billing.status === 'none' && billing.trial_ends_on && !isAdmin && (() => {
+        const left = Math.ceil((new Date(billing.trial_ends_on + 'T12:00:00') - new Date(new Date().toISOString().slice(0, 10) + 'T12:00:00')) / 86400000);
+        return left > 0 && left <= 7 ? <TrialBar daysLeft={left} /> : null;
+      })()}
       {adminOpen && isAdmin
         ? <AdminApp onExit={() => setAdminOpen(false)} />
         : mode === 'business'
