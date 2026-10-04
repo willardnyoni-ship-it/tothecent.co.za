@@ -5,6 +5,7 @@ import { iso } from '../../lib/format.js';
 import { FEATURES, featuresFor, activeFeatures, profileByKey } from '../../lib/businessProfiles.js';
 import { DEFAULT_MILEAGE_RATE } from '../../lib/saTax.js';
 import { ProfilePicker } from '../BusinessSignup.jsx';
+import YocoSettings from '../YocoSettings.jsx';
 
 function FeaturesSettings() {
   const { business, updateBusiness, myRole } = useBusiness();
@@ -114,14 +115,15 @@ export default function BizSettings({ onClose }) {
     <>
       <div className="row"><h1>Settings</h1><button className="b g sm" onClick={onClose}>Close</button></div>
       <div className="seg">
-        {['features', 'business', 'invoice', 'tax', 'data', 'notifications', 'subscription'].map(s => (
+        {['features', 'business', 'invoice', 'tax', 'cards', 'data', 'notifications', 'subscription'].map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
-            {{ features: 'Features', business: 'Business', invoice: 'Invoice', tax: 'Tax', data: 'Data', notifications: 'Notifications', subscription: 'Subscription' }[s]}
+            {{ features: 'Features', business: 'Business', invoice: 'Invoice', tax: 'Tax', cards: 'Card payments', data: 'Data', notifications: 'Notifications', subscription: 'Subscription' }[s]}
           </button>
         ))}
       </div>
 
       {seg === 'features' && <FeaturesSettings />}
+      {seg === 'cards' && <YocoSettings />}
       {seg === 'business' && (
         <div className="card">
           <label style={{ marginTop: 0 }}>Business Name</label>
@@ -182,10 +184,10 @@ export default function BizSettings({ onClose }) {
         </div>
       )}
       {msg && <div className="msg s">{msg}</div>}
-      {myRole !== 'owner' && !['notifications', 'subscription', 'data', 'features'].includes(seg) && (
+      {myRole !== 'owner' && !['notifications', 'subscription', 'data', 'features', 'cards'].includes(seg) && (
         <div className="mini" style={{ marginTop: 8 }}>Only the business owner can change these settings.</div>
       )}
-      {myRole === 'owner' && !['notifications', 'subscription', 'data', 'features'].includes(seg) && (
+      {myRole === 'owner' && !['notifications', 'subscription', 'data', 'features', 'cards'].includes(seg) && (
         <>
           <div style={{ height: 12 }} />
           <button className="b" onClick={save}>Save</button>

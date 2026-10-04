@@ -4,6 +4,7 @@ import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
 import { currentVatPeriod } from '../../lib/saTax.js';
 import { isLow } from './Stock.jsx';
+import { useYoco } from '../../lib/yoco.js';
 
 // Shown to businesses created before business types existed, so they can
 // pick one and get the tools that fit.
@@ -25,6 +26,7 @@ function greeting() {
 
 export default function BizHome({ go, onOpenSettings }) {
   const { syncCfg } = useBudget();
+  const yoco = useYoco({ poll: true });
   const { transactions, invoices, expenses, quotes, stockItems, bookings, timeEntries, payRuns, employees, hasFeature } = useBusiness();
   const name = (syncCfg.email || '').split('@')[0].replace(/[._-]+/g, ' ');
 
@@ -106,6 +108,19 @@ export default function BizHome({ go, onOpenSettings }) {
         <div className="biz-card"><div className="lbl">Net</div><div className={'val' + (net < 0 ? ' bd' : '')}>{net < 0 ? '-' : ''}{R(Math.abs(net))}</div></div>
         <div className="biz-card"><div className="lbl">Outstanding</div><div className="val">{R(outstanding)}</div></div>
       </div>
+
+      {yoco.connected && (
+        <div className="card row" style={{ marginTop: 12, alignItems: 'center' }}>
+          <div>
+            <div className="mini" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--acc)', display: 'inline-block' }} />Card sales today · Yoco</div>
+            <div className="mono" style={{ fontSize: 22, fontWeight: 700 }}>{R2(+yoco.status.today_total || 0)}</div>
+          </div>
+          <div className="mini" style={{ textAlign: 'right' }}>
+            {yoco.status.today_count} sale{+yoco.status.today_count === 1 ? '' : 's'}
+            {yoco.status.last_sale_at && <><br />Last: {R2(+yoco.status.last_sale_amount || 0)}</>}
+          </div>
+        </div>
+      )}
 
       <h2>Cash flow</h2>
       <div className="card">

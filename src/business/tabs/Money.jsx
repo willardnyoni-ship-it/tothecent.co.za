@@ -6,9 +6,11 @@ import { parsePdf } from '../../lib/parsePdf.js';
 import { parseCsv } from '../../lib/parseCsv.js';
 import { flowKind } from '../../lib/categorize.js';
 import TransactionEditor from '../TransactionEditor.jsx';
+import { useYoco } from '../../lib/yoco.js';
 
 function TransactionsView({ filter, setFilter, readOnly }) {
   const { transactions } = useBusiness();
+  useYoco({ poll: true }); // new card sales show up here by themselves
   const [openId, setOpenId] = useState(null);
   const shown = useMemo(() => {
     if (filter === 'all') return transactions;
@@ -121,6 +123,7 @@ function AddTransactionForm() {
 
 function StatementUploadView() {
   const { transactions, addTransactions } = useBusiness();
+  const yoco = useYoco();
   const fileRef = useRef(null), csvRef = useRef(null);
   const [msg, setMsg] = useState(null);
   const [preview, setPreview] = useState(null); // { rows, dupes, autoCount, reviewCount }
@@ -153,6 +156,12 @@ function StatementUploadView() {
     credits.forEach(t => {
       if (seen.has(t.d + '|' + t.a.toFixed(2) + '|' + t.desc)) { dupes++; return; }
       const isTransfer = t.kind === 'savings-out' || t.kind === 'savings-in';
+      // With Yoco connected, each card sale is already in Money, so the
+      // payout Yoco sends to the bank is a transfer - not income again.
+      if (yoco.connected && !isTransfer && /yoco/i.test(t.desc || '')) {
+        rows.push({ date: t.d, description: t.desc, amount: t.a, kind: 'transfer', category: 'Yoco payout', status: 'reviewed', source: 'statement' });
+        return;
+      }
       rows.push({
         date: t.d, description: t.desc, amount: t.a, kind: isTransfer ? 'transfer' : 'income',
         category: isTransfer ? 'Transfer' : null, status: isTransfer ? 'reviewed' : 'needs_review', source: 'statement',

@@ -12,19 +12,19 @@ function dl(blob, name) {
 function monthLabel(d) { return d.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' }); }
 
 // VAT201 figures for one period, on the invoice basis: output VAT on
-// invoices issued in the period, plus VAT inside cash-up / stock / booking
+// invoices issued in the period, plus VAT inside cash-up / stock / booking / Yoco
 // sales (those are recorded VAT-inclusive), less input VAT claimed on
 // expenses with a VAT amount captured from the slip.
 export function vatReturn(period, { invoices, expenses, transactions }) {
   const inP = d => d && d >= period.from && d <= period.to;
   const inv = invoices.filter(i => inP(i.issue_date) && !['draft', 'cancelled'].includes(i.status));
-  const counterSales = transactions.filter(t => t.kind === 'income' && inP(t.date) && ['cashup', 'stock', 'booking'].includes(t.source));
+  const counterSales = transactions.filter(t => t.kind === 'income' && inP(t.date) && ['cashup', 'stock', 'booking', 'yoco'].includes(t.source));
   const exp = expenses.filter(e => inP(e.date) && e.status !== 'rejected');
   const salesExcl = inv.reduce((a, i) => a + +i.total - +i.vat, 0) + counterSales.reduce((a, t) => a + +t.amount - vatOf(+t.amount), 0);
   // Bank transactions the owner marked as including VAT while reviewing them.
   // Invoice payments (linked) are skipped - the invoice already counts - and
   // so are cash-up / stock / booking sales, counted above.
-  const txVat = transactions.filter(t => inP(t.date) && +t.vat_amount > 0 && !t.linked_invoice_id && !['cashup', 'stock', 'booking'].includes(t.source));
+  const txVat = transactions.filter(t => inP(t.date) && +t.vat_amount > 0 && !t.linked_invoice_id && !['cashup', 'stock', 'booking', 'yoco'].includes(t.source));
   const txOut = txVat.filter(t => t.kind === 'income');
   const txIn = txVat.filter(t => t.kind === 'expense');
   const outputVat = inv.reduce((a, i) => a + +i.vat, 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0) + txOut.reduce((a, t) => a + +t.vat_amount, 0);
