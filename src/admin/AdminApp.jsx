@@ -36,6 +36,30 @@ const num = n => (+n || 0).toLocaleString('en-ZA');
 
 const isSuspended = u => !!u.banned_until && new Date(u.banned_until) > new Date();
 
+// Plans and debit orders. Everyone gets one month free from the day they
+// join (the owner can move that date); the owner records the debit order.
+// Returns { key, label, tone, sub } for the Plan column.
+const ymd = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+function defaultTrialEnd(createdAt) {
+  const d = new Date(createdAt);
+  d.setMonth(d.getMonth() + 1);
+  return ymd(d);
+}
+function billingState(u) {
+  if (u.is_admin) return { key: 'owner', label: 'App owner', tone: 'muted', sub: 'No billing' };
+  const end = u.trial_ends_on;
+  const left = end ? Math.ceil((new Date(end + 'T23:59:59') - Date.now()) / DAY) : null;
+  const st = u.debit_order_status || 'none';
+  if (st === 'signed') {
+    const first = end && new Date(end + 'T23:59:59') >= new Date(u.debit_order_signed_on + 'T00:00:00');
+    return { key: 'signed', label: 'Debit order signed', tone: 'good', sub: first && left > 0 ? `First debit ${shortDate(end)}` : 'Paying' };
+  }
+  if (st === 'cancelled') return { key: 'cancelled', label: 'Debit order cancelled', tone: 'bad', sub: end ? `Free month ${left > 0 ? 'ends' : 'ended'} ${shortDate(end)}` : '' };
+  if (left > 0) return { key: 'trial', label: left === 1 ? 'Free trial · 1 day left' : `Free trial · ${left} days left`, tone: 'info', sub: `Ends ${shortDate(end)}` };
+  return { key: 'ended', label: 'Free month ended', tone: 'warn', sub: `Ended ${shortDate(end)} · no debit order` };
+}
+const DEBIT_LABEL = { none: 'Not signed up', requested: 'Requested', signed: 'Signed', cancelled: 'Cancelled' };
+
 function personStatus(u) {
   if (isSuspended(u)) return ['Suspended', 'bad'];
   if (!u.confirmed) return ['Email not confirmed', 'warn'];
@@ -150,7 +174,7 @@ function useAccountFn() {
   }, [syncCfg, ensureToken]);
 }
 
-const ACTION_LABEL = { sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
+const ACTION_LABEL = { billing_updated: 'Plan / debit order updated', sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
 
 // The "Account actions" block in a person's detail panel.
 function AccountActions({ person, me, onChanged, onDeleted }) {
@@ -304,22 +328,85 @@ function Dashboard({ d, go }) {
   );
 }
 
+// The "Plan & debit order" block in a person's detail panel.
+function BillingEditor({ person, onSaved }) {
+  const { syncCfg, ensureToken } = useBudget();
+  const bill = billingState(person);
+  const defaultEnd = defaultTrialEnd(person.created_at);
+  const [status, setStatus] = useState(person.debit_order_status || 'none');
+  const [signedOn, setSignedOn] = useState(person.debit_order_signed_on || '');
+  const [trialEnd, setTrialEnd] = useState(person.trial_ends_on || defaultEnd);
+  const [notes, setNotes] = useState(person.billing_notes || '');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  if (person.is_admin) return <div className="op-note">This is an app owner account, so there's no plan or debit order to track.</div>;
+
+  async function save() {
+    setBusy(true); setMsg(null);
+    try {
+      const token = await ensureToken();
+      await adminApi.rpc(syncCfg, token, 'admin_set_billing', {
+        p_user: person.id, p_status: status,
+        p_signed_on: status === 'signed' ? (signedOn || ymd(new Date())) : (signedOn || null),
+        p_trial_ends: trialEnd && trialEnd !== defaultEnd ? trialEnd : null,
+        p_notes: notes,
+      });
+      setMsg({ t: 'Saved.' });
+      await onSaved();
+    } catch (e) { setMsg({ e: true, t: e.message }); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <>
+      <dl className="op-dl">
+        <dt>Plan</dt><dd>{person.business_name || person.segment === 'business' ? 'Business' : 'Personal'} - one month free, then paid by debit order</dd>
+        <dt>Where they stand</dt><dd><span className={'op-pill ' + bill.tone}>{bill.label}</span>{bill.sub && <span className="op-meta" style={{ marginLeft: 8 }}>{bill.sub}</span>}</dd>
+        <dt>Joined (free month starts)</dt><dd>{shortDate(person.created_at)}</dd>
+      </dl>
+      <label className="op-lbl">Debit order</label>
+      <select value={status} onChange={e => { setStatus(e.target.value); if (e.target.value === 'signed' && !signedOn) setSignedOn(ymd(new Date())); }}>
+        {Object.entries(DEBIT_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+      </select>
+      {status === 'signed' && (
+        <>
+          <label className="op-lbl">Date they signed</label>
+          <input type="date" value={signedOn} max={ymd(new Date())} onChange={e => setSignedOn(e.target.value)} />
+        </>
+      )}
+      <label className="op-lbl">Free month ends</label>
+      <input type="date" value={trialEnd} onChange={e => setTrialEnd(e.target.value)} />
+      <div className="op-note" style={{ marginTop: 4 }}>
+        {trialEnd === defaultEnd ? 'One month after they joined.' : <>Changed from {shortDate(defaultEnd)}. <a href="#" onClick={e => { e.preventDefault(); setTrialEnd(defaultEnd); }}>Reset</a></>}
+      </div>
+      <label className="op-lbl">Notes (only you see these)</label>
+      <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Form sent on WhatsApp, bank: FNB" />
+      <div className="op-actions" style={{ marginTop: 10 }}>
+        <button className="op-btn primary" disabled={busy} onClick={save}>Save plan details</button>
+      </div>
+      {msg && <div className={'op-msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
+    </>
+  );
+}
+
 function People({ users, businesses, onNew, onChanged, me }) {
   const [q, setQ] = useState('');
   const [f, setF] = useState('all');
   const [open, setOpen] = useState(null);
-  const rows = useMemo(() => users.map(u => ({ ...u, status: personStatus(u), kind: u.business_name ? 'Business' : 'Personal', signin_sort: u.last_sign_in_at || '' })), [users]);
+  const rows = useMemo(() => users.map(u => ({ ...u, status: personStatus(u), kind: u.business_name ? 'Business' : 'Personal', signin_sort: u.last_sign_in_at || '', bill: billingState(u), debit_sort: u.debit_order_signed_on || '', trial_sort: u.trial_ends_on || '' })), [users]);
   const filtered = rows.filter(u => (!q || (u.email + ' ' + (u.business_name || '')).toLowerCase().includes(q.toLowerCase()))
-    && (f === 'all' || (f === 'business' ? u.business_name : f === 'personal' ? !u.business_name : u.status[0] === f)));
+    && (f === 'all' || (f === 'business' ? u.business_name : f === 'personal' ? !u.business_name : ['trial', 'ended', 'signed'].includes(f) ? u.bill.key === f : u.status[0] === f)));
   const [sorted, th] = useSort(filtered, 'signin_sort');
   const counts = s => rows.filter(u => u.status[0] === s).length;
+  const billCount = k => rows.filter(u => u.bill.key === k).length;
   // Keep the open panel in step with refreshed data (e.g. after suspending).
   const current = open && (rows.find(u => u.id === open.id) || open);
   const biz = current && businesses.find(b => b.owner_email === current.email);
 
   function exportCsv() {
-    downloadCsv('people.csv', [['email', 'status', 'type', 'business', 'business type', 'joined', 'last sign-in', 'days active (30d)', 'devices']]
-      .concat(sorted.map(u => [u.email, u.status[0], u.kind, u.business_name, u.business_profile && profileLabel(u.business_profile), u.created_at, u.last_sign_in_at, u.active_days_30, u.devices])));
+    downloadCsv('people.csv', [['email', 'status', 'type', 'business', 'business type', 'plan status', 'free month ends', 'debit order', 'debit order signed', 'joined', 'last sign-in', 'days active (30d)', 'devices']]
+      .concat(sorted.map(u => [u.email, u.status[0], u.kind, u.business_name, u.business_profile && profileLabel(u.business_profile), u.bill.label, u.trial_ends_on, DEBIT_LABEL[u.debit_order_status || 'none'], u.debit_order_signed_on, u.created_at, u.last_sign_in_at, u.active_days_30, u.devices])));
   }
 
   return (
@@ -332,24 +419,25 @@ function People({ users, businesses, onNew, onChanged, me }) {
         <div className="op-toolbar">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email or business" />
           <div className="op-chips">
-            {[['all', `All ${rows.length}`], ['Active', `Active ${counts('Active')}`], ['Dormant', `Dormant ${counts('Dormant')}`], ['Never signed in', `Never signed in ${counts('Never signed in')}`], ['Suspended', `Suspended ${counts('Suspended')}`], ['business', 'Business'], ['personal', 'Personal']].filter(([k]) => k !== 'Suspended' || counts('Suspended')).map(([k, l]) => (
+            {[['all', `All ${rows.length}`], ['Active', `Active ${counts('Active')}`], ['Dormant', `Dormant ${counts('Dormant')}`], ['Never signed in', `Never signed in ${counts('Never signed in')}`], ['Suspended', `Suspended ${counts('Suspended')}`], ['business', 'Business'], ['personal', 'Personal'], ['trial', `On free trial ${billCount('trial')}`], ['ended', `Free month ended ${billCount('ended')}`], ['signed', `Debit order signed ${billCount('signed')}`]].filter(([k]) => k !== 'Suspended' || counts('Suspended')).map(([k, l]) => (
               <button key={k} className={'op-chip' + (f === k ? ' on' : '')} onClick={() => setF(k)}>{l}</button>
             ))}
           </div>
         </div>
         <div className="op-tablewrap"><table className="op-table">
-          <thead><tr>{th('email', 'Person')}{th('kind', 'Type')}<th>Status</th>{th('signin_sort', 'Last sign-in')}{th('active_days_30', 'Days active', 'num')}{th('created_at', 'Joined')}</tr></thead>
+          <thead><tr>{th('email', 'Person')}{th('kind', 'Type')}{th('trial_sort', 'Plan')}{th('debit_sort', 'Debit order')}<th>Status</th>{th('signin_sort', 'Last sign-in')}{th('created_at', 'Joined')}</tr></thead>
           <tbody>
             {sorted.length ? sorted.map(u => (
               <tr key={u.id} className="click" onClick={() => setOpen(u)}>
                 <td><span className="strong">{u.email}</span>{u.devices && <span className="sub">{u.devices}</span>}</td>
                 <td>{u.business_name ? <>{u.business_name}<span className="sub">{profileLabel(u.business_profile)} · {u.business_role}</span></> : 'Personal'}</td>
+                <td><span className={'op-pill ' + u.bill.tone}>{u.bill.label}</span>{u.bill.sub && <span className="sub">{u.bill.sub}</span>}</td>
+                <td>{u.is_admin ? '-' : u.debit_order_status === 'signed' && u.debit_order_signed_on ? <>Signed {shortDate(u.debit_order_signed_on)}</> : DEBIT_LABEL[u.debit_order_status || 'none']}</td>
                 <td><span className={'op-pill ' + u.status[1]}>{u.status[0]}</span></td>
                 <td>{ago(u.last_sign_in_at)}</td>
-                <td className="num">{u.active_days_30 || '-'}</td>
                 <td>{shortDate(u.created_at)}</td>
               </tr>
-            )) : <tr><td colSpan={6} className="op-empty">Nobody matches.</td></tr>}
+            )) : <tr><td colSpan={7} className="op-empty">Nobody matches.</td></tr>}
           </tbody>
         </table></div>
       </div>
@@ -378,6 +466,8 @@ function People({ users, businesses, onNew, onChanged, me }) {
               </dl>
             </>
           )}
+          <div className="op-sec">Plan &amp; debit order</div>
+          <BillingEditor key={current.id + (current.debit_order_status || '') + (current.trial_ends_on || '')} person={current} onSaved={onChanged} />
           <div className="op-sec">Account actions</div>
           <AccountActions person={current} me={me} onChanged={onChanged} onDeleted={async () => { setOpen(null); await onChanged(); }} />
           <div className="op-sec">Get in touch</div>
