@@ -541,3 +541,27 @@ html,body{overflow-x:hidden}
   .khFab{width:52px;height:52px}
   .khBub,.khHead .khTitle,.khHead .khSub,.khNote,.khRow.sys .khBub{font-size:16px}
 }
+
+/* Inline category + VAT editor under a transaction row (business > Money) */
+.txed{background:var(--zbg,#E5E7EB);border-radius:12px;padding:10px 12px;margin:2px 0 10px;font-size:15px;color:#000}
+.txed-grid{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.txed label{display:flex;flex-direction:column;gap:3px;flex:1 1 150px;font-size:12px;font-weight:700;color:#000;margin:0;text-transform:none;letter-spacing:0}
+.txed select,.txed input{font-size:15px;padding:8px 10px;border-radius:9px;background:#fff;border:1px solid rgba(22,24,27,.14);color:#000;width:100%}
+.txed-vat{display:flex;flex-direction:column;gap:3px}
+.txed-vat > span{font-size:12px;font-weight:700}
+.txed-vat > div{display:flex;background:#fff;border:1px solid rgba(22,24,27,.14);border-radius:9px;padding:2px;gap:2px}
+.txed-vat button{background:none;border:0;border-radius:7px;padding:6px 16px;font-size:14px;font-weight:700;color:#000;cursor:pointer;width:auto}
+.txed-vat button.on{background:#16181B;color:#fff}
+.txed-note{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;font-weight:600}
+.txed-note input{width:100px}
+.txed-note span{color:#000;opacity:.7;font-weight:600}
+.txed-err{color:#9C3626;font-size:13px;font-weight:700;margin-top:6px}
+.txed-act{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:10px}
+.txed-act button{width:auto;font-size:14px;font-weight:700;border-radius:999px;padding:7px 14px;cursor:pointer;border:0}
+.txed-act .pri{background:#33421F;color:#fff}
+.txed-act .sec{background:#fff;color:#000;border:1px solid rgba(22,24,27,.14)}
+.txed-act .lnk{background:none;color:#000;opacity:.7;padding-left:6px;padding-right:6px}
+.txed-act button:disabled{opacity:.5}
+tr.txrow{cursor:pointer}
+tr.txrow.open td{border-bottom-color:transparent}
+.txhint{font-size:13px;font-weight:700;color:var(--zblue,#264C87);white-space:nowrap}
