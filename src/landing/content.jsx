@@ -31,52 +31,76 @@ export const I = {
   shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   download: ['M12 4v12', 'M7 11l5 5 5-5', 'M5 20h14'],
   bank: ['M3 10l9-6 9 6', 'M5 10v8M19 10v8M9 10v8M15 10v8', 'M3 20h18'],
+  briefcase: ['M3 8h18v12H3z', 'M8 8V5h8v3', 'M3 13h18'],
+  clock: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 7v5l3 2'],
+  bell: ['M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z', 'M10 21h4'],
+  box: ['M3 7l9-4 9 4v10l-9 4-9-4z', 'M3 7l9 4 9-4', 'M12 11v10'],
+  cash: ['M3 6h18v12H3z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M6.5 9h.01M17.5 15h.01'],
+  calendar: ['M4 5h16v16H4z', 'M4 10h16', 'M8 3v4M16 3v4'],
+  car: ['M5 15l1.6-5.2A2 2 0 0 1 8.5 8.5h7a2 2 0 0 1 1.9 1.3L19 15', 'M3 15h18v4H3z', 'M7 19v2M17 19v2'],
+  cart: ['M3 4h2l2.4 11h10.2L20 7H6.2', 'M9 20h.01M17 20h.01'],
+  utensils: ['M7 3v7a2 2 0 0 0 4 0V3', 'M9 12v9', 'M17 21V3c-2 1-3 3-3 6s1 4 3 4'],
+  scissors: ['M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M8.6 7.6L20 18', 'M8.6 16.4L20 6'],
+  wrench: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
+  camera: ['M4 8h3l2-3h6l2 3h3v11H4z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+  fuel: ['M5 21V4h9v17', 'M5 10h9', 'M14 8l4 3v7a1.5 1.5 0 0 0 3 0V9l-3-3'],
+  home: ['M3 11l9-7 9 7', 'M5 10v10h14V10'],
 };
 
 export const BIZ_TYPES = [
   {
-    key: 'freelancer', icon: '💻', label: 'Freelancer', example: 'a graphic designer',
+    key: 'freelancer', icon: I.laptop, label: 'Freelancer',
+    for: 'Designers, developers, writers, consultants and photographers',
+    pain: 'You sell your time. Unbilled hours, late invoices and a surprise tax bill all come straight out of your pocket.',
     tools: [
-      ['⏱', 'Time tracking', 'Start a timer or log hours per client, then bill them onto an invoice in one tap.'],
-      ['📝', 'Quotes', 'Send a quote and turn it into an invoice when the client says yes.'],
-      ['🔔', 'Payment reminders', 'A friendly WhatsApp or email nudge for invoices that are late.'],
-      ['🏦', 'Tax set-aside', 'See how much of this month\'s profit to put away for SARS.'],
+      [I.clock, 'Time tracking', 'Run a timer or log hours per client and project, then turn them into invoice lines in one tap.', '6.5 h unbilled · R4 225'],
+      [I.quote, 'Quotes that become invoices', 'Send a quote on WhatsApp or email. When the client says yes, it becomes an invoice - nothing re-typed.', 'QUO-0031 accepted → INV-0107'],
+      [I.bell, 'Payment reminders', 'See who owes you and for how long, and send a polite reminder by WhatsApp or email in one tap.', '2 overdue · R6 800'],
+      [I.percent, 'Tax set-aside', 'Provisional tax estimated from your actual profit, so you know what to put away every month.', 'Set aside R3 180 this month'],
     ],
   },
   {
-    key: 'trades', icon: '🔨', label: 'Trades', example: 'a plumber',
+    key: 'trades', icon: I.wrench, label: 'Trades',
+    for: 'Plumbers, electricians, builders, painters and mechanics',
+    pain: 'Materials are paid for before the client pays, and by month end nobody knows which jobs actually made money.',
     tools: [
-      ['📝', 'Quotes with deposits', 'Quote the job, invoice the deposit, then send the final invoice less the deposit.'],
-      ['🧰', 'Jobs', 'Every quote, invoice, material cost and trip for a job in one place - see what it really made.'],
-      ['🚗', 'Mileage logbook', 'Log business trips for your SARS travel claim and export the logbook.'],
-      ['🔔', 'Payment reminders', 'Chase late payers with one tap.'],
+      [I.quote, 'Quotes with deposits', 'Quote the job, invoice a deposit before you buy materials, then send the final invoice with the deposit already taken off.', 'Deposit 50% · R11 500'],
+      [I.briefcase, 'Job costing', 'Every quote, invoice, material slip and trip for a job in one place, with the profit worked out.', 'Job profit R7 598 · 33%'],
+      [I.car, 'Mileage logbook', 'Log business trips as you drive and export a SARS-ready logbook for your travel claim.', '42 km on this job'],
+      [I.bell, 'Payment reminders', 'Chase late payers with a WhatsApp nudge instead of an awkward phone call.', 'INV-0038 · 9 days late'],
     ],
   },
   {
-    key: 'retail', icon: '🛒', label: 'Shop', example: 'a spaza shop',
+    key: 'retail', icon: I.cart, label: 'Shop',
+    for: 'Spaza shops, boutiques, hardware stores and market stalls',
+    pain: 'Cash comes in all day and stock goes out all day - and it is hard to tell whether the drawer and the shelves add up.',
     tools: [
-      ['📦', 'Stock', 'Know what\'s on the shelf, what it\'s worth, and get warned before you run out.'],
-      ['💵', 'Daily cash-up', 'Close the till: cash, card and tips, and whether the drawer balances.'],
-      ['🧾', 'Sales into the books', 'Cash-ups and stock sales land in your income automatically.'],
-      ['🔔', 'Payment reminders', 'For customers who buy on account.'],
+      [I.cash, 'Daily cash-up', 'Close the till in two minutes: cash, card and tips, and whether the drawer balances.', 'Drawer balanced · R0 short'],
+      [I.box, 'Stock control', 'Know what is on the shelf, what it is worth, and what to reorder before you run out.', 'Coca-Cola 2L · 4 left'],
+      [I.chart, 'Sales into the books', 'Cash-ups and stock sales go straight into your income, with VAT worked out if you are registered.', 'R52 300 sales this month'],
+      [I.user, 'Customer accounts', 'For regulars who buy on credit: see who owes what, and send a reminder.', '3 accounts · R1 450 owed'],
     ],
   },
   {
-    key: 'food', icon: '🍲', label: 'Food & catering', example: 'a café',
+    key: 'food', icon: I.utensils, label: 'Food & catering',
+    for: 'Cafés, takeaways, caterers, food trucks and home bakers',
+    pain: 'Margins are thin. A short till, wasted stock or an unpaid catering invoice can wipe out a week\'s profit.',
     tools: [
-      ['💵', 'Daily cash-up', 'Card, cash and tips each day, with over/short at a glance.'],
-      ['📦', 'Stock & waste', 'Track ingredients, what\'s running low, and what gets thrown away.'],
-      ['📝', 'Catering quotes', 'Quote events with a deposit and convert to an invoice.'],
-      ['🔔', 'Payment reminders', 'For catering clients on account.'],
+      [I.cash, 'Daily cash-up', 'Card, cash and tips each day, with any shortfall flagged the same day - not at month end.', 'Short R40 · flagged today'],
+      [I.box, 'Stock & waste', 'Track ingredients, what is running low and what gets thrown away, so you can price properly.', 'Waste this week · R380'],
+      [I.quote, 'Catering quotes', 'Quote events per head with a deposit, then convert the quote to the final invoice.', '60 guests · R9 600'],
+      [I.percent, 'VAT from your sales', 'Output VAT from your takings, input VAT from your supplier slips - your VAT201 numbers, ready.', 'VAT201 ready · due 25 Nov'],
     ],
   },
   {
-    key: 'appointments', icon: '✂️', label: 'Salon & services', example: 'a hair salon',
+    key: 'appointments', icon: I.scissors, label: 'Salon & services',
+    for: 'Salons, barbers, nail and beauty techs, therapists and tutors',
+    pain: 'A no-show is a slot you can never sell again, and with several staff it is hard to see who earned what.',
     tools: [
-      ['📅', 'Bookings', 'Your day at a glance, with deposits, no-shows and double-booking warnings.'],
-      ['💬', 'WhatsApp reminders', 'Remind clients of their appointment in one tap.'],
-      ['👩‍🔧', 'Earnings per staff member', 'See what each stylist or technician brought in this month.'],
-      ['📦', 'Stock', 'Products and supplies, with low-stock alerts.'],
+      [I.calendar, 'Bookings with deposits', 'Your day at a glance. Take a deposit when booking and get warned about double bookings.', 'Saturday · 9 of 10 slots'],
+      [I.chat, 'WhatsApp reminders', 'Remind clients of their appointment the day before, in one tap.', 'Tomorrow · 8 reminders ready'],
+      [I.team, 'Earnings per staff member', 'See what each stylist or technician brought in, for commission and payslips.', 'Top earner · R6 200'],
+      [I.box, 'Product stock', 'Products and supplies, with low-stock alerts and retail sales recorded.', 'Braiding hair · 6 left'],
     ],
   },
 ];
@@ -106,68 +130,96 @@ export const FAQ = [
   ['Is this financial or tax advice?', 'No. PAYE, VAT and tax set-aside figures are estimates to help you plan. Check anything with real tax consequences with your accountant or SARS eFiling.'],
 ];
 
-// A short, example story per business type: who they are, what happens
-// step by step in To The Cent, and what they get out of it.
+// A worked example per business type: who they are, what happens step by
+// step in To The Cent, the numbers it produces, and the result.
 const STORIES = {
   freelancer: {
-    who: ['👩🏽‍💻', 'Lerato, graphic designer', 'Example'],
+    who: ['LM', 'Lerato M.', 'Graphic designer · Johannesburg'],
+    title: 'Brightside Café logo project',
     steps: [
-      ['⏱', 'Hours tracked as she works', '6.5 hours on the Brightside Café logo'],
-      ['🧾', 'Invoice in one tap', 'R4 225, sent straight to WhatsApp'],
-      ['🔔', 'A nudge when it\'s late', 'Paid two days after the reminder'],
+      ['Hours tracked as she works', '6.5 h at R650 an hour', 'R4 225'],
+      ['Invoice sent on WhatsApp', 'INV-0107 · due in 7 days', 'R4 225'],
+      ['Reminder sent on day 8', 'Paid two days later, matched to her FNB statement', 'Paid'],
     ],
-    result: ['R3 180', 'put aside for SARS this month - no surprise tax bill'],
+    tt: 'Her month',
+    totals: [['Invoiced', 'R18 900'], ['Business expenses', '−R2 310'], ['Profit', 'R16 590']],
+    result: ['R3 180', 'to set aside for SARS this month - no surprise tax bill'],
   },
   trades: {
-    who: ['👷🏾‍♂️', 'Sipho, plumber', 'Example'],
+    who: ['SM', 'Sipho M.', 'Plumber · Durban'],
+    title: 'Bathroom renovation for the Mokoena family',
     steps: [
-      ['📝', 'Quote sent on WhatsApp', 'Bathroom renovation · R23 000'],
-      ['💰', '50% deposit paid first', 'R11 500 in before buying the tiles'],
-      ['🧰', 'Costs tracked on the job', 'Tiles and fittings R12 200 · 42 km of travel'],
-      ['🧾', 'Final invoice, less the deposit', 'R11 500 · matched to his bank statement'],
+      ['Quote accepted', 'QUO-0017 · sent on WhatsApp', 'R23 000'],
+      ['Deposit invoiced and paid', '50% before buying the tiles', 'R11 500'],
+      ['Materials scanned to the job', 'Tiles and fittings · 3 slips', '−R12 200'],
+      ['Final invoice, less the deposit', 'Matched to his bank statement', 'R11 500'],
     ],
-    result: ['R7 600', 'profit on this job, worked out for him'],
+    tt: 'Job costing',
+    totals: [['Job income', 'R23 000'], ['Materials', '−R12 200'], ['Helper, 2 days', '−R3 000'], ['Travel · 42 km', '−R202']],
+    result: ['R7 598', 'profit on this job, worked out for him'],
   },
   retail: {
-    who: ['🧑🏾‍💼', 'Zanele, spaza shop owner', 'Example'],
+    who: ['ZD', 'Zanele D.', 'Spaza shop · Soweto'],
+    title: 'A Friday at the shop',
     steps: [
-      ['💵', 'Till closed in two minutes', 'Cash R3 200 · Card R4 100 · balanced'],
-      ['📦', 'Warned before she runs out', 'Coca-Cola 2L: 4 left - added to the reorder list'],
-      ['📊', 'Sales land in the books', 'No re-typing from the till'],
+      ['Till closed in two minutes', 'Cash R3 200 · Card R4 100 · balanced', 'R7 300'],
+      ['Low stock flagged', 'Coca-Cola 2L, bread and airtime', '3 items'],
+      ['Supplier slip scanned', 'Wholesaler run, matched to her statement', '−R4 860'],
     ],
+    tt: 'Her week',
+    totals: [['Sales', 'R31 750'], ['Stock bought', '−R19 400'], ['Gross profit', 'R12 350']],
     result: ['R18 640', 'of stock on the shelf - always known'],
   },
   food: {
-    who: ['👩🏽‍🍳', 'Ayesha, café owner', 'Example'],
+    who: ['AK', 'Ayesha K.', 'Café owner · Cape Town'],
+    title: 'Friday cash-up',
     steps: [
-      ['💵', 'Friday cash-up', 'R7 950 in sales · R120 in tips'],
-      ['⚠️', 'Short R40 - flagged the same day', 'Not discovered at month end'],
-      ['🧾', 'VAT worked out from the sales', 'R1 037 included in today\'s takings'],
+      ['Sales recorded', 'Card R5 450 · Cash R2 500', 'R7 950'],
+      ['Tips kept separate', 'Recorded for staff, not counted as income', 'R120'],
+      ['Drawer counted', 'R40 short - flagged the same day', '−R40'],
     ],
+    tt: 'Friday\'s takings',
+    totals: [['Sales incl. VAT', 'R7 950'], ['VAT included (15%)', 'R1 037'], ['Sales excl. VAT', 'R6 913']],
     result: ['Every day', 'balanced, recorded and ready for her accountant'],
   },
   appointments: {
-    who: ['💇🏾‍♀️', 'Nomsa, salon owner', 'Example'],
+    who: ['NZ', 'Nomsa Z.', 'Salon owner · Pretoria'],
+    title: 'Saturday braids booking',
     steps: [
-      ['📅', 'Booking with a deposit', 'Braids, Saturday 09:00 · R200 deposit'],
-      ['💬', 'WhatsApp reminder the day before', 'One tap - fewer no-shows'],
-      ['✅', 'Done & paid', 'R450 balance recorded automatically'],
+      ['Booked with a deposit', 'Saturday 09:00 · paid by EFT', 'R200'],
+      ['WhatsApp reminder', 'Sent the day before, in one tap', 'Sent'],
+      ['Done and paid', 'Balance recorded automatically', 'R450'],
     ],
-    result: ['R14 600', 'earned by her team this month, shown per stylist'],
+    tt: 'Earned this month, by stylist',
+    totals: [['Thandeka', 'R6 200'], ['Lindiwe', 'R4 900'], ['Palesa', 'R3 500']],
+    result: ['R14 600', 'earned by her team this month'],
   },
 };
 
 export function BizStory({ kind }) {
   const st = STORIES[kind] || STORIES.trades;
+  const neg = v => v.startsWith('−');
   return (
     <div className="story">
-      <div className="person"><span className="avatar" aria-hidden="true">{st.who[0]}</span><div><b>{st.who[1]}</b><span>{st.who[2]} - how To The Cent helps</span></div></div>
+      <div className="person">
+        <span className="avatar" aria-hidden="true">{st.who[0]}</span>
+        <div><b>{st.who[1]}</b><span>{st.who[2]}</span></div>
+        <em className="tag">Example</em>
+      </div>
+      <div className="st-title">{st.title}</div>
       <ol>
-        {st.steps.map(([ic, t, d], i) => (
-          <li key={t} style={{ animationDelay: (i * 0.12) + 's' }}><span className="n" aria-hidden="true">{ic}</span><div className="t"><b>{t}</b><span>{d}</span></div></li>
+        {st.steps.map(([t, d, a], i) => (
+          <li key={t} style={{ animationDelay: (i * 0.1) + 's' }}>
+            <span className="n" aria-hidden="true">{i + 1}</span>
+            <div className="t"><div><b>{t}</b><span>{d}</span></div><strong className={neg(a) ? 'neg' : ''}>{a}</strong></div>
+          </li>
         ))}
       </ol>
-      <div className="result" style={{ animationDelay: (st.steps.length * 0.12) + 's' }}><span className="big">{st.result[0]}</span><span>{st.result[1]}</span></div>
+      <div className="ledger">
+        <div className="lh">{st.tt}</div>
+        {st.totals.map(([l, v]) => <div className="lr" key={l}><span>{l}</span><b className={neg(v) ? 'neg' : ''}>{v}</b></div>)}
+      </div>
+      <div className="result"><span className="big">{st.result[0]}</span><span>{st.result[1]}</span></div>
     </div>
   );
 }
@@ -284,14 +336,14 @@ export function HeroScene() {
             </div>
             <div className="m-safe"><span>Safe to spend today</span><b>R327</b><small>Rent &amp; debit orders already set aside</small></div>
             <div className="m-cats">
-              {[['🛒', 'Groceries', 'R2 410', 80, 'sage'], ['⛽', 'Fuel', 'R1 950', 97, 'mustard'], ['🍔', 'Eating out', 'R1 070', 64, 'lav']].map(([ic, n, v, w, c]) => (
+              {[[I.cart, 'Groceries', 'R2 410', 80, 'sage'], [I.fuel, 'Fuel', 'R1 950', 97, 'mustard'], [I.utensils, 'Eating out', 'R1 070', 64, 'lav']].map(([ic, n, v, w, c]) => (
                 <div className="m-cat" key={n}>
-                  <span className="ic">{ic}</span>
+                  <span className="ic"><Ic d={ic} /></span>
                   <div><div className="nm"><b>{n}</b><span>{v}</span></div><div className="m-bar"><i className={c} style={{ width: w + '%' }} /></div></div>
                 </div>
               ))}
             </div>
-            <div className="m-snap">📷 Snap a slip</div>
+            <div className="m-snap"><Ic d={I.camera} /> Snap a slip</div>
           </div>
         </div>
 

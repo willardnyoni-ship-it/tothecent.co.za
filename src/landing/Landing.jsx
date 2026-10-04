@@ -356,9 +356,9 @@ export default function Landing() {
             <p className="sub">Whether it's your household or your business, the same things keep going wrong. Here's what To The Cent does about each one.</p>
           </div>
           <div className="pgrid">
-            {[['people', '👩🏾', 'For you and your family', PROBLEMS.people], ['business', '🧰', 'For your business', PROBLEMS.business]].map(([k, ic, t, rows]) => (
+            {[['people', I.home, 'For you and your family', PROBLEMS.people], ['business', I.briefcase, 'For your business', PROBLEMS.business]].map(([k, ic, t, rows]) => (
               <div className={'pcol reveal ' + k} key={k}>
-                <div className="phead"><span aria-hidden="true">{ic}</span><b>{t}</b></div>
+                <div className="phead"><span aria-hidden="true"><Ic d={ic} /></span><b>{t}</b></div>
                 {rows.map(([p, f]) => (
                   <div className="prow" key={p}>
                     <div className="pain"><i aria-hidden="true">✕</i>{p}</div>
@@ -386,7 +386,7 @@ export default function Landing() {
           </div>
           <div className="shot reveal d2">
             <div className="convo">
-              <div className="persona"><span className="avatar" aria-hidden="true">👩🏾‍⚕️</span>Example: Thandi, a nurse in Durban</div>
+              <div className="persona"><span className="avatar" aria-hidden="true">T</span>Example: Thandi, a nurse in Durban</div>
               <div className="bub me">Payday was 10 days ago. Can I afford dinner out tonight?</div>
               <div className="bub app"><div className="who">To The Cent</div>Yes - you can safely spend <b>R327</b> today. Rent and your phone contract are already set aside.</div>
             </div>
@@ -418,17 +418,22 @@ export default function Landing() {
           <div className="types" role="tablist">
             {BIZ_TYPES.map(t => (
               <button key={t.key} role="tab" aria-selected={bizType === t.key} className={bizType === t.key ? 'on' : ''} onClick={() => setBizType(t.key)} type="button">
-                <span aria-hidden="true">{t.icon}</span>{t.label}
+                <Ic d={t.icon} />{t.label}
               </button>
             ))}
           </div>
           <div className="types-body" key={bizType}>
-            <div className="tools">
-              {activeType.tools.map(([icon, name, desc], i) => (
-                <div className="tool" key={name} style={{ animationDelay: i * 0.05 + 's' }}>
-                  <span className="fi" aria-hidden="true">{icon}</span><div><b>{name}</b><p>{desc}</p></div>
-                </div>
-              ))}
+            <div className="bizinfo">
+              <div className="bfor"><span>Built for</span>{activeType.for}</div>
+              <p className="bpain">{activeType.pain}</p>
+              <div className="tools">
+                {activeType.tools.map(([icon, name, desc, stat], i) => (
+                  <div className="tool" key={name} style={{ animationDelay: i * 0.05 + 's' }}>
+                    <span className="fi" aria-hidden="true"><Ic d={icon} /></span>
+                    <div><b>{name}</b><p>{desc}</p><span className="stat">{stat}</span></div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="preview">
               <BizStory kind={bizType} />
