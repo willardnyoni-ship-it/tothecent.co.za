@@ -87,7 +87,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
   const tx = (date, description, amount, kind, category, extra = {}) => {
     db.business_transactions.push({ id: id('tx'), business_id: biz, bank_account_id: null, date, description, amount, kind, category, status: 'reviewed', source: 'statement', linked_invoice_id: null, job_id: null, vat_amount: null, external_id: null, created_at: created(), ...extra });
   };
-  const stock = (name, unit, qty, reorder, cost, sell) => { const s = { id: id('stk'), business_id: biz, name, sku: null, unit, qty_on_hand: qty, reorder_level: reorder, cost_price: cost, sell_price: sell, archived: false, created_at: created() }; db.stock_items.push(s); return s; };
+  const stock = (name, unit, qty, reorder, cost, sell, category = null) => { const s = { id: id('stk'), business_id: biz, name, category, sku: null, unit, qty_on_hand: qty, reorder_level: reorder, cost_price: cost, sell_price: sell, archived: false, created_at: created() }; db.stock_items.push(s); return s; };
   const cashUp = (offset, cash, card, tips, short = 0, other = 0) => {
     db.cash_ups.push({ id: id('cu'), business_id: biz, date: day(offset), cash_sales: cash, card_sales: card, other_sales: other, tips, opening_float: 500, counted_cash: 500 + cash - short, notes: short ? 'Drawer was short' : null, created_at: created() });
     tx(day(offset), 'Cash-up', r2(cash + card + other), 'income', 'Sales', { source: 'cashup', status: 'reviewed' });
@@ -142,9 +142,9 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     const a = customer('Mama Nandi (on account)', null, '082 555 0133');
     const b = customer('Sipho the builder (on account)', null, '083 555 0155');
     customer('Gogo Mabaso (on account)', null, '084 555 0188');
-    const coke = stock('Coca-Cola 2L', 'each', 4, 12, 21.5, 29.99);
-    stock('White bread', 'each', 18, 10, 14.2, 18.99); stock('Maize meal 5kg', 'each', 9, 6, 56, 74.99); stock('Cooking oil 750ml', 'each', 14, 8, 38, 52.99);
-    stock('Eggs (tray of 30)', 'tray', 3, 4, 62, 84.99); stock('Airtime vouchers R10', 'each', 40, 20, 9.5, 10); stock('Sugar 2.5kg', 'each', 11, 6, 44, 59.99); stock('Washing powder 2kg', 'each', 7, 5, 49, 66.99);
+    const coke = stock('Coca-Cola 2L', 'each', 4, 12, 21.5, 29.99, 'Drinks');
+    stock('White bread', 'each', 18, 10, 14.2, 18.99, 'Groceries'); stock('Maize meal 5kg', 'each', 9, 6, 56, 74.99, 'Groceries'); stock('Cooking oil 750ml', 'each', 14, 8, 38, 52.99, 'Groceries'); stock('Fanta Orange 2L', 'each', 15, 12, 21.5, 29.99, 'Drinks'); stock('Simba Chips 120g', 'each', 30, 20, 11.8, 16.99, 'Snacks');
+    stock('Eggs (tray of 30)', 'tray', 3, 4, 62, 84.99, 'Groceries'); stock('Airtime vouchers R10', 'each', 40, 20, 9.5, 10, 'Airtime & data'); stock('Sugar 2.5kg', 'each', 11, 6, 44, 59.99, 'Groceries'); stock('Washing powder 2kg', 'each', 7, 5, 49, 66.99, 'Household'); stock('Handy Andy 750ml', 'each', 9, 6, 26, 36.99, 'Household');
     db.stock_movements.push({ id: id('mv'), business_id: biz, item_id: coke.id, date: day(-6), qty_change: 24, reason: 'purchase', unit_price: 21.5, note: 'Makro run', created_at: created() },
       { id: id('mv'), business_id: biz, item_id: coke.id, date: day(-2), qty_change: -2, reason: 'waste', unit_price: 21.5, note: 'Damaged cans', created_at: created() });
     [[-1, 3200, 4100, 0, 0], [-2, 2650, 3800, 0, 40], [-3, 3480, 4420, 0, 0], [-4, 2900, 3510, 0, 0], [-5, 4100, 5230, 0, 0], [-6, 3750, 4800, 0, 120], [-7, 2300, 3050, 0, 0], [-8, 3050, 3720, 0, 0], [-9, 3320, 4140, 0, 0], [-10, 2780, 3390, 0, 0]]
@@ -158,8 +158,8 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     const kc = customer('Khumalo Wedding (catering)', 'events@khumalo.example', '082 555 0111');
     const law = customer('Dlamini & Co Attorneys', 'office@dlamini.example', '011 555 0190');
     const bright = customer('Brightside Corporate', 'hr@brightside.example', '082 555 0101');
-    stock('Coffee beans 1kg', 'bag', 6, 4, 245, 0); stock('Full-cream milk 2L', 'each', 9, 12, 34, 0); stock('Cake flour 2.5kg', 'each', 5, 3, 48, 0);
-    const avo = stock('Avocados', 'each', 14, 20, 11, 0); stock('Free-range eggs (tray)', 'tray', 4, 3, 72, 0); stock('Takeaway cups (50)', 'pack', 2, 3, 96, 0);
+    stock('Coffee beans 1kg', 'bag', 6, 4, 245, 0, 'Beverages'); stock('Full-cream milk 2L', 'each', 9, 12, 34, 0, 'Dairy & eggs'); stock('Cake flour 2.5kg', 'each', 5, 3, 48, 0, 'Dry goods');
+    const avo = stock('Avocados', 'each', 14, 20, 11, 0, 'Fresh produce'); stock('Free-range eggs (tray)', 'tray', 4, 3, 72, 0, 'Dairy & eggs'); stock('Takeaway cups (50)', 'pack', 2, 3, 96, 0, 'Packaging'); stock('Baby spinach 200g', 'each', 12, 8, 19, 0, 'Fresh produce'); stock('Sugar sachets (500)', 'box', 3, 2, 85, 0, 'Dry goods');
     db.stock_movements.push({ id: id('mv'), business_id: biz, item_id: avo.id, date: day(-1), qty_change: -6, reason: 'waste', unit_price: 11, note: 'Overripe', created_at: created() },
       { id: id('mv'), business_id: biz, item_id: avo.id, date: day(-3), qty_change: 40, reason: 'purchase', unit_price: 11, note: 'Fresh produce market', created_at: created() });
     [[-1, 2500, 5450, 120, 40], [-2, 2100, 4800, 95, 0], [-3, 3050, 6200, 210, 0], [-4, 1900, 4120, 60, 0], [-5, 2750, 5890, 150, 0], [-6, 3300, 7100, 260, 85], [-7, 2850, 6020, 180, 0], [-8, 2100, 4400, 80, 0]]
@@ -173,7 +173,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     tx(day(-2), 'POS Purchase Yoco Terminal Fee', 289, 'expense', 'Bank fees'); tx(day(-3), 'Payshap Credit Dlamini & Co', 5000, 'income', null, { status: 'needs_review' });
   } else if (key === 'appointments') {
     const cl = ['Thandi M.', 'Lerato S.', 'Busisiwe K.', 'Naledi P.', 'Zinhle D.', 'Ayanda T.', 'Palesa N.', 'Refilwe G.'].map((nm, i) => customer(nm, null, '08' + (2 + (i % 4)) + ' 555 0' + (100 + i * 11)));
-    stock('Braiding hair (pack)', 'pack', 6, 10, 38, 75); stock('Relaxer kit', 'each', 5, 4, 82, 160); stock('Shampoo 1L', 'each', 3, 4, 95, 0); stock('Nail polish', 'each', 22, 8, 28, 55);
+    stock('Braiding hair (pack)', 'pack', 6, 10, 38, 75, 'Hair extensions'); stock('Relaxer kit', 'each', 5, 4, 82, 160, 'Hair products'); stock('Shampoo 1L', 'each', 3, 4, 95, 0, 'Hair products'); stock('Nail polish', 'each', 22, 8, 28, 55, 'Nail products'); stock('Edge control 250ml', 'each', 10, 6, 50, 95, 'Retail products');
     const staff = ['Thandeka', 'Lindiwe', 'Palesa'];
     const services = [['Box braids', 90, 650, 200], ['Cut & colour', 120, 780, 250], ['Blow-dry', 45, 220, 50], ['Gel nails', 60, 320, 100], ['Weave install', 150, 950, 300], ['Barber cut', 30, 120, 0]];
     for (let d = -13; d <= 4; d++) {

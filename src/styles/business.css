@@ -98,3 +98,33 @@
 /* Banner shown in the owner portal's business-type preview (?demo=...) */
 .demo-bar{background:#FFF7E0;border:1px solid #F0D58A;color:#5E3F0C;border-radius:12px;padding:8px 12px;margin:10px 0 0;font-size:13px}
 .demo-bar b{background:#E2A82E;color:#fff;border-radius:99px;padding:1px 9px;margin-right:6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+
+/* Capture stock from a supplier invoice */
+.sc-choice{display:block;width:100%;text-align:left;background:#fff;border:1px solid rgba(22,24,27,.14);border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;color:#000;font:inherit}
+.sc-choice b{display:block;font-size:17px;margin-bottom:4px}
+.sc-choice span{display:block;font-size:14px;opacity:.75;line-height:1.4}
+.sc-choice:disabled{opacity:.6;cursor:default}
+.sc-line{background:#fff;border:1px solid rgba(22,24,27,.14);border-radius:14px;padding:12px;margin-top:10px}
+.sc-top{display:flex;gap:8px;align-items:center}
+.sc-top input{flex:1}
+.sc-x{width:36px;height:36px;border-radius:50%;border:0;background:#E5E7EB;color:#000;font-size:20px;line-height:1;cursor:pointer;flex:none}
+.sc-nums{display:grid;grid-template-columns:.8fr 1fr 1.3fr;gap:8px;margin-top:8px}
+.sc-nums.two{grid-template-columns:1fr 1fr}
+.sc-nums label,.sc-match{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;margin:0;text-transform:none;letter-spacing:0}
+.sc-match{margin-top:8px}
+.sc-line input,.sc-line select{font-size:15px;padding:9px 10px;border-radius:10px;width:100%}
+.sc-sum{text-align:right;font-size:12px;font-weight:700;margin-top:6px;opacity:.7}
+
+/* Stock: categories and levels */
+.stk-cats .stk-cat-row{display:grid;grid-template-columns:minmax(90px,1.1fr) 2fr auto;gap:10px;align-items:center;width:100%;background:none;border:0;padding:7px 0;cursor:pointer;font:inherit;color:#000;text-align:left}
+.stk-cats .nm{font-size:14px;font-weight:600}
+.stk-cats .nm em{font-style:normal;font-size:11px;font-weight:700;color:#9C3626;margin-left:6px}
+.stk-cats .bar{height:8px;background:#E5E7EB;border-radius:9px;overflow:hidden;display:block}
+.stk-cats .bar i{display:block;height:100%;background:#33421F;border-radius:9px}
+.stk-cats .v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.stk-chips button{white-space:nowrap}
+tr.stk-head td{background:#F1F2F4;font-weight:800;font-size:13px;padding:8px 10px;border-radius:8px;border-bottom:0}
+tr.stk-head td span{float:right;font-weight:600;opacity:.7}
+.stk-lvl{display:block;width:64px;height:5px;background:#E5E7EB;border-radius:9px;overflow:hidden;margin:5px 0 0 auto}
+.stk-lvl i{display:block;height:100%;background:#94AF66}
+.stk-lvl.low i{background:#9C3626}

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { useSheet } from '../../components/Sheet.jsx';
 import { R, R2, iso } from '../../lib/format.js';
+import { categoriesFor } from '../../lib/stockInvoice.js';
+import { useStockCapture } from '../StockCapture.jsx';
 
 const ACTIONS = {
   purchase: { label: 'Stock in', verb: 'Received', sign: 1, priceLabel: 'Cost per unit (R)' },
@@ -20,10 +22,10 @@ const csvCell = v => {
   return '"' + t.replace(/"/g, '""') + '"';
 };
 function downloadStockCsv(items, name) {
-  const rows = [['Item', 'SKU', 'Unit', 'On hand', 'Reorder level', 'Needs reorder', 'Cost price (R)', 'Selling price (R)', 'Stock value at cost (R)', 'Margin %']]
+  const rows = [['Item', 'Category', 'SKU', 'Unit', 'On hand', 'Reorder level', 'Needs reorder', 'Cost price (R)', 'Selling price (R)', 'Stock value at cost (R)', 'Margin %']]
     .concat(items.map(i => {
       const cost = +i.cost_price || 0, sell = +i.sell_price || 0;
-      return [i.name, i.sku || '', i.unit, +i.qty_on_hand, +i.reorder_level || 0, isLow(i) ? 'Yes' : 'No', cost.toFixed(2), sell.toFixed(2),
+      return [i.name, i.category || '', i.sku || '', i.unit, +i.qty_on_hand, +i.reorder_level || 0, isLow(i) ? 'Yes' : 'No', cost.toFixed(2), sell.toFixed(2),
         (Math.max(0, +i.qty_on_hand) * cost).toFixed(2), sell > 0 ? (((sell - cost) / sell) * 100).toFixed(1) : ''];
     }));
   // The leading BOM makes Excel read accents and symbols correctly.
@@ -34,7 +36,7 @@ function downloadStockCsv(items, name) {
 
 function StockItemContent({ itemId }) {
   const { close } = useSheet();
-  const { stockItems, stockMovements, addRow, updateRow, addExpense, addTransaction, myRole } = useBusiness();
+  const { business, stockItems, stockMovements, addRow, updateRow, addExpense, addTransaction, myRole } = useBusiness();
   const readOnly = myRole === 'accountant';
   const item = stockItems.find(i => i.id === itemId);
   const [action, setAction] = useState('purchase');
@@ -80,7 +82,7 @@ function StockItemContent({ itemId }) {
     setBusy(true);
     try {
       await updateRow('stock_items', item.id, {
-        name: fields.name, sku: fields.sku || null, unit: fields.unit || 'each',
+        name: fields.name, category: (fields.category || '').trim() || null, sku: fields.sku || null, unit: fields.unit || 'each',
         reorder_level: +fields.reorder_level || 0, cost_price: +fields.cost_price || 0, sell_price: +fields.sell_price || 0,
       });
       setEditing(false);
@@ -125,6 +127,8 @@ function StockItemContent({ itemId }) {
         {editing ? (
           <>
             <label>Name</label><input value={fields.name || ''} onChange={e => setFields({ ...fields, name: e.target.value })} />
+            <label>Category</label><input list="stock-cats" value={fields.category || ''} onChange={e => setFields({ ...fields, category: e.target.value })} placeholder="e.g. Drinks" />
+            <datalist id="stock-cats">{[...new Set([...stockItems.map(i => i.category).filter(Boolean), ...categoriesFor(business.business_profile)])].map(x => <option key={x} value={x} />)}</datalist>
             <label>Code / SKU</label><input value={fields.sku || ''} onChange={e => setFields({ ...fields, sku: e.target.value })} />
             <label>Unit</label><input value={fields.unit || ''} onChange={e => setFields({ ...fields, unit: e.target.value })} />
             <label>Reorder when at or below</label><input type="number" value={fields.reorder_level ?? ''} onChange={e => setFields({ ...fields, reorder_level: e.target.value })} />
@@ -139,6 +143,7 @@ function StockItemContent({ itemId }) {
           </>
         ) : (
           <>
+            {item.category && <div className="row"><span className="mini">Category</span><span>{item.category}</span></div>}
             {item.sku && <div className="row"><span className="mini">Code</span><span>{item.sku}</span></div>}
             <div className="row"><span className="mini">Cost / Selling price</span><span>{R2(+item.cost_price)} / {R2(+item.sell_price)}</span></div>
             <div className="row"><span className="mini">Markup</span><span>{+item.cost_price > 0 ? Math.round((+item.sell_price - +item.cost_price) / +item.cost_price * 100) + '%' : '-'}</span></div>
@@ -152,7 +157,7 @@ function StockItemContent({ itemId }) {
         <table><tbody>
           {moves.length ? moves.map(m => (
             <tr key={m.id}>
-              <td>{ACTIONS[m.reason]?.verb || m.reason}<div className="tag">{m.date}{m.note ? ' · ' + m.note : ''}</div></td>
+              <td>{ACTIONS[m.reason]?.verb || m.reason}<div className="tag">{m.date}{m.supplier ? ' · ' + m.supplier : ''}{m.reference ? ' · ' + m.reference : (m.note ? ' · ' + m.note : '')}</div></td>
               <td className={'r mono' + (+m.qty_change < 0 ? ' bd' : '')}>{+m.qty_change > 0 ? '+' : ''}{+m.qty_change}</td>
             </tr>
           )) : <tr><td className="mini">No movements yet.</td></tr>}
@@ -168,32 +173,54 @@ export function useStockItem() {
   return (itemId) => open(() => <StockItemContent itemId={itemId} />);
 }
 
+const NONE = 'Uncategorised';
+
 export default function Stock() {
-  const { stockItems, stockMovements, addRow, myRole } = useBusiness();
+  const { business, stockItems, stockMovements, addRow, myRole } = useBusiness();
   const readOnly = myRole === 'accountant';
   const openItem = useStockItem();
+  const openCapture = useStockCapture();
   const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState('');
-  const [f, setF] = useState({ name: '', unit: 'each', qty_on_hand: '', reorder_level: '', cost_price: '', sell_price: '' });
+  const [cat, setCat] = useState('all'); // all | low | a category name
+  const blankForm = { name: '', category: '', unit: 'each', qty_on_hand: '', reorder_level: '', cost_price: '', sell_price: '' };
+  const [f, setF] = useState(blankForm);
   const [err, setErr] = useState('');
   const items = stockItems.filter(i => !i.archived);
   const low = items.filter(isLow);
-  const value = items.reduce((a, i) => a + Math.max(0, +i.qty_on_hand) * +i.cost_price, 0);
+  const worth = i => Math.max(0, +i.qty_on_hand) * +i.cost_price;
+  const value = items.reduce((a, i) => a + worth(i), 0);
   const monthKey = iso(new Date()).slice(0, 7);
   const wasteMonth = stockMovements.filter(m => m.reason === 'waste' && m.date.slice(0, 7) === monthKey)
     .reduce((a, m) => a + Math.abs(+m.qty_change) * +m.unit_price, 0);
-  const shown = items.filter(i => !search || (i.name + ' ' + (i.sku || '')).toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => (isLow(b) - isLow(a)) || a.name.localeCompare(b.name));
+
+  // Categories in use, with how many items and how much stock each holds.
+  const byCat = useMemo(() => {
+    const m = {};
+    items.forEach(i => { const k = i.category || NONE; const e = m[k] || (m[k] = { n: 0, value: 0, low: 0 }); e.n++; e.value += worth(i); if (isLow(i)) e.low++; });
+    return m;
+  }, [stockItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  const catNames = Object.keys(byCat).sort((x, y) => (x === NONE) - (y === NONE) || x.localeCompare(y));
+  const suggestions = [...new Set([...catNames.filter(c => c !== NONE), ...categoriesFor(business.business_profile)])];
+
+  const matches = i => (!search || (i.name + ' ' + (i.sku || '') + ' ' + (i.category || '')).toLowerCase().includes(search.toLowerCase()))
+    && (cat === 'all' || (cat === 'low' ? isLow(i) : (i.category || NONE) === cat));
+  const shown = items.filter(matches).sort((a, b) => (isLow(b) - isLow(a)) || a.name.localeCompare(b.name));
+  const grouped = cat === 'all' && catNames.length > 1;
+  const sections = grouped ? catNames.map(c => [c, shown.filter(i => (i.category || NONE) === c)]).filter(([, l]) => l.length) : [[null, shown]];
+  const exportCsv = () => downloadStockCsv([...items].sort((a, b) => (a.category || '~').localeCompare(b.category || '~') || a.name.localeCompare(b.name)), 'stock-' + iso(new Date()) + '.csv');
 
   async function save() {
     if (!f.name.trim()) { setErr('Give the item a name.'); return; }
     try {
       const qty = +f.qty_on_hand || 0;
-      const it = await addRow('stock_items', { name: f.name.trim(), unit: f.unit || 'each', qty_on_hand: qty, reorder_level: +f.reorder_level || 0, cost_price: +f.cost_price || 0, sell_price: +f.sell_price || 0 });
+      const it = await addRow('stock_items', { name: f.name.trim(), category: f.category.trim() || null, unit: f.unit || 'each', qty_on_hand: qty, reorder_level: +f.reorder_level || 0, cost_price: +f.cost_price || 0, sell_price: +f.sell_price || 0 });
       if (qty) await addRow('stock_movements', { item_id: it.id, qty_change: qty, reason: 'adjust', unit_price: +f.cost_price || 0, note: 'Opening stock' });
-      setF({ name: '', unit: 'each', qty_on_hand: '', reorder_level: '', cost_price: '', sell_price: '' }); setErr(''); setAdding(false);
+      setF(blankForm); setErr(''); setAdding(false);
     } catch (e) { setErr(e.message); }
   }
+
+  const maxValue = Math.max(1, ...Object.values(byCat).map(e => e.value));
 
   return (
     <section className="tab on light-tab">
@@ -211,11 +238,30 @@ export default function Stock() {
         </div>
       )}
 
-      {!readOnly && (adding ? (
-        <div className="card">
+      {catNames.length > 1 && (
+        <div className="card stk-cats">
+          <div className="row"><h2 style={{ marginTop: 0 }}>Stock by category</h2><span className="mini">Value at cost</span></div>
+          {catNames.slice().sort((x, y) => byCat[y].value - byCat[x].value).map(c => (
+            <button key={c} className="stk-cat-row" onClick={() => setCat(c)}>
+              <span className="nm">{c}{byCat[c].low > 0 && <em>{byCat[c].low} low</em>}</span>
+              <span className="bar"><i style={{ width: Math.max(3, byCat[c].value / maxValue * 100) + '%' }} /></span>
+              <span className="v">{R(byCat[c].value)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!readOnly && (
+        <button className="b" onClick={openCapture}>Capture stock from an invoice</button>
+      )}
+      {!readOnly && adding ? (
+        <div className="card" style={{ marginTop: 10 }}>
           <h2 style={{ marginTop: 0 }}>New item</h2>
           <label>Name</label>
           <input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. Coca-Cola 2L, Flour 10kg, Hair dye #5" />
+          <label>Category</label>
+          <input list="stk-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="e.g. Drinks" />
+          <datalist id="stk-cat-list">{suggestions.map(x => <option key={x} value={x} />)}</datalist>
           <div className="biz-grid" style={{ marginTop: 10 }}>
             <div><label style={{ marginTop: 0 }}>Unit</label><input value={f.unit} onChange={e => setF({ ...f, unit: e.target.value })} placeholder="each, kg, box" /></div>
             <div><label style={{ marginTop: 0 }}>How many now</label><input type="number" value={f.qty_on_hand} onChange={e => setF({ ...f, qty_on_hand: e.target.value })} /></div>
@@ -231,28 +277,42 @@ export default function Stock() {
           <button className="b g" onClick={() => setAdding(false)}>Cancel</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="b" style={{ flex: 1 }} onClick={() => setAdding(true)}>+ Add Item</button>
-          <button className="b g" style={{ width: 'auto', padding: '0 18px' }} disabled={!items.length}
-            onClick={() => downloadStockCsv([...items].sort((a, b) => a.name.localeCompare(b.name)), 'stock-' + iso(new Date()) + '.csv')}>Export CSV</button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          {!readOnly && <button className="b g" style={{ flex: 1 }} onClick={() => setAdding(true)}>+ Add item</button>}
+          <button className="b g" style={{ flex: 1 }} disabled={!items.length} onClick={exportCsv}>Export CSV</button>
         </div>
-      ))}
-      {readOnly && (
-        <button className="b g" disabled={!items.length} onClick={() => downloadStockCsv([...items].sort((a, b) => a.name.localeCompare(b.name)), 'stock-' + iso(new Date()) + '.csv')}>Export CSV</button>
       )}
 
-      {items.length > 6 && <input style={{ marginTop: 14 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search stock" />}
-      <div className="card" style={{ marginTop: 14 }}>
+      <div className="seg stk-chips" style={{ marginTop: 14 }}>
+        <button className={cat === 'all' ? 'on' : ''} onClick={() => setCat('all')}>All {items.length}</button>
+        {low.length > 0 && <button className={cat === 'low' ? 'on' : ''} onClick={() => setCat('low')}>Low stock {low.length}</button>}
+        {catNames.length > 1 && catNames.map(c => <button key={c} className={cat === c ? 'on' : ''} onClick={() => setCat(c)}>{c} {byCat[c].n}</button>)}
+      </div>
+      {items.length > 6 && <input style={{ marginBottom: 10 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search stock" />}
+
+      <div className="card">
         <table><tbody>
-          {shown.length ? shown.map(i => (
-            <tr key={i.id} style={{ cursor: 'pointer' }} onClick={() => openItem(i.id)}>
-              <td>
-                <div style={{ fontWeight: 600 }}>{i.name}</div>
-                <div className="tag">{R2(+i.sell_price)} each{isLow(i) ? ' · reorder' : ''}</div>
-              </td>
-              <td className={'r' + (isLow(i) ? ' bd' : '')}>{+i.qty_on_hand} {i.unit}</td>
-            </tr>
-          )) : <tr><td className="mini" colSpan={2}>{items.length ? 'Nothing matches.' : 'No stock items yet.'}</td></tr>}
+          {shown.length ? sections.map(([name, list]) => [
+            name && (
+              <tr key={'h-' + name} className="stk-head"><td colSpan={2}>{name}<span>{list.length} item{list.length === 1 ? '' : 's'} · {R(list.reduce((a, i) => a + worth(i), 0))}</span></td></tr>
+            ),
+            ...list.map(i => {
+              const margin = +i.sell_price > 0 && +i.cost_price > 0 ? Math.round((+i.sell_price - +i.cost_price) / +i.sell_price * 100) : null;
+              const level = +i.reorder_level > 0 ? Math.min(1, +i.qty_on_hand / (+i.reorder_level * 2)) : null;
+              return (
+                <tr key={i.id} style={{ cursor: 'pointer' }} onClick={() => openItem(i.id)}>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{i.name}</div>
+                    <div className="tag">{!grouped && i.category ? i.category + ' · ' : ''}{+i.sell_price > 0 ? R2(+i.sell_price) + ' each' : 'no selling price'}{margin != null ? ` · ${margin}% margin` : ''}{isLow(i) ? ' · reorder' : ''}</div>
+                  </td>
+                  <td className={'r' + (isLow(i) ? ' bd' : '')}>
+                    {+i.qty_on_hand} {i.unit}
+                    {level != null && <span className={'stk-lvl' + (isLow(i) ? ' low' : '')}><i style={{ width: Math.max(4, level * 100) + '%' }} /></span>}
+                  </td>
+                </tr>
+              );
+            }),
+          ]) : <tr><td className="mini" colSpan={2}>{items.length ? 'Nothing matches.' : 'No stock items yet. Capture an invoice or add an item to start.'}</td></tr>}
         </tbody></table>
       </div>
       <div style={{ height: 20 }} />
