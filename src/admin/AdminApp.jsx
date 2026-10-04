@@ -174,12 +174,37 @@ function useAccountFn() {
   }, [syncCfg, ensureToken]);
 }
 
-const ACTION_LABEL = { billing_updated: 'Plan / debit order updated', sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
+// Emails the person Supabase's password-reset link (the same email as
+// "Forgot password?" on the sign-in box). Following it lets them choose a
+// password and sign in; it also confirms an email that was never confirmed.
+function useSendReset() {
+  const { syncCfg, ensureToken } = useBudget();
+  return useCallback(async (person) => {
+    const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/auth/v1/recover?redirect_to=' + encodeURIComponent(SITE), {
+      method: 'POST',
+      headers: { apikey: syncCfg.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: person.email }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      const m = d.msg || d.message || d.error_description || '';
+      if (/rate limit|too many|only request this after|seconds/i.test(m)) {
+        throw new Error(/seconds/i.test(m) ? 'An email was sent to them a moment ago - wait a minute before sending another.' : "Supabase's email limit has been reached for now. Try again in a while, or use \"Create sign-in link\" and send it yourself.");
+      }
+      throw new Error(m || `Could not send (${r.status}).`);
+    }
+    // Best effort: the email is already on its way, so a failed log write isn't an error.
+    try { const token = await ensureToken(); await adminApi.rpc(syncCfg, token, 'admin_log_action', { p_target: person.id, p_action: 'reset_email_sent', p_details: person.confirmed ? null : 'Email was not confirmed' }); } catch { /* ignore */ }
+  }, [syncCfg, ensureToken]);
+}
+
+const ACTION_LABEL = { reset_email_sent: 'Password reset email sent', billing_updated: 'Plan / debit order updated', sent_signin_link: 'Sign-in link created', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
 
 // The "Account actions" block in a person's detail panel.
 function AccountActions({ person, me, onChanged, onDeleted }) {
   const { syncCfg, ensureToken } = useBudget();
   const call = useAccountFn();
+  const sendReset = useSendReset();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [link, setLink] = useState(null);
@@ -211,6 +236,12 @@ function AccountActions({ person, me, onChanged, onDeleted }) {
   return (
     <>
       <div className="op-actions" style={{ flexWrap: 'wrap' }}>
+        <button className="op-btn primary" disabled={busy || isSuspended(person)} onClick={async () => {
+          setBusy(true); setMsg(null); setLink(null);
+          try { await sendReset(person); setMsg({ t: `Password reset email sent to ${person.email}. They follow the link, choose a password and are signed in.` }); await loadLog(); }
+          catch (e) { setMsg({ e: true, t: e.message }); }
+          finally { setBusy(false); }
+        }}>Email password reset</button>
         <button className="op-btn" disabled={busy} onClick={() => run({ action: 'signin_link' }, r => { setLink(r.link); setConfirming(null); })}>Create sign-in link</button>
         {suspended
           ? <button className="op-btn" disabled={busy} onClick={() => run({ action: 'unsuspend' }, async () => { setMsg({ t: 'Re-enabled - they can sign in again.' }); await onChanged(); })}>Re-enable account</button>
@@ -251,6 +282,7 @@ function AccountActions({ person, me, onChanged, onDeleted }) {
         </div>
       )}
 
+      {!person.confirmed && <div className="op-note">Their email was never confirmed. The reset email's link confirms it and lets them choose a password, so it works for them too.</div>}
       {person.owns_business && <div className="op-note">They own a business, so the account can't be deleted here - that would also erase the whole business. Suspend instead if needed.</div>}
       {msg && <div className={'op-msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
 
@@ -391,6 +423,15 @@ function BillingEditor({ person, onSaved }) {
 }
 
 function People({ users, businesses, onNew, onChanged, me }) {
+  const sendReset = useSendReset();
+  const [sending, setSending] = useState(null); // email being sent
+  const [notice, setNotice] = useState(null);
+  async function quickReset(u) {
+    setSending(u.email); setNotice(null);
+    try { await sendReset(u); setNotice({ t: `Password reset email sent to ${u.email}.` }); }
+    catch (e) { setNotice({ e: true, t: `${u.email}: ${e.message}` }); }
+    finally { setSending(null); }
+  }
   const [q, setQ] = useState('');
   const [f, setF] = useState('all');
   const [open, setOpen] = useState(null);
@@ -415,6 +456,7 @@ function People({ users, businesses, onNew, onChanged, me }) {
         <button className="op-btn" onClick={exportCsv}>Export CSV</button>
         <button className="op-btn primary" onClick={onNew}>+ Sign someone up</button>
       </PageHead>
+      {notice && <div className={'op-msg ' + (notice.e ? 'e' : 's')} style={{ marginBottom: 12 }}>{notice.t}</div>}
       <div className="op-card">
         <div className="op-toolbar">
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email or business" />
@@ -433,7 +475,9 @@ function People({ users, businesses, onNew, onChanged, me }) {
                 <td>{u.business_name ? <>{u.business_name}<span className="sub">{profileLabel(u.business_profile)} · {u.business_role}</span></> : 'Personal'}</td>
                 <td><span className={'op-pill ' + u.bill.tone}>{u.bill.label}</span>{u.bill.sub && <span className="sub">{u.bill.sub}</span>}</td>
                 <td>{u.is_admin ? '-' : u.debit_order_status === 'signed' && u.debit_order_signed_on ? <>Signed {shortDate(u.debit_order_signed_on)}</> : DEBIT_LABEL[u.debit_order_status || 'none']}</td>
-                <td><span className={'op-pill ' + u.status[1]}>{u.status[0]}</span></td>
+                <td><span className={'op-pill ' + u.status[1]}>{u.status[0]}</span>
+                  {!u.confirmed && !isSuspended(u) && <a href="#" className="sub" style={{ display: 'block' }} onClick={e => { e.preventDefault(); e.stopPropagation(); if (!sending) quickReset(u); }}>{sending === u.email ? 'Sending…' : 'Resend email'}</a>}
+                </td>
                 <td>{ago(u.last_sign_in_at)}</td>
                 <td>{shortDate(u.created_at)}</td>
               </tr>
