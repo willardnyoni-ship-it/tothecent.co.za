@@ -6,6 +6,7 @@ import { adminApi, deviceLabel } from './adminApi.js';
 import { openWhatsApp, openEmail } from '../business/share.js';
 import { TrendChart, RankBars } from './charts.jsx';
 import { TABLE_GROUPS, TABLE_INFO, describePolicy, fmtBytes } from './tableInfo.js';
+import Retention from './Retention.jsx';
 import './portal.css';
 
 const SITE = 'https://tothecent.co.za/';
@@ -786,6 +787,7 @@ function Database({ db, loading, onLoad }) {
 
 // ---------- shell ----------
 const I = {
+  ret: <><path d="M3 17l5-5 4 4 8-8" /><path d="M15 8h5v5" /></>,
   dash: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
   people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2" /></>,
   biz: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" /></>,
@@ -794,7 +796,7 @@ const I = {
   add: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>,
   db: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
 };
-const PAGES = [['dashboard', 'Dashboard', I.dash], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
+const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
 
 export default function AdminApp({ onExit }) {
   const { syncCfg, ensureToken } = useBudget();
@@ -803,6 +805,8 @@ export default function AdminApp({ onExit }) {
   const [data, setData] = useState(null);
   const [db, setDb] = useState(null);
   const [dbLoading, setDbLoading] = useState(false);
+  const [ret, setRet] = useState(null);
+  const [retLoading, setRetLoading] = useState(false);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadedAt, setLoadedAt] = useState(null);
@@ -830,6 +834,12 @@ export default function AdminApp({ onExit }) {
     setDbLoading(true);
     try { const token = await ensureToken(); setDb(await adminApi.rpc(syncCfg, token, 'admin_database')); }
     catch (e) { setErr(e.message); } finally { setDbLoading(false); }
+  }, [syncCfg, ensureToken]);
+
+  const loadRet = useCallback(async () => {
+    setRetLoading(true);
+    try { const token = await ensureToken(); setRet(await adminApi.rpc(syncCfg, token, 'admin_retention')); }
+    catch (e) { setErr(e.message); } finally { setRetLoading(false); }
   }, [syncCfg, ensureToken]);
 
   useEffect(() => { load(); }, [syncCfg.token]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -870,7 +880,7 @@ export default function AdminApp({ onExit }) {
           {!data && !err && <div className="op-empty">Loading…</div>}
           {data && (
             <>
-              {page !== 'database' && <div className="op-actions" style={{ justifyContent: 'flex-end', marginBottom: -8 }}>
+              {!['database', 'retention'].includes(page) && <div className="op-actions" style={{ justifyContent: 'flex-end', marginBottom: -8 }}>
                 <span className="op-meta">{loadedAt ? 'Updated ' + loadedAt.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 <button className="op-btn" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
               </div>}
@@ -880,6 +890,7 @@ export default function AdminApp({ onExit }) {
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
               {page === 'signup' && <SignUp key={signupKind} initialKind={signupKind} onCreated={load} />}
+              {page === 'retention' && <Retention r={ret} loading={retLoading} onLoad={loadRet} />}
               {page === 'database' && <Database db={db} loading={dbLoading} onLoad={loadDb} />}
             </>
           )}

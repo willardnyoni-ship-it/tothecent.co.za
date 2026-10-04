@@ -6,7 +6,7 @@ const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-ZA', { day:
 // crosshair + tooltip that follows the pointer (and works by touch), and
 // an accessible summary. Single series, so the card title names it - no
 // legend box.
-export function TrendChart({ data, label, unit = ['', ''], height = 180 }) {
+export function TrendChart({ data, label, unit = ['', ''], height = 180, endLabel = 'Today' }) {
   const ref = useRef(null);
   const boxRef = useRef(null);
   const [hover, setHover] = useState(null);
@@ -48,7 +48,7 @@ export function TrendChart({ data, label, unit = ['', ''], height = 180 }) {
           {data.length > 0 && <>
             <text x={x(0)} y={H - 6} textAnchor="start">{fmtDay(data[0].day)}</text>
             <text x={x(Math.floor((data.length - 1) / 2))} y={H - 6} textAnchor="middle">{fmtDay(data[Math.floor((data.length - 1) / 2)].day)}</text>
-            <text x={x(data.length - 1)} y={H - 6} textAnchor="end">Today</text>
+            <text x={x(data.length - 1)} y={H - 6} textAnchor="end">{endLabel}</text>
           </>}
         </g>
         <path d={area} style={{ fill: 'var(--op-acc)', opacity: 0.1 }} />
