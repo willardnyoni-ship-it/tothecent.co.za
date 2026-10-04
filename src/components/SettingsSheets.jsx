@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SubscriptionPanel from './SubscriptionPanel.jsx';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useSheet } from './Sheet.jsx';
 import { R, R2, iso, uid } from '../lib/format.js';
@@ -290,10 +291,21 @@ export function DataSheetContent() {
 }
 
 // ---------- Settings hub (the account menu's gear icon) ----------
+export function SubscriptionSheetContent() {
+  const { close } = useSheet();
+  return (
+    <>
+      <div className="row"><h1>Subscription</h1><button className="b g sm" onClick={close}>Close</button></div>
+      <SubscriptionPanel />
+    </>
+  );
+}
+
 export function MoreMenuContent({ onNavigate }) {
   const { close } = useSheet();
   const items = [
     ['account', 'Account'],
+    ['subscription', 'Subscription'],
     ['lock', 'Lock this device'],
     ['windfall', 'When money lands'],
     ['tax', 'Tax deductions'],

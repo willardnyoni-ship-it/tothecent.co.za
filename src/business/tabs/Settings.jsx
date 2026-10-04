@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SubscriptionPanel from '../../components/SubscriptionPanel.jsx';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { useBudget } from '../../store/BudgetStore.jsx';
 import { iso } from '../../lib/format.js';
@@ -177,12 +178,7 @@ export default function BizSettings({ onClose }) {
           ))}
         </div>
       )}
-      {seg === 'subscription' && (
-        <div className="card">
-          <div style={{ fontWeight: 700 }}>Business plan</div>
-          <div className="mini" style={{ marginTop: 6 }}>No billing is set up yet - the business plan is free while this is in development.</div>
-        </div>
-      )}
+      {seg === 'subscription' && <SubscriptionPanel />}
       {msg && <div className="msg s">{msg}</div>}
       {myRole !== 'owner' && !['notifications', 'subscription', 'data', 'features', 'cards'].includes(seg) && (
         <div className="mini" style={{ marginTop: 8 }}>Only the business owner can change these settings.</div>

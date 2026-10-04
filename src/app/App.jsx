@@ -9,7 +9,7 @@ import Khanyiso from '../components/Khanyiso.jsx';
 import { isStmt, isLog } from '../lib/match.js';
 import GuidedTour from '../components/GuidedTour.jsx';
 import {
-  AccountSheetContent, LockSheetContent, WindfallSheetContent, TaxSheetContent, DataSheetContent, MoreMenuContent,
+  AccountSheetContent, SubscriptionSheetContent, LockSheetContent, WindfallSheetContent, TaxSheetContent, DataSheetContent, MoreMenuContent,
 } from '../components/SettingsSheets.jsx';
 
 import Home from '../tabs/Home.jsx';
@@ -45,6 +45,39 @@ function MilestoneToast() {
         <div className="row"><h1>&#127881; {milestone.title}</h1><button className="b g sm" onClick={dismissMilestone}>Close</button></div>
         <div className="card" style={{ marginTop: 12, borderColor: 'var(--acc)' }}><div>{milestone.body}</div></div>
       </div>
+    </div>
+  );
+}
+
+// Back from Paystack's payment page (the app opens with ?paid=1&reference=...):
+// confirm the payment and say what happened.
+function PaidReturn() {
+  const { ensureToken, syncCfg } = useBudget();
+  const [state, setState] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('paid') === '1' && /^ttc_[0-9a-f]{20}$/.test(p.get('reference') || p.get('trxref') || '') ? 'checking' : '';
+  });
+  useEffect(() => {
+    if (state !== 'checking') return;
+    const p = new URLSearchParams(window.location.search);
+    const ref = p.get('reference') || p.get('trxref');
+    (async () => {
+      let ok = false;
+      try {
+        const token = await ensureToken();
+        const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/paystack', { method: 'POST', headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'verify', reference: ref }) });
+        ok = !!(await r.json()).ok;
+      } catch { /* shown below */ }
+      setState(ok ? 'done' : 'failed');
+      history.replaceState(null, '', window.location.pathname + window.location.hash);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!state) return null;
+  const text = { checking: 'Confirming your payment…', done: "You're subscribed. Thank you! You can see your plan under Settings → Subscription.", failed: "We couldn't confirm that payment yet. If you were charged, it will show under Settings → Subscription within a few minutes." }[state];
+  return (
+    <div className="infobox" style={{ position: 'fixed', top: 10, left: 14, right: 14, zIndex: 60, boxShadow: '0 8px 30px rgba(0,0,0,.18)' }}>
+      {text}
+      {state !== 'checking' && <div style={{ marginTop: 8 }}><button className="b g sm" onClick={() => setState('')}>Got it</button></div>}
     </div>
   );
 }
@@ -89,6 +122,7 @@ function Shell({ onSwitchToBusiness, onOpenAdmin }) {
   function openMoreMenu() {
     open(() => <MoreMenuContent onNavigate={key => {
       if (key === 'account') open(() => <AccountSheetContent />);
+      else if (key === 'subscription') open(() => <SubscriptionSheetContent />);
       else if (key === 'lock') open(() => <LockSheetContent />);
       else if (key === 'windfall') open(() => <WindfallSheetContent />);
       else if (key === 'tax') open(() => <TaxSheetContent />);
@@ -185,6 +219,7 @@ export default function App() {
 
   return (
     <SheetProvider>
+      <PaidReturn />
       {adminOpen && isAdmin
         ? <AdminApp onExit={() => setAdminOpen(false)} />
         : mode === 'business'
