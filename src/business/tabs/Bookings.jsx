@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { openWhatsApp } from '../share.js';
+import { linkFor, useBookingSetup, useOnlineBookingSheet } from '../OnlineBooking.jsx';
 
-const STATUS_LABEL = { booked: 'Booked', done: 'Done', no_show: 'No-show', cancelled: 'Cancelled' };
+const STATUS_LABEL = { requested: 'Needs your OK', booked: 'Booked', done: 'Done', no_show: 'No-show', cancelled: 'Cancelled' };
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d);
@@ -28,6 +29,12 @@ export default function Bookings() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
+  const setup = useBookingSetup();
+  const openOnline = useOnlineBookingSheet();
+  const online = setup.settings && setup.settings.enabled;
+  const [copied, setCopied] = useState(false);
+  // Online requests waiting for the owner's OK (when they chose to approve each one).
+  const requests = bookings.filter(b => b.status === 'requested' && b.date >= today).sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time));
 
   const weekStart = mondayOf(day);
   const week = [...Array(7)].map((_, i) => addDays(weekStart, i));
@@ -82,6 +89,25 @@ export default function Bookings() {
     }
   }
 
+  const whenText = b => new Date(b.date + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }) + ' at ' + b.start_time;
+  async function approve(b) {
+    await updateRow('bookings', b.id, { status: 'booked' });
+    if (b.client_phone) openWhatsApp(b.client_phone, `Hi ${(b.client_name || '').split(' ')[0]}, your ${b.service ? b.service + ' ' : ''}booking at ${business.name} on ${whenText(b)} is confirmed.${+b.deposit_due > 0 ? ` Please pay the deposit of ${R2(+b.deposit_due)} to hold your slot.` : ''} See you then!`);
+  }
+  async function decline(b) {
+    await updateRow('bookings', b.id, { status: 'cancelled' });
+    if (b.client_phone) openWhatsApp(b.client_phone, `Hi ${(b.client_name || '').split(' ')[0]}, sorry - we can't fit your ${b.service ? b.service + ' ' : ''}booking on ${whenText(b)}. Please pick another time on our booking link, or reply here and we'll find one that works.`);
+  }
+  // The client was asked for a deposit online; record it once it arrives.
+  async function depositReceived(b) {
+    const due = +b.deposit_due;
+    await updateRow('bookings', b.id, { deposit: due });
+    await addTransaction({ amount: due, kind: 'income', category: 'Deposits', description: `Deposit - ${b.client_name} ${b.date} ${b.start_time}`, date: today, status: 'reviewed', source: 'booking' });
+  }
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(linkFor(setup.settings.slug)); setCopied(true); setTimeout(() => setCopied(false), 2200); } catch { /* ignore */ }
+  }
+
   function remind(b) {
     const when = new Date(b.date + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' });
     openWhatsApp(b.client_phone, `Hi ${(b.client_name || '').split(' ')[0]}, this is a reminder of your ${b.service ? b.service + ' ' : ''}booking at ${business.name} on ${when} at ${b.start_time}. Reply to let us know if you can't make it. See you then!`);
@@ -96,6 +122,44 @@ export default function Bookings() {
         <div className="biz-card"><div className="lbl">Done this month</div><div className="val">{month.done}</div></div>
         <div className="biz-card"><div className="lbl">No-show rate</div><div className={'val' + (month.noShowRate >= 15 ? ' bd' : '')}>{month.noShowRate}%</div></div>
       </div>
+
+      {requests.length > 0 && (
+        <div className="card bk-requests">
+          <div className="row"><h2 style={{ marginTop: 0 }}>Awaiting your OK</h2><span className="rc-pill warn">{requests.length}</span></div>
+          {requests.map(b => (
+            <div className="bk-req" key={b.id}>
+              <div>
+                <div style={{ fontWeight: 700 }}>{b.client_name} &middot; {b.service || 'Booking'}</div>
+                <div className="tag">{whenText(b)}{b.staff_name ? ' · ' + b.staff_name : ''}{+b.price ? ' · ' + R2(+b.price) : ''}{+b.deposit_due ? ' · deposit ' + R2(+b.deposit_due) : ''}</div>
+                {b.notes && <div className="mini" style={{ marginTop: 2 }}>&ldquo;{b.notes}&rdquo;</div>}
+                {b.client_phone && <div className="mini">{b.client_phone}</div>}
+              </div>
+              {!readOnly && (
+                <div className="bk-req-btns">
+                  <button className="b sm" style={{ width: 'auto' }} onClick={() => approve(b)}>Approve</button>
+                  <button className="b d sm" style={{ width: 'auto' }} onClick={() => decline(b)}>Decline</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!readOnly && setup.loaded && (
+        <div className={'card bk-online' + (online ? ' on' : '')}>
+          {online ? (
+            <>
+              <div className="row"><div><b>Online booking is on</b><div className="mini">Clients book themselves from your link.</div></div><button className="b g sm" style={{ width: 'auto' }} onClick={() => openOnline(setup.reload)}>Manage</button></div>
+              <div className="bk-linkrow"><span>{linkFor(setup.settings.slug).replace(/^https?:\/\//, '')}</span><button className="b sm" style={{ width: 'auto' }} onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button></div>
+            </>
+          ) : (
+            <div className="row">
+              <div><b>Let clients book themselves</b><div className="mini">Get a link to share on WhatsApp, Instagram or your door. They pick a service and a free time - you stay in control.</div></div>
+              <button className="b sm" style={{ width: 'auto' }} onClick={() => openOnline(setup.reload)}>{setup.settings ? 'Switch on' : 'Set up'}</button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="row" style={{ gap: 8 }}>
         <button className="b g sm" style={{ width: 'auto' }} onClick={() => setDay(addDays(day, -7))}>&larr;</button>
@@ -164,12 +228,19 @@ export default function Bookings() {
             <div className="row">
               <div>
                 <div style={{ fontWeight: 700 }}>{b.start_time}-{endTime(b.start_time, b.duration_min)} &middot; {b.client_name || 'Client'}</div>
-                <div className="tag">{[b.service, b.staff_name].filter(Boolean).join(' · ') || 'No service set'}{+b.price ? ' · ' + R2(+b.price) : ''}{+b.deposit ? ' · deposit ' + R2(+b.deposit) : ''}</div>
+                <div className="tag">{[b.service, b.staff_name].filter(Boolean).join(' · ') || 'No service set'}{+b.price ? ' · ' + R2(+b.price) : ''}{+b.deposit ? ' · deposit ' + R2(+b.deposit) : ''}{b.source === 'online' ? ' · booked online' : ''}{+b.deposit_due > 0 && !+b.deposit && ['requested', 'booked'].includes(b.status) ? ' · deposit ' + R2(+b.deposit_due) + ' due' : ''}</div>
               </div>
               <span className={'status-badge ' + b.status}>{STATUS_LABEL[b.status]}</span>
             </div>
+            {!readOnly && b.status === 'requested' && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                <button className="b sm" style={{ width: 'auto' }} onClick={() => approve(b)}>Approve</button>
+                <button className="b d sm" style={{ width: 'auto' }} onClick={() => decline(b)}>Decline</button>
+              </div>
+            )}
             {!readOnly && b.status === 'booked' && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {+b.deposit_due > 0 && !+b.deposit && <button className="b g sm" style={{ width: 'auto' }} onClick={() => depositReceived(b)}>Deposit received</button>}
                 <button className="b sm" style={{ width: 'auto' }} onClick={() => markDone(b)}>Done &amp; paid</button>
                 {b.client_phone && <button className="b g sm" style={{ width: 'auto' }} onClick={() => remind(b)}>WhatsApp reminder</button>}
                 <button className="b g sm" style={{ width: 'auto' }} onClick={() => updateRow('bookings', b.id, { status: 'no_show' })}>No-show</button>

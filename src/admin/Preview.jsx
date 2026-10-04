@@ -67,6 +67,12 @@ export default function Preview() {
         </div>
       </div>
 
+      {profile === 'appointments' && (
+        <div className="op-note" style={{ margin: '0 0 12px' }}>
+          Online booking: this preview shows the owner side (the "Online booking is on" card, the requests waiting for approval, and the Manage panel).{' '}
+          <a href="/book/?demo=appointments" target="_blank" rel="noreferrer">See what a client sees on the booking page &rarr;</a>
+        </div>
+      )}
       <div className="op-pv-bar">
         <div className="op-chips">
           {DEVICES.map(([k, l]) => <button key={k} className={'op-chip' + (device === k ? ' on' : '')} onClick={() => setDevice(k)}>{l}</button>)}

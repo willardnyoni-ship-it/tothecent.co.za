@@ -153,3 +153,30 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .biz-stk-note{margin:4px 2px 0;font-size:12px}
 
 .sc-nums .sc-wide{grid-column:1 / -1}
+
+/* Online booking */
+.bk-online{margin:12px 0;border:1px dashed rgba(22,24,27,.25);background:#fff}
+.bk-online.on{border:1px solid #CFE5D8;background:#F1F8F4}
+.bk-online .row{align-items:center;gap:12px}
+.bk-linkrow{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px;background:#fff;border:1px solid rgba(22,24,27,.12);border-radius:12px;padding:6px 6px 6px 12px}
+.bk-linkrow span{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-requests{border:1px solid #F0D58A;background:#FFFBEF;margin-top:12px}
+.bk-req{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid rgba(22,24,27,.1)}
+.bk-req:first-of-type{border-top:0}
+.bk-req-btns{display:flex;flex-direction:column;gap:6px}
+.status-badge.requested{background:#FBE9C0;color:#5E3F0C}
+.ob-switch{display:flex;flex-direction:column;gap:4px}
+.ob-link input{font-size:14px}
+.ob-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ob-actions a{text-decoration:none;display:inline-flex;align-items:center;width:auto}
+.ob-qr{display:flex;gap:14px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid rgba(22,24,27,.1)}
+.ob-qr img{border-radius:12px;border:1px solid rgba(22,24,27,.12)}
+.ob-hours .ob-day{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(22,24,27,.08)}
+.ob-hours .ob-day:first-child{border-top:0}
+.ob-times{display:flex;gap:6px;align-items:center;font-size:13px}
+.ob-times input{width:112px;padding:7px 8px;font-size:14px}
+.ob-off{display:flex;gap:8px;align-items:center}
+.ob-off input{flex:1}
+.ob-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ob-chips span{display:inline-flex;align-items:center;gap:4px;background:#E5E7EB;border-radius:99px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600}
+.ob-chips button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;line-height:1}

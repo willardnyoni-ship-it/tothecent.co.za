@@ -30,7 +30,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
   const db = {
     businesses: [], customers: [], invoices: [], invoice_items: [], business_transactions: [], expenses: [], business_members: [],
     bank_accounts: [], business_categories: [], recurring_invoices: [],
-    jobs: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [],
+    jobs: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
   };
   const created = () => new Date().toISOString();
 
@@ -215,6 +215,15 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
         if (past && !(d % 6 === 0 && i === 1)) tx(day(d), `${sv[0]} - ${c.name}`, sv[2], 'income', 'Sales', { source: 'booking' });
       }
     }
+    // Online booking, already switched on - with a couple of requests waiting for the owner's OK
+    const bh = {}; [1, 2, 3, 4, 5].forEach(d => { bh[d] = { open: '09:00', close: '17:00' }; }); bh[6] = { open: '08:00', close: '14:00' };
+    db.booking_settings.push({ business_id: biz, slug: 'nomsas-hair-studio', enabled: true, headline: 'Book your appointment', intro: 'Pick a service and a time that suits you.', approval: 'approve', slot_minutes: 30,
+      min_notice_hours: 2, max_days_ahead: 30, hours: bh, days_off: [], staff: ['Thandeka', 'Lindiwe', 'Palesa'], capacity: 1, deposit_note: 'EFT to FNB 62 0000 0000, use your name as the reference.', contact_phone: '0825550100', created_at: created(), updated_at: created() });
+    [['Box braids', 150, 650, 200], ['Cut & colour', 120, 780, 250], ['Blow-dry', 60, 220, 50], ['Gel nails', 60, 320, 100], ['Barber cut', 30, 120, 0]].forEach(([name, dur, price, dep], i) =>
+      db.booking_services.push({ id: id('bsv'), business_id: biz, name, duration_min: dur, price, deposit: dep, active: true, sort_order: i, created_at: created() }));
+    [[1, '10:00', 'Sanele K.', 'Box braids', 150, 650, 200, 'Thandeka', 'Shoulder length please'], [2, '14:00', 'Mpho R.', 'Gel nails', 60, 320, 100, 'Palesa', null]].forEach(([d, t, nm, sv, dur, pr, dep, st, note]) =>
+      db.bookings.push({ id: id('bk'), business_id: biz, customer_id: null, client_name: nm, client_phone: '079 555 01' + (10 + d), date: day(d), start_time: t, duration_min: dur, service: sv, staff_name: st, price: pr, deposit: 0, deposit_due: dep, status: 'requested', notes: note, source: 'online', created_at: created() }));
+    db.bookings.push({ id: id('bk'), business_id: biz, customer_id: null, client_name: 'Aphiwe D.', client_phone: '071 555 0188', date: day(3), start_time: '11:00', duration_min: 120, service: 'Cut & colour', staff_name: 'Lindiwe', price: 780, deposit: 0, deposit_due: 250, status: 'booked', notes: null, source: 'online', created_at: created() });
     invoice({ cust: cl[0], issued: day(-10), due: day(-3), status: 'sent', items: [['Bridal party hair - 4 people', 4, 650]] });
     expense(day(-7), 3840, 'Supplies', 'Hair supplier - wholesale'); expense(day(-13), 4500, 'Rent', 'Chair rental'); expense(day(-9), 780, 'Marketing', 'Facebook ads');
     tx(day(-2), 'POS Purchase Clicks', 460, 'expense', null, { status: 'needs_review' });
