@@ -23,6 +23,7 @@ import BusinessApp from '../business/BusinessApp.jsx';
 import AdminApp from '../admin/AdminApp.jsx';
 import SignInRequired from '../components/SignInRequired.jsx';
 import { useIsAppAdmin, logDailyActivity } from '../admin/adminApi.js';
+import { isDemo } from '../lib/demo.js';
 import { useHashTab } from './useHashTab.js';
 
 const TAB_COMPONENTS = {
@@ -168,7 +169,7 @@ export default function App() {
   // Once a day per device: "this account used the app today" - feeds the
   // owner console's active-user numbers.
   useEffect(() => {
-    if (mode) logDailyActivity(syncCfg, ensureToken, mode);
+    if (mode && !isDemo()) logDailyActivity(syncCfg, ensureToken, mode);
   }, [syncCfg.token, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // An account is required to use the app (it's what keeps phone and
@@ -189,7 +190,7 @@ export default function App() {
         : mode === 'business'
           ? <BusinessApp onSwitchMode={() => setMode('personal')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />
           : <Shell onSwitchToBusiness={() => setMode('business')} onOpenAdmin={isAdmin ? () => setAdminOpen(true) : null} />}
-      {!(adminOpen && isAdmin) && <Khanyiso cycleOffset={cycleOffset} />}
+      {!(adminOpen && isAdmin) && !isDemo() && <Khanyiso cycleOffset={cycleOffset} />}
     </SheetProvider>
   );
 }

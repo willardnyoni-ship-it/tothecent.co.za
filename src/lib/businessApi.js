@@ -1,8 +1,11 @@
+import { isDemo, demoRequest } from './demo.js';
+
 // Thin PostgREST client for the business tables. All business data is
 // server-backed (Supabase), unlike the personal side's localStorage -
 // team members, customers and invoices need to be visible to every
 // member of the business, not just one browser.
 async function pg(syncCfg, token, path, opts = {}) {
+  if (isDemo()) return demoRequest(path, opts);
   const url = syncCfg.url.replace(/\/+$/, '') + '/rest/v1' + path;
   const r = await fetch(url, {
     ...opts,
@@ -26,6 +29,7 @@ async function pg(syncCfg, token, path, opts = {}) {
 // {business_id}/{filename} - RLS on storage.objects checks membership of
 // that business_id folder (see the business_files_bucket migration).
 export async function uploadBusinessFile(syncCfg, token, businessId, filename, blob) {
+  if (isDemo()) return businessId + '/' + filename;
   const url = syncCfg.url.replace(/\/+$/, '') + '/storage/v1/object/business-files/' + businessId + '/' + filename;
   const r = await fetch(url, {
     method: 'POST',
@@ -36,6 +40,7 @@ export async function uploadBusinessFile(syncCfg, token, businessId, filename, b
   return businessId + '/' + filename;
 }
 export async function businessFileUrl(syncCfg, token, path) {
+  if (isDemo()) return null;
   const url = syncCfg.url.replace(/\/+$/, '') + '/storage/v1/object/business-files/' + path;
   const r = await fetch(url, { headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token } });
   if (!r.ok) return null;

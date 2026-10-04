@@ -18,6 +18,7 @@ import Time from './tabs/Time.jsx';
 import Stock from './tabs/Stock.jsx';
 import Bookings from './tabs/Bookings.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
+import { isDemo } from '../lib/demo.js';
 
 const TABS = { home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, stock: Stock, reports: Reports, team: Team };
 
@@ -88,6 +89,7 @@ export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
     <>
       <BusinessNav tab={tab} go={go} onSwitchMode={onSwitchMode} onOpenSettings={openSettings} onOpenAdmin={onOpenAdmin} />
       <div className="wrap">
+        {isDemo() && <div className="demo-bar"><b>Preview</b> Example data only - try anything, nothing is saved and nobody is notified.</div>}
         <Active go={go} onOpenSettings={openSettings} startSeg={tab === 'money' ? moneyStart : undefined} />
       </div>
       <GuidedTour

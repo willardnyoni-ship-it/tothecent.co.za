@@ -1,3 +1,4 @@
+import { isDemo } from '../lib/demo.js';
 import { useEffect, useRef, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
@@ -68,10 +69,10 @@ export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings, onO
       <div className="acctMenu" hidden={!acctOpen}>
         <div className="who"><b>{business?.name}</b><span>{syncCfg.email}</span></div>
         <button onClick={() => { setAcctOpen(false); onOpenSettings(); }}>Settings</button>
-        <button onClick={() => { setAcctOpen(false); onSwitchMode(); }}>Switch to Personal</button>
+        {!isDemo() && <button onClick={() => { setAcctOpen(false); onSwitchMode(); }}>Switch to Personal</button>}
         {onOpenAdmin && <button onClick={() => { setAcctOpen(false); onOpenAdmin(); }}>App owner view</button>}
         <hr />
-        <button onClick={doSignOut}>Log out</button>
+        {!isDemo() && <button onClick={doSignOut}>Log out</button>}
       </div>
     </header>
   );

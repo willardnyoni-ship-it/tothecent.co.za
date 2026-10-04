@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useBusiness } from '../store/BusinessStore.jsx';
+import { isDemo } from './demo.js';
 
 const POLL_MS = 15000;
 // Screens that show Yoco data all stay in step: connecting or disconnecting in
@@ -45,6 +46,7 @@ export function useYoco({ poll = false } = {}) {
 
   const load = useCallback(async () => {
     if (!bizId) return null;
+    if (isDemo()) { const s = { connected: false }; setStatus(s); return s; }
     try {
       const token = await ensureToken();
       const s = await fetchStatus(syncCfg, token, bizId);

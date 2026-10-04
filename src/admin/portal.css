@@ -176,3 +176,21 @@
   .op-dl{grid-template-columns:1fr}
   .op-dl dt{margin-top:6px}
 }
+
+/* Preview a business type */
+.op-pv-grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media (min-width:900px){ .op-pv-grid{grid-template-columns:1fr 1.3fr} }
+.op-pv-tools{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.op-pv-tools li{font-size:13px;line-height:1.4}
+.op-pv-tools b{display:block}
+.op-pv-tools span{color:var(--op-ink2)}
+.op-pv-opts{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px;font-weight:600}
+.op-pv-opts label{display:inline-flex;gap:7px;align-items:center;margin:0}
+.op-pv-opts input{width:auto}
+.op-pv-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.op-pv-stage{display:flex;justify-content:center;padding:6px 0 30px}
+.op-pv-frame{border:1px solid var(--op-line);background:#fff;overflow:hidden;box-shadow:0 30px 60px -30px rgba(15,23,42,.45)}
+.op-pv-frame.phone{border-radius:32px;border:10px solid #111827}
+.op-pv-frame.tablet{border-radius:20px;border:10px solid #111827}
+.op-pv-frame.laptop{border-radius:14px}
+.op-pv-frame iframe{display:block;width:100%;border:0;background:#fff}

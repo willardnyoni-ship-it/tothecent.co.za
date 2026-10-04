@@ -7,6 +7,7 @@ import { openWhatsApp, openEmail } from '../business/share.js';
 import { TrendChart, RankBars } from './charts.jsx';
 import { TABLE_GROUPS, TABLE_INFO, describePolicy, fmtBytes } from './tableInfo.js';
 import Retention from './Retention.jsx';
+import Preview from './Preview.jsx';
 import { REASONS } from '../lib/signupAttempts.js';
 import './portal.css';
 
@@ -1049,13 +1050,14 @@ const I = {
   ret: <><path d="M3 17l5-5 4 4 8-8" /><path d="M15 8h5v5" /></>,
   dash: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
   people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2" /></>,
+  preview: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>,
   biz: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" /></>,
   signin: <><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></>,
   invite: <><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" /><path d="M3 6l9 7 9-7" /></>,
   add: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>,
   db: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
 };
-const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['alerts', 'Alerts', I.alert], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
+const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['alerts', 'Alerts', I.alert], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['preview', 'Preview types', I.preview], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
 
 export default function AdminApp({ onExit }) {
   const { syncCfg, ensureToken } = useBudget();
@@ -1163,6 +1165,7 @@ export default function AdminApp({ onExit }) {
               {page === 'dashboard' && <Dashboard d={data} go={go} />}
               {page === 'people' && <People users={data.users} businesses={data.businesses} onNew={() => startSignup('person')} onChanged={load} me={syncCfg.email} />}
               {page === 'businesses' && <Businesses businesses={data.businesses} onNew={() => startSignup('business')} />}
+              {page === 'preview' && <Preview />}
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
               {page === 'signup' && <SignUp key={signupKind + signupEmail} initialKind={signupKind} initialEmail={signupEmail} onCreated={load} />}

@@ -7,6 +7,11 @@ import ErrorBoundary from '../components/ErrorBoundary.jsx';
 import { registerServiceWorker } from '../lib/registerSW.js';
 import '../styles/app.css';
 import '../styles/business.css';
+import { installDemo } from '../lib/demo.js';
+
+// /app/?demo=<type> only: an in-memory browser storage, so a demo can never
+// read or overwrite a real sign-in or budget. No effect on normal pages.
+installDemo();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
