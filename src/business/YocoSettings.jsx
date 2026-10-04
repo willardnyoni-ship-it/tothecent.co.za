@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useYoco } from '../lib/yoco.js';
 import { R2 } from '../lib/format.js';
+import { useYocoItemsSheet } from './YocoItems.jsx';
 
 function ago(ts) {
   if (!ts) return 'none yet';
@@ -22,6 +23,7 @@ export default function YocoSettings() {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState(null);
   const [confirmOff, setConfirmOff] = useState(false);
+  const openItems = useYocoItemsSheet();
 
   async function run(label, body, ok) {
     setBusy(label); setMsg(null);
@@ -45,8 +47,15 @@ export default function YocoSettings() {
             <div className="row" style={{ padding: '8px 0' }}><span>Last sale</span><span className="mono">{status.last_sale_at ? `${R2(+status.last_sale_amount || 0)} · ${ago(status.last_sale_at)}` : 'none yet'}</span></div>
             {status.status === 'error' && status.last_error && <div className="msg e">Last problem: {status.last_error}. Yoco will retry on its own. If it keeps happening, reconnect with a new key.</div>}
             <div className="mini" style={{ marginTop: 8 }}>
-              Every card sale appears in Money as income, with Yoco's fee as a bank-fee expense, within seconds. Tips aren't counted as income.
+              Every card sale appears in Money as income, with Yoco's fee as a bank-fee expense, within seconds. Tips aren't counted as income. Refunds are recorded too.
               When Yoco pays out into your bank, that deposit is treated as a transfer in statement imports, so your sales aren't counted twice.
+            </div>
+            <div className="row" style={{ padding: '12px 0 4px', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>Stock from your sales</div>
+                <div className="mini">What you sell on Yoco takes stock (and dish ingredients) off automatically, once each item is matched.{+status.unmatched_items > 0 ? ` ${status.unmatched_items} still to match.` : ' Everything is matched.'}</div>
+              </div>
+              {canManage && <button className={'b sm' + (+status.unmatched_items > 0 ? '' : ' g')} onClick={openItems}>{+status.unmatched_items > 0 ? 'Match items' : 'Review matches'}</button>}
             </div>
             {canManage && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>

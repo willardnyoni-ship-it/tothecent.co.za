@@ -4,8 +4,9 @@ import { useSheet } from '../../components/Sheet.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { categoriesFor } from '../../lib/stockInvoice.js';
 import { useStockCapture } from '../StockCapture.jsx';
-import { useStockSales } from '../StockSales.jsx';
 import Recipes, { costingWords } from '../Recipes.jsx';
+import { useYoco } from '../../lib/yoco.js';
+import { useYocoItemsSheet } from '../YocoItems.jsx';
 import { priceForMargin } from '../../lib/recipeMath.js';
 
 const ACTIONS = {
@@ -191,7 +192,8 @@ export default function Stock() {
   const showRecipes = ['food', 'appointments'].includes(business.business_profile) || recipes.some(r => !r.archived);
   const openItem = useStockItem();
   const openCapture = useStockCapture();
-  const openSales = useStockSales();
+  const yoco = useYoco({ poll: true });
+  const openYocoItems = useYocoItemsSheet();
   const words = costingWords(business.business_profile);
   const [view, setView] = useState('items'); // items | recipes
   const [adding, setAdding] = useState(false);
@@ -261,6 +263,12 @@ export default function Stock() {
       )}
       {view === 'recipes' ? <Recipes /> : <>
 
+      {yoco.connected && +yoco.status.unmatched_items > 0 && !readOnly && (
+        <div className="infobox" style={{ marginBottom: 12 }}>
+          <b>{yoco.status.unmatched_items} item{+yoco.status.unmatched_items === 1 ? '' : 's'} you sell on Yoco {+yoco.status.unmatched_items === 1 ? "isn't" : "aren't"} matched to stock yet.</b> Match {+yoco.status.unmatched_items === 1 ? 'it' : 'them'} once and every sale takes stock off by itself.
+          <div style={{ marginTop: 8 }}><button className="b sm" onClick={openYocoItems}>Match Yoco items</button></div>
+        </div>
+      )}
       {soldNow.length > 0 && (
         <div className="card stk-profit">
           <div className="row"><h2 style={{ marginTop: 0 }}>Stock sold this month</h2><span className="mini">Takings less cost</span></div>
@@ -292,10 +300,7 @@ export default function Stock() {
       )}
 
       {!readOnly && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="b" style={{ flex: 1.4 }} onClick={openCapture}>Capture from an invoice</button>
-          <button className="b g" style={{ flex: 1 }} onClick={openSales}>Record sales</button>
-        </div>
+        <button className="b" onClick={openCapture}>Capture from an invoice</button>
       )}
       {!readOnly && adding ? (
         <div className="card" style={{ marginTop: 10 }}>

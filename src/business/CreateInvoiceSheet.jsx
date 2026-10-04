@@ -3,7 +3,7 @@ import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso, uid } from '../lib/format.js';
 import { computeInvoiceTotals, nextInvoiceNumber, nextQuoteNumber } from '../lib/businessMath.js';
-import { SaleOptionList, useSaleOptions } from './StockSales.jsx';
+import { SaleOptionList, useSaleOptions } from './saleOptions.jsx';
 
 const blankItem = () => ({ id: uid(), description: '', qty: 1, price: 0, stock_item_id: null, recipe_id: null });
 

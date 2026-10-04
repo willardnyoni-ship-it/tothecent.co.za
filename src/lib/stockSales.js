@@ -1,9 +1,8 @@
-// Selling takes stock off. Two entry points:
-//  - syncInvoiceStock: make stock match what an invoice sold. Safe to call any
-//    number of times: it compares what the invoice should have taken with
-//    what it already took and only moves the difference, so sending a draft
-//    takes stock off, cancelling puts it back, and nothing is counted twice.
-//  - recordSale: a quick tally of items / dishes sold across the counter.
+// Invoices that sell stock: make stock match what an invoice sold. Safe to
+// call any number of times: it compares what the invoice should have taken
+// with what it already took and only moves the difference, so sending a draft
+// takes stock off, cancelling puts it back, and nothing is counted twice.
+// (Card sales take stock off too, on the server, from Yoco's order lines.)
 import { businessApi } from './businessApi.js';
 import { usageFor, r4 } from './recipeMath.js';
 import { iso } from './format.js';
@@ -64,11 +63,4 @@ export async function syncInvoiceStock(syncCfg, token, businessId, invoiceId) {
   return apply(syncCfg, token, businessId, items, deltas, {
     date: iso(new Date()), invoice_id: invoiceId, note: 'Invoice ' + inv.invoice_number, returnNote: 'Invoice ' + inv.invoice_number + (inv.status === 'cancelled' ? ' cancelled' : ' changed'),
   });
-}
-
-// lines: [{ stock_item_id | recipe_id, qty, price }]
-export async function recordSale(syncCfg, token, businessId, lines, note = 'Sales tally') {
-  const { items, recipes, recipeLines } = await loadCatalogue(syncCfg, token, businessId);
-  const usage = usageFor(lines, recipes, recipeLines, items);
-  return apply(syncCfg, token, businessId, items, usage, { date: iso(new Date()), note, returnNote: note });
 }
