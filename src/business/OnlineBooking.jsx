@@ -14,6 +14,33 @@ const DEFAULT_HOURS = { 1: ['09:00', '17:00'], 2: ['09:00', '17:00'], 3: ['09:00
 // is no real link, so it points at the example page.)
 export const linkFor = slug => (isDemo() ? `${location.origin}/book/?demo=appointments` : bookingUrl(slug));
 
+// SMS used this month, and the test-message button's call.
+export function useSmsUsage() {
+  const { syncCfg, ensureToken } = useBudget();
+  const { business } = useBusiness();
+  const [u, setU] = useState(null);
+  useEffect(() => {
+    if (!business) return;
+    if (isDemo()) { setU({ sent: 12, cap: 300 }); return; }
+    (async () => {
+      try {
+        const token = await ensureToken();
+        const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/rest/v1/rpc/sms_usage', { method: 'POST', headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_business: business.id }) });
+        if (r.ok) setU(await r.json());
+      } catch { /* not shown */ }
+    })();
+  }, [business && business.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return u;
+}
+async function sendTestSms(syncCfg, ensureToken, businessId, to) {
+  if (isDemo()) { await new Promise(r => setTimeout(r, 700)); return { ok: true, demo: true }; }
+  const token = await ensureToken();
+  const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/booking-sms', {
+    method: 'POST', headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'test', business_id: businessId, to }),
+  });
+  return r.json().catch(() => ({ ok: false, error: 'Could not reach the SMS service.' }));
+}
+
 // The business's online-booking setup, loaded once and reloadable.
 export function useBookingSetup() {
   const { syncCfg, ensureToken } = useBudget();
@@ -47,6 +74,10 @@ function OnlineBookingContent({ onChanged }) {
   const [msg, setMsg] = useState(null);
   const [qr, setQr] = useState('');
   const [dayOff, setDayOff] = useState('');
+  const [testTo, setTestTo] = useState('');
+  const [testMsg, setTestMsg] = useState(null);
+  const [testing, setTesting] = useState(false);
+  const usage = useSmsUsage();
   const seq = useRef(0);
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
 
@@ -67,6 +98,7 @@ function OnlineBookingContent({ onChanged }) {
         .map(([name, e]) => ({ key: 'n' + ++seq.current, name, duration_min: e.mins.sort((a, b) => a - b)[Math.floor(e.mins.length / 2)], price: e.price, deposit: e.deposit, active: true }));
       setF({
         slug: slugify(business.name) || 'book', enabled: false, headline: 'Book your appointment', intro: '', approval: 'instant', slot_minutes: 30, min_notice_hours: 2, max_days_ahead: 30,
+        sms_reminders: true, reminder_hours: 24, sms_confirm: true,
         hours, days_off: [], staff: [...new Set(bookings.map(b => b.staff_name).filter(Boolean))].join(', '), capacity: 1, deposit_note: '', contact_phone: business.phone || '',
       });
       setSvc(guess.length ? guess : [{ key: 'n' + ++seq.current, name: '', duration_min: 60, price: 0, deposit: 0, active: true }]);
@@ -103,6 +135,7 @@ function OnlineBookingContent({ onChanged }) {
         enabled: !!f.enabled, headline: f.headline.trim() || null, intro: f.intro.trim() || null, approval: f.approval, slot_minutes: +f.slot_minutes,
         min_notice_hours: +f.min_notice_hours, max_days_ahead: +f.max_days_ahead, hours, days_off: [...new Set(f.days_off)].sort(), staff, capacity: Math.max(1, +f.capacity || 1),
         deposit_note: f.deposit_note.trim() || null, contact_phone: f.contact_phone.trim() || null, updated_at: new Date().toISOString(),
+        sms_reminders: f.sms_reminders !== false, reminder_hours: +f.reminder_hours || 24, sms_confirm: f.sms_confirm !== false,
       };
       if (saved) {
         await businessApi.update(syncCfg, token, 'booking_settings', `business_id=eq.${business.id}`, { ...row, slug });
@@ -132,6 +165,13 @@ function OnlineBookingContent({ onChanged }) {
     } finally { setBusy(false); }
   }
 
+  async function runTest() {
+    setTesting(true); setTestMsg(null);
+    try {
+      const r = await sendTestSms(syncCfg, ensureToken, business.id, testTo.trim() || f.contact_phone);
+      setTestMsg(r.ok ? { t: r.demo ? 'Preview: in your real account this sends a test SMS to that number.' : 'Test message sent - check your phone.' } : { e: true, t: r.error || 'Could not send.' });
+    } catch (e) { setTestMsg({ e: true, t: e.message }); } finally { setTesting(false); }
+  }
   const copy = async () => { try { await navigator.clipboard.writeText(url); setMsg({ t: 'Link copied. Paste it anywhere - WhatsApp status, Instagram bio, Facebook, your email signature.' }); } catch { setMsg({ e: true, t: 'Copy failed - select the link and copy it.' }); } };
   const shareText = `Book your appointment at ${business.name}: ${url}`;
 
@@ -224,6 +264,31 @@ function OnlineBookingContent({ onChanged }) {
           <select value={f.slot_minutes} onChange={e => set('slot_minutes', e.target.value)}>{[[15, '15 min'], [30, '30 min'], [60, '1 hour']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
       </div>
 
+      <h2>Automatic SMS reminders</h2>
+      <div className="card ob-sms">
+        <label className="chk" style={{ margin: 0 }}><input type="checkbox" checked={f.sms_reminders !== false} onChange={e => set('sms_reminders', e.target.checked)} /><span><b>Remind clients by SMS</b> before their appointment</span></label>
+        {f.sms_reminders !== false && (
+          <>
+            <label>Send it</label>
+            <select value={f.reminder_hours} onChange={e => set('reminder_hours', e.target.value)}>
+              {[[2, '2 hours before'], [3, '3 hours before'], [6, '6 hours before'], [12, '12 hours before'], [24, '1 day before'], [48, '2 days before']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </>
+        )}
+        <label className="chk" style={{ marginTop: 12 }}><input type="checkbox" checked={f.sms_confirm !== false} onChange={e => set('sms_confirm', e.target.checked)} /><span>Text clients when an online booking is confirmed - or can't go ahead</span></label>
+        <div className="ob-sample">
+          <div className="mini">What a reminder looks like</div>
+          <p>Hi Thandi, reminder: Box braids at {business.name.slice(0, 26)} tomorrow at 10:00.{f.contact_phone ? ` To change, call/WhatsApp ${f.contact_phone}.` : ''} See you!</p>
+        </div>
+        <div className="mini">Sent automatically, for online bookings and ones you add yourself (if you enter the client's phone number). Included in your plan{usage ? ` - ${usage.sent} of ${usage.cap} sent this month` : ''}.</div>
+        <label>Try it: send a test SMS to</label>
+        <div className="ob-off">
+          <input type="tel" value={testTo} onChange={e => setTestTo(e.target.value)} placeholder={f.contact_phone || '082 123 4567'} />
+          <button className="b g sm" disabled={testing} onClick={runTest}>{testing ? 'Sending…' : 'Send test'}</button>
+        </div>
+        {testMsg && <div className={'msg ' + (testMsg.e ? 'e' : 's')}>{testMsg.t}</div>}
+      </div>
+
       <h2>What clients see</h2>
       <label style={{ marginTop: 0 }}>Heading</label><input value={f.headline} onChange={e => set('headline', e.target.value)} placeholder="Book your appointment" />
       <label>Welcome message <span className="mini">optional</span></label><textarea rows="2" value={f.intro} onChange={e => set('intro', e.target.value)} placeholder="e.g. Please arrive 5 minutes early. Bring a photo of the style you want." />
@@ -239,6 +304,26 @@ function OnlineBookingContent({ onChanged }) {
       <div style={{ height: 24 }} />
     </>
   );
+}
+
+// What has been texted for each booking: { [bookingId]: { reminder: 'sent', confirmation: 'failed', ... } }
+export function useSmsLog(refreshKey) {
+  const { syncCfg, ensureToken } = useBudget();
+  const { business } = useBusiness();
+  const [log, setLog] = useState({});
+  useEffect(() => {
+    if (!business) return;
+    (async () => {
+      try {
+        const token = await ensureToken();
+        const rows = await businessApi.select(syncCfg, token, 'sms_outbox', `business_id=eq.${business.id}&booking_id=not.is.null&select=booking_id,kind,status&order=created_at.desc&limit=1000`);
+        const m = {};
+        (rows || []).forEach(r => { (m[r.booking_id] = m[r.booking_id] || {})[r.kind] = r.status; });
+        setLog(m);
+      } catch { /* the status just isn't shown */ }
+    })();
+  }, [business && business.id, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  return log;
 }
 
 export function useOnlineBookingSheet() {

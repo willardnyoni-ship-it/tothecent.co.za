@@ -180,3 +180,9 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .ob-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .ob-chips span{display:inline-flex;align-items:center;gap:4px;background:#E5E7EB;border-radius:99px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600}
 .ob-chips button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;line-height:1}
+
+.ob-sms select{margin-top:4px}
+.ob-sample{background:#F4F6F5;border-radius:12px;padding:10px 12px;margin:12px 0 8px}
+.ob-sample p{font-size:14px;margin-top:2px}
+.bk-sms{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;margin:3px 0 2px}
+.bk-sms.ok{background:#DDEBCF;color:#33421F}.bk-sms.bad{background:#F6D5CF;color:#9C3626}.bk-sms.wait{background:#E5E7EB;color:#4B5563}

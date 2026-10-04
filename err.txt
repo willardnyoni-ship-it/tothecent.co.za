@@ -1,0 +1,30 @@
+X [ERROR] Unterminated string literal
+
+    src/business/tabs/Stock.jsx:30:79:
+      30 │ ... new Blob(['﻿' + rows.map(r => r.map(csvCell).join(',')).join('
+         ╵                                                                  ^
+
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\Willard\Documents\tothecent.co.za\app\node_modules\@esbuild\win32-x64\esbuild.exe src/business/tabs/Stock.jsx --loader:.jsx=jsx --log-level=error
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\Willard\Documents\tothecent.co.za\app\node_modules\esbuild\bin\esbuild:219:28)
+    at Module._compile (node:internal/modules/cjs/loader:1804:14)
+    at Object..js (node:internal/modules/cjs/loader:1936:10)
+    at Module.load (node:internal/modules/cjs/loader:1525:32)
+    at Module._load (node:internal/modules/cjs/loader:1327:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 12632,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.13.1

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { openWhatsApp } from '../share.js';
-import { linkFor, useBookingSetup, useOnlineBookingSheet } from '../OnlineBooking.jsx';
+import { linkFor, useBookingSetup, useOnlineBookingSheet, useSmsLog } from '../OnlineBooking.jsx';
 
 const STATUS_LABEL = { requested: 'Needs your OK', booked: 'Booked', done: 'Done', no_show: 'No-show', cancelled: 'Cancelled' };
 
@@ -30,6 +30,7 @@ export default function Bookings() {
   const [msg, setMsg] = useState(null);
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const setup = useBookingSetup();
+  const smsLog = useSmsLog(bookings.length);
   const openOnline = useOnlineBookingSheet();
   const online = setup.settings && setup.settings.enabled;
   const [copied, setCopied] = useState(false);
@@ -90,6 +91,18 @@ export default function Bookings() {
   }
 
   const whenText = b => new Date(b.date + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }) + ' at ' + b.start_time;
+  // "Reminder sent" / "will be texted" under each booking
+  function smsChip(b) {
+    const s = setup.settings, st = smsLog[b.id] || {};
+    if (st.reminder === 'sent') return ['✓ Reminder SMS sent', 'ok'];
+    if (st.reminder === 'failed') return ['Reminder SMS failed', 'bad'];
+    if (st.confirmation === 'sent' && b.status === 'booked') return ['✓ Confirmation SMS sent', 'ok'];
+    if (s && s.sms_reminders !== false && b.status === 'booked' && b.client_phone && b.date >= today) {
+      const h = +s.reminder_hours || 24;
+      return [`Reminder SMS ${h >= 24 ? h / 24 + (h === 24 ? ' day' : ' days') : h + ' hours'} before`, 'wait'];
+    }
+    return null;
+  }
   async function approve(b) {
     await updateRow('bookings', b.id, { status: 'booked' });
     if (b.client_phone) openWhatsApp(b.client_phone, `Hi ${(b.client_name || '').split(' ')[0]}, your ${b.service ? b.service + ' ' : ''}booking at ${business.name} on ${whenText(b)} is confirmed.${+b.deposit_due > 0 ? ` Please pay the deposit of ${R2(+b.deposit_due)} to hold your slot.` : ''} See you then!`);
@@ -228,6 +241,7 @@ export default function Bookings() {
             <div className="row">
               <div>
                 <div style={{ fontWeight: 700 }}>{b.start_time}-{endTime(b.start_time, b.duration_min)} &middot; {b.client_name || 'Client'}</div>
+                {smsChip(b) && <div className={'bk-sms ' + smsChip(b)[1]}>{smsChip(b)[0]}</div>}
                 <div className="tag">{[b.service, b.staff_name].filter(Boolean).join(' · ') || 'No service set'}{+b.price ? ' · ' + R2(+b.price) : ''}{+b.deposit ? ' · deposit ' + R2(+b.deposit) : ''}{b.source === 'online' ? ' · booked online' : ''}{+b.deposit_due > 0 && !+b.deposit && ['requested', 'booked'].includes(b.status) ? ' · deposit ' + R2(+b.deposit_due) + ' due' : ''}</div>
               </div>
               <span className={'status-badge ' + b.status}>{STATUS_LABEL[b.status]}</span>
