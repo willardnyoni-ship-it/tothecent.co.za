@@ -21,10 +21,16 @@ export function vatReturn(period, { invoices, expenses, transactions }) {
   const counterSales = transactions.filter(t => t.kind === 'income' && inP(t.date) && ['cashup', 'stock', 'booking'].includes(t.source));
   const exp = expenses.filter(e => inP(e.date) && e.status !== 'rejected');
   const salesExcl = inv.reduce((a, i) => a + +i.total - +i.vat, 0) + counterSales.reduce((a, t) => a + +t.amount - vatOf(+t.amount), 0);
-  const outputVat = inv.reduce((a, i) => a + +i.vat, 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0);
-  const inputVat = exp.reduce((a, e) => a + +(e.vat || 0), 0);
+  // Bank transactions the owner marked as including VAT while reviewing them.
+  // Invoice payments (linked) are skipped - the invoice already counts - and
+  // so are cash-up / stock / booking sales, counted above.
+  const txVat = transactions.filter(t => inP(t.date) && +t.vat_amount > 0 && !t.linked_invoice_id && !['cashup', 'stock', 'booking'].includes(t.source));
+  const txOut = txVat.filter(t => t.kind === 'income');
+  const txIn = txVat.filter(t => t.kind === 'expense');
+  const outputVat = inv.reduce((a, i) => a + +i.vat, 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0) + txOut.reduce((a, t) => a + +t.vat_amount, 0);
+  const inputVat = exp.reduce((a, e) => a + +(e.vat || 0), 0) + txIn.reduce((a, t) => a + +t.vat_amount, 0);
   const missingVat = exp.filter(e => !+e.vat).length;
-  return { inv, counterSales, exp, salesExcl, outputVat, inputVat, payable: outputVat - inputVat, missingVat };
+  return { inv, counterSales, exp, txOut, txIn, salesExcl: salesExcl + txOut.reduce((a, t) => a + +t.amount - +t.vat_amount, 0), outputVat, inputVat, payable: outputVat - inputVat, missingVat };
 }
 
 function VatView() {
@@ -42,6 +48,8 @@ function VatView() {
     v.inv.forEach(i => rows.push(['output: invoice', i.issue_date, i.invoice_number, i.total, i.vat]));
     v.counterSales.forEach(t => rows.push(['output: ' + t.source, t.date, t.description || '', t.amount, vatOf(+t.amount).toFixed(2)]));
     v.exp.forEach(e => rows.push(['input: expense', e.date, e.description || e.merchant || '', e.amount, e.vat || 0]));
+    v.txOut.forEach(t => rows.push(['output: bank transaction', t.date, t.description || '', t.amount, t.vat_amount]));
+    v.txIn.forEach(t => rows.push(['input: bank transaction', t.date, t.description || '', t.amount, t.vat_amount]));
     dl(new Blob([rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' }), 'vat-' + period.from + '.csv');
   }
 
@@ -63,7 +71,7 @@ function VatView() {
         <div className="row grand"><span>{v.payable >= 0 ? 'VAT to pay' : 'VAT refund due'}</span><span className="mono">{R2(Math.abs(v.payable))}</span></div>
       </div>
       {v.missingVat > 0 && <div className="msg e">{v.missingVat} expense{v.missingVat === 1 ? ' has' : 's have'} no VAT amount - if they came from VAT-registered suppliers, add the VAT from the slip to claim it.</div>}
-      <div className="mini" style={{ marginTop: 8 }}>Invoice basis. Cash-up, stock and booking sales are treated as VAT-inclusive. Check against your records before filing on eFiling - this is a guide, not tax advice.</div>
+      <div className="mini" style={{ marginTop: 8 }}>Invoice basis. Cash-up, stock and booking sales are treated as VAT-inclusive. Bank transactions count when you mark them as including VAT ({v.txOut.length + v.txIn.length} this period) - if the same purchase is also saved under Expenses with its VAT, only enter VAT on one of them. Check against your records before filing on eFiling - this is a guide, not tax advice.</div>
       <div style={{ height: 10 }} />
       <button className="b g" onClick={exportCsv}>Download VAT Detail (CSV)</button>
     </div>

@@ -5,9 +5,11 @@ import { R, R2, iso } from '../../lib/format.js';
 import { parsePdf } from '../../lib/parsePdf.js';
 import { parseCsv } from '../../lib/parseCsv.js';
 import { flowKind } from '../../lib/categorize.js';
+import { useTransactionSheet } from '../TransactionSheet.jsx';
 
 function TransactionsView({ filter, setFilter, readOnly }) {
   const { transactions, updateTransaction } = useBusiness();
+  const openTx = useTransactionSheet();
   const shown = useMemo(() => {
     if (filter === 'all') return transactions;
     if (filter === 'review') return transactions.filter(t => t.status === 'needs_review');
@@ -23,13 +25,14 @@ function TransactionsView({ filter, setFilter, readOnly }) {
           </button>
         ))}
       </div>
+      {!readOnly && shown.some(t => t.status === 'needs_review') && <div className="mini" style={{ margin: '0 0 8px' }}>Tap a transaction to set its category and whether it includes VAT, then mark it reviewed.</div>}
       <div className="card">
         <table><tbody>
           {shown.length ? shown.map(t => (
-            <tr key={t.id}>
+            <tr key={t.id} onClick={() => openTx(t.id)} style={{ cursor: 'pointer' }}>
               <td>
                 <div style={{ fontWeight: 600 }}>{t.description || '(no description)'}</div>
-                <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.status === 'needs_review' ? ' · needs review' : ''}</div>
+                <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.vat_amount > 0 ? ` · VAT ${R2(t.vat_amount)}` : t.vat_amount != null && t.kind !== 'transfer' ? ' · no VAT' : ''}{t.status === 'needs_review' ? ' · needs review' : ''}</div>
               </td>
               <td className="r">
                 <span className={t.kind === 'income' ? 'ok' : t.kind === 'expense' ? 'bd' : ''}>
@@ -37,7 +40,7 @@ function TransactionsView({ filter, setFilter, readOnly }) {
                 </span>
                 {!readOnly && t.status === 'needs_review' && (
                   <div className="mini" style={{ fontWeight: 400 }}>
-                    <a href="#" onClick={e => { e.preventDefault(); updateTransaction(t.id, { status: 'reviewed' }); }} style={{ color: 'var(--blue)' }}>mark reviewed</a>
+                    <a href="#" title="Tap the row to set the category and VAT first" onClick={e => { e.preventDefault(); e.stopPropagation(); updateTransaction(t.id, { status: 'reviewed' }); }} style={{ color: 'var(--blue)' }}>mark reviewed</a>
                   </div>
                 )}
               </td>
