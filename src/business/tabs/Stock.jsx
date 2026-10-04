@@ -12,6 +12,26 @@ const ACTIONS = {
 
 export const isLow = it => +it.reorder_level > 0 && +it.qty_on_hand <= +it.reorder_level;
 
+// A cell that starts with = + - or @ would be run as a formula when the file
+// is opened in Excel; a leading apostrophe makes it plain text.
+const csvCell = v => {
+  let t = String(v ?? '');
+  if (/^[=+\-@]/.test(t) && isNaN(Number(t))) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+};
+function downloadStockCsv(items, name) {
+  const rows = [['Item', 'SKU', 'Unit', 'On hand', 'Reorder level', 'Needs reorder', 'Cost price (R)', 'Selling price (R)', 'Stock value at cost (R)', 'Margin %']]
+    .concat(items.map(i => {
+      const cost = +i.cost_price || 0, sell = +i.sell_price || 0;
+      return [i.name, i.sku || '', i.unit, +i.qty_on_hand, +i.reorder_level || 0, isLow(i) ? 'Yes' : 'No', cost.toFixed(2), sell.toFixed(2),
+        (Math.max(0, +i.qty_on_hand) * cost).toFixed(2), sell > 0 ? (((sell - cost) / sell) * 100).toFixed(1) : ''];
+    }));
+  // The leading BOM makes Excel read accents and symbols correctly.
+  const blob = new Blob(['\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1500);
+}
+
 function StockItemContent({ itemId }) {
   const { close } = useSheet();
   const { stockItems, stockMovements, addRow, updateRow, addExpense, addTransaction, myRole } = useBusiness();
@@ -210,7 +230,16 @@ export default function Stock() {
           <div style={{ height: 8 }} />
           <button className="b g" onClick={() => setAdding(false)}>Cancel</button>
         </div>
-      ) : <button className="b" onClick={() => setAdding(true)}>+ Add Item</button>)}
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="b" style={{ flex: 1 }} onClick={() => setAdding(true)}>+ Add Item</button>
+          <button className="b g" style={{ width: 'auto', padding: '0 18px' }} disabled={!items.length}
+            onClick={() => downloadStockCsv([...items].sort((a, b) => a.name.localeCompare(b.name)), 'stock-' + iso(new Date()) + '.csv')}>Export CSV</button>
+        </div>
+      ))}
+      {readOnly && (
+        <button className="b g" disabled={!items.length} onClick={() => downloadStockCsv([...items].sort((a, b) => a.name.localeCompare(b.name)), 'stock-' + iso(new Date()) + '.csv')}>Export CSV</button>
+      )}
 
       {items.length > 6 && <input style={{ marginTop: 14 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search stock" />}
       <div className="card" style={{ marginTop: 14 }}>
