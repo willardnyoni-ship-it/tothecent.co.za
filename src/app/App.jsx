@@ -21,6 +21,7 @@ import Snap from '../tabs/Snap.jsx';
 import Statement from '../tabs/Statement.jsx';
 import BusinessApp from '../business/BusinessApp.jsx';
 import AdminApp from '../admin/AdminApp.jsx';
+import SignInRequired from '../components/SignInRequired.jsx';
 import { useIsAppAdmin, logDailyActivity } from '../admin/adminApi.js';
 import { useHashTab } from './useHashTab.js';
 
@@ -126,7 +127,7 @@ function Shell({ onSwitchToBusiness, onOpenAdmin }) {
 const MODE_KEY = 'wnAppMode';
 
 export default function App() {
-  const { cycleOffset, syncCfg, ensureToken } = useBudget();
+  const { cycleOffset, syncCfg, ensureToken, S } = useBudget();
   const { hasBusiness, checked } = useBusiness();
   const isAdmin = useIsAppAdmin();
   // The owner console is an in-session view only - it's never remembered
@@ -169,6 +170,13 @@ export default function App() {
   useEffect(() => {
     if (mode) logDailyActivity(syncCfg, ensureToken, mode);
   }, [syncCfg.token, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // An account is required to use the app (it's what keeps phone and
+  // computer in step). Checked on the saved login, not the network, so a
+  // signed-in device still opens offline.
+  if (!syncCfg.token) {
+    return <SignInRequired hasLocalData={!!(S && ((S.tx && S.tx.length) || S.income))} />;
+  }
 
   if (mode === null) {
     return <div className="light-tab" style={{ padding: 40, textAlign: 'center' }}><div className="mini">Loading…</div></div>;

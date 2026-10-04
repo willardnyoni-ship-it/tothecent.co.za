@@ -40,26 +40,26 @@
   <div class="card">
     <ul>
       <li>We never ask for your online banking login, and can't access your bank account.</li>
-      <li>Signing in is optional. Without it, everything you enter stays only on your own device.</li>
+      <li>You need an account to use To The Cent. Your data is saved to your account, so it's the same on your phone and your computer.</li>
       <li>Slip photos and statement files are read to extract the numbers, then either discarded or kept only in your own account - never sold, and never used to build a profile of you for advertising.</li>
       <li>You can export everything you've entered, or erase it from a device, at any time.</li>
     </ul>
   </div>
 
   <h2>What we collect</h2>
-  <p><b>If you never sign in (Personal mode):</b> nothing leaves your device. Your transactions, budget, categories and settings are stored only in that browser's local storage, on that device. We have no copy of it and no way to see it.</p>
-  <p><b>If you sign in:</b> creating an account collects your email address and a password (which we never see in plain text - it's handled by our authentication provider). Signing in also lets your budget data sync across your own devices, which means it's stored on our servers, encrypted in transit and scoped so only you can read it.</p>
+  <p><b>Your account:</b> creating an account collects your email address and a password (which we never see in plain text - it's handled by our authentication provider).</p>
+  <p><b>Your budget:</b> your transactions, budget, categories and settings are saved to your account on our servers, encrypted in transit and scoped so only you (and anyone you deliberately share a household budget with) can read them. That's what keeps the same budget on every device you sign in on. Each device also keeps a working copy so the app still opens without a connection; changes are saved to your account as soon as you're back online. Signing out removes the personal budget from that device.</p>
   <p><b>If an account can't be created:</b> we keep the email address you entered and the reason it didn't work (for example, a password that was too short), so we can help you finish signing up.</p>
   <p><b>Usage:</b> when you're signed in, we record which days you use the app and the type of device (for example "iPhone &middot; Safari") - not your location or IP address - to understand how the app is used.</p>
   <p><b>Business mode</b> is inherently shared - team members, customers and invoices are stored on our servers so everyone on the team can see the right things, gated by the role each person is given (owner, admin, employee, or accountant).</p>
 
   <h2>Slip photos</h2>
-  <p>When you photograph a till slip: if you're signed out, the photo is read entirely on your own device and never uploaded anywhere. If you're signed in, the photo is sent to a secure server-side process for more accurate reading (falling back to on-device reading if that's ever unavailable), and a copy is kept in your account so you can review it later. Either way, slip photos are deleted automatically 45 days after they were taken, on every device and in your account.</p>
+  <p>When you photograph a till slip, the photo is sent to a secure server-side process to read it accurately (if that's ever unavailable, it's read on your own device instead), and a copy is kept in your account so you can review it later. Slip photos are deleted automatically 45 days after they were taken, on every device and in your account.</p>
 
   <h2>Bank statements</h2>
   <p>We never ask for your online banking username or password, and we have no way to connect to your bank directly. You download your own statement (PDF or CSV) from your bank's app or website and upload it yourself.</p>
-  <p>Statement files are read in your device's memory. If you're signed out, the file is discarded the moment it's been read and is never uploaded. If you're signed in, the file itself is kept in your account once you confirm the import, so you can re-download it later.</p>
-  <p>Most statement formats are read entirely on your device. If a PDF's layout isn't one we recognise automatically, and you're signed in, its text is sent to a secure server-side process to identify the bank and extract the transactions - this only happens for signed-in users, and only for a file that couldn't be read locally.</p>
+  <p>Statement files are read in your device's memory. Once you confirm the import, the file itself is kept in your account so you can re-download it later.</p>
+  <p>Most statement formats are read entirely on your device. If a PDF's layout isn't one we recognise automatically, its text is sent to a secure server-side process to identify the bank and extract the transactions - this only happens for a file that couldn't be read on your device.</p>
 
   <h2>Who else sees it</h2>
   <p>We use a small number of specialist providers to run the app - for example, our cloud database and authentication provider, and (for signed-in users) a secure service used to read receipts and statements more accurately. They only ever see what's needed to do that specific job, are contractually required to protect it, and none of them are permitted to use your data for their own purposes, including advertising.</p>

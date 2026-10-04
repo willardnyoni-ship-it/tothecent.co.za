@@ -42,6 +42,10 @@ export function BudgetProvider({ children }) {
   const [syncStatus, setSyncStatus] = useState('');
   const [trust, setTrustState] = useState(loadTrust);
   const syncBusyRef = useRef(false);
+  // Set by every user change (update()), cleared when a sync starts - so a
+  // sync that merely merges in the other device's data doesn't itself
+  // trigger another sync.
+  const dirtyRef = useRef(false);
 
   const setTrust = useCallback((patch) => setTrustState(prev => {
     const next = { ...prev, ...patch };
@@ -84,6 +88,7 @@ export function BudgetProvider({ children }) {
   // Also checks for a newly-earned milestone every time, same as the
   // original's checkMilestones() at the end of render().
   const update = useCallback((updater) => {
+    dirtyRef.current = true;
     setS(prev => {
       let next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
       const hit = checkMilestones(next);
@@ -219,16 +224,35 @@ export function BudgetProvider({ children }) {
     return sess.token;
   }, [syncCfg, setSyncCfg]);
 
+  // Signing out first makes sure this device's latest changes have reached
+  // the account, then removes this device's copy of the personal budget -
+  // the account is now the home of the data, and leaving a copy behind would
+  // show it to (or merge it into) whoever signs in on this device next.
   const doSignOut = useCallback(async () => {
-    await apiSignOut(syncCfg);
+    if (syncCfg.token) {
+      let saved = false;
+      try {
+        const token = await ensureToken();
+        await pullAndMergeAndPush(syncCfg, token, sRef.current);
+        saved = true;
+      } catch (e) { console.warn('final sync before sign-out failed', e); }
+      if (!saved && !window.confirm("Some changes on this device haven't been saved to your account yet - you may be offline. Sign out anyway? Those changes will be lost.")) return;
+    }
+    try { await apiSignOut(syncCfg); } catch (e) { /* signing out locally is what matters */ }
+    try {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem('wnAppMode');
+      Object.keys(localStorage).filter(k => k.startsWith('wnAutoBackup')).forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
     setSyncCfg({ token: undefined, refresh: undefined, userId: undefined, email: undefined, expires: undefined });
     window.location.href = '/';
-  }, [syncCfg, setSyncCfg]);
+  }, [syncCfg, setSyncCfg, ensureToken]);
 
   const syncNow = useCallback(async (silent) => {
     if (!syncCfg.token) { if (!silent) alert('Sign in first - sync needs an account so only you can reach your data.'); return; }
     if (syncBusyRef.current) return;
     syncBusyRef.current = true;
+    dirtyRef.current = false;
     setSyncStatus('Syncing…');
     try {
       const token = await ensureToken();
@@ -243,13 +267,38 @@ export function BudgetProvider({ children }) {
     } finally { syncBusyRef.current = false; }
   }, [syncCfg, ensureToken, setSyncCfg]);
 
-  // Auto-sync every 20s while signed in and the tab is visible.
+  // Keeping every device in step while signed in (on unless someone has
+  // explicitly switched it off - logins saved by the landing page never
+  // set the flag, which used to leave them not syncing at all):
+  //  - straight away when the app opens,
+  //  - whenever the app comes back to the front, regains focus or the
+  //    connection returns (so switching from phone to PC shows the latest),
+  //  - every 20s while visible, to pick up the other device's changes,
+  //  - ~1.5s after any change made here, so nothing sits on one device.
+  const autoSync = !!syncCfg.token && !!syncCfg.url && syncCfg.auto !== false;
   useEffect(() => {
-    if (!syncCfg.auto || !syncCfg.url || !syncCfg.token) return;
-    const id = setInterval(() => { if (document.visibilityState === 'visible') syncNow(true); }, 20000);
-    return () => clearInterval(id);
+    if (!autoSync) return;
+    syncNow(true);
+    const onBack = () => { if (document.visibilityState === 'visible') syncNow(true); };
+    document.addEventListener('visibilitychange', onBack);
+    window.addEventListener('focus', onBack);
+    window.addEventListener('online', onBack);
+    const id = setInterval(onBack, 20000);
+    return () => {
+      document.removeEventListener('visibilitychange', onBack);
+      window.removeEventListener('focus', onBack);
+      window.removeEventListener('online', onBack);
+      clearInterval(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncCfg.auto, syncCfg.token]);
+  }, [autoSync, syncCfg.token]);
+
+  useEffect(() => {
+    if (!autoSync || !dirtyRef.current) return;
+    const t = setTimeout(() => syncNow(true), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [S, autoSync]);
 
   // ---------- device lock ----------
   const setLockCfg = useCallback(patch => setLockCfgState(prev => {

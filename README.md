@@ -1,10 +1,11 @@
 # To The Cent
 
-A private, offline-first budget tracker. Receipt scanning and bank-statement parsing
-both run in the browser first, always. Signing in is optional and adds account sync
-on top: Claude reads receipts more accurately than on-device OCR, and slip photos and
-confirmed statement imports back up to your account. Signed out, nothing changes -
-everything stays exactly as local as before either existed.
+A budget tracker and small-business money app for South Africa. An account is
+required: personal budgets sync to it continuously (on open, on focus, ~1.5s after
+each change and every 20s), and business data lives on the server, so the same data
+shows on every device. Each device keeps a working copy, so the app still opens
+offline and catches up when it reconnects. Signing out syncs first, then clears that
+device's copy of the personal budget.
 
 Built as a Vite + React app (see **Developing** below) that builds to two static
 pages, same as before:
@@ -80,9 +81,9 @@ menu (top right), not the main nav.
 
 ## Backups matter
 
-Your data lives only in this browser on this phone (or your account, if signed in).
-**Settings → Data → Export backup (JSON)** every week or two, and keep it somewhere safe.
-Clearing site data, or losing the phone, loses the lot if you're signed out.
+Your data is saved to your account, and each device keeps a working copy.
+**Settings → Data → Export backup (JSON)** every now and then is still a good idea,
+for your own records.
 
 Photos are stored separately in IndexedDB and are *not* in the JSON backup.
 Use **Export transactions (CSV)** if you want the numbers in a spreadsheet.
