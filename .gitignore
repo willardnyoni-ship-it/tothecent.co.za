@@ -14,3 +14,6 @@ Thumbs.db
 # IS committed, only the tooling and its cache are not.
 node_modules
 .vite
+
+# Personal Claude Code settings (permissions on this computer only)
+.claude/settings.local.json
