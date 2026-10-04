@@ -7,6 +7,7 @@ import { openWhatsApp, openEmail } from '../business/share.js';
 import { TrendChart, RankBars } from './charts.jsx';
 import { TABLE_GROUPS, TABLE_INFO, describePolicy, fmtBytes } from './tableInfo.js';
 import Retention from './Retention.jsx';
+import { REASONS } from '../lib/signupAttempts.js';
 import './portal.css';
 
 const SITE = 'https://tothecent.co.za/';
@@ -577,10 +578,10 @@ function Invites({ invites, waitlist, users, onCreate, onDelete }) {
   );
 }
 
-function SignUp({ onCreated, initialKind = 'person' }) {
+function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
   const { syncCfg, ensureToken } = useBudget();
   const [kind, setKind] = useState(initialKind);
-  const [f, setF] = useState({ email: '', name: '', bizName: '', businessType: 'Sole Proprietor', profile: '', industry: '', hasStaff: false, vat: false });
+  const [f, setF] = useState({ email: initialEmail, name: '', bizName: '', businessType: 'Sole Proprietor', profile: '', industry: '', hasStaff: false, vat: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [done, setDone] = useState(null);
@@ -785,8 +786,132 @@ function Database({ db, loading, onLoad }) {
   );
 }
 
+// ---------- Alerts: failed sign-ups + unconfirmed accounts ----------
+const REASON_EMAIL = {
+  already_registered: "It looks like you already have a To The Cent account with this email. You can log in at https://tothecent.co.za - and if you've forgotten your password, tap \"Forgot password?\" on the login screen.",
+  password_short: "It looks like your password was a bit short when you tried to sign up - it needs at least 6 characters. You're welcome to try again at https://tothecent.co.za, or reply and I'll set the account up for you.",
+  password_weak: "It looks like the password you chose was flagged as too easy to guess. Please try a longer one at https://tothecent.co.za, or reply and I'll set the account up for you.",
+  email_invalid: "It looks like there may have been a typo in the email address when you signed up. Reply with the right address and I'll set the account up for you.",
+  rate_limited: "Sorry - we had a spike in sign-ups and couldn't send your confirmation email. I can set your account up for you right away if you reply to this email.",
+  email_send_failed: "Sorry - our confirmation email didn't go out when you signed up. I can set your account up for you right away if you reply to this email.",
+};
+const DEFAULT_EMAIL = "I noticed you tried to create a To The Cent account but it didn't go through. Sorry about that! Reply to this email and I'll get you set up.";
+
+function Alerts({ attempts, users, onCreateFor, onSeen }) {
+  const call = useAccountFn();
+  const [links, setLinks] = useState({});
+  const [busy, setBusy] = useState(null);
+  const [err, setErr] = useState('');
+  const [newIds] = useState(() => new Set(attempts.filter(a => !a.seen_at).map(a => a.id)));
+  useEffect(() => { if (newIds.size) onSeen(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const byEmail = useMemo(() => new Map(users.map(u => [(u.email || '').toLowerCase(), u])), [users]);
+  const weekAgo = Date.now() - 7 * DAY;
+  const week = attempts.filter(a => new Date(a.created_at) > weekAgo);
+  const weekFailed = week.filter(a => a.outcome === 'failed');
+  const weekOk = week.filter(a => a.outcome === 'succeeded');
+
+  // One row per email: their latest failure, how many tries, and whether
+  // they've since got an account.
+  const groups = useMemo(() => {
+    const m = new Map();
+    attempts.filter(a => a.outcome === 'failed').forEach(a => {
+      const k = a.email || '(no email entered)';
+      const g = m.get(k) || { email: a.email, tries: 0, latest: a, reasons: new Set(), devices: new Set(), isNew: false };
+      g.tries++; g.reasons.add(a.reason); if (a.device) g.devices.add(a.device);
+      if (newIds.has(a.id)) g.isNew = true;
+      m.set(k, g);
+    });
+    return [...m.values()].map(g => ({ ...g, account: g.email ? byEmail.get(g.email) : null }));
+  }, [attempts, byEmail, newIds]);
+
+  const reasonCounts = {};
+  weekFailed.forEach(a => { reasonCounts[a.reason] = (reasonCounts[a.reason] || 0) + 1; });
+  const topReason = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0];
+  const unconfirmed = users.filter(u => !u.confirmed);
+
+  async function signinLink(user) {
+    setBusy(user.id); setErr('');
+    try { const r = await call({ action: 'signin_link', user_id: user.id }); setLinks(l => ({ ...l, [user.id]: r.link })); }
+    catch (e) { setErr(e.message); } finally { setBusy(null); }
+  }
+
+  const status = g => {
+    const u = g.account;
+    if (!u) return ['No account yet', 'bad'];
+    if (!u.confirmed) return ['Account not confirmed', 'warn'];
+    if (u.last_sign_in_at && new Date(u.last_sign_in_at) > new Date(g.latest.created_at)) return ['Got in later', 'good'];
+    return ['Has an account', 'info'];
+  };
+
+  return (
+    <>
+      <PageHead title="Alerts" subtitle="People who tried to create an account and couldn't, and accounts that never got going." />
+      <div className="op-grid k4" style={{ marginBottom: 16 }}>
+        <Kpi label="Failed sign-ups, 7 days" value={weekFailed.length} sub={`${new Set(weekFailed.map(a => a.email)).size} different people`} />
+        <Kpi label="Successful, 7 days" value={weekOk.length} sub={week.length ? `${Math.round(weekOk.length / week.length * 100)}% of attempts worked` : 'No attempts yet'} />
+        <Kpi label="Most common problem" value={topReason ? topReason[1] : '-'} sub={topReason ? (REASONS[topReason[0]] || REASONS.other)[0] : 'Nothing this week'} />
+        <Kpi label="Never confirmed email" value={unconfirmed.length} sub="signed up but can't get in yet" />
+      </div>
+      {err && <div className="op-msg e" style={{ marginTop: 0, marginBottom: 12 }}>{err}</div>}
+
+      <div className="op-card">
+        <div className="op-card-h"><h2>Failed sign-up attempts</h2><span className="op-meta">Recorded from 4 Oct 2026</span></div>
+        <div className="op-tablewrap"><table className="op-table">
+          <thead><tr><th>Person</th><th>What went wrong</th><th className="num">Tries</th><th>Last try</th><th>Now</th><th /></tr></thead>
+          <tbody>
+            {groups.length ? groups.map(g => {
+              const [st, cls] = status(g);
+              const r = REASONS[g.latest.reason] || REASONS.other;
+              return (
+                <tr key={g.email || 'none'}>
+                  <td><span className="strong">{g.email || 'No email entered'}</span>{g.isNew && <> <span className="op-pill bad">New</span></>}<span className="sub">{[...g.devices].join(', ')}</span></td>
+                  <td style={{ whiteSpace: 'normal', minWidth: 220 }}><b>{r[0]}</b><span className="sub">{r[1]}{g.latest.reason === 'other' && g.latest.message ? ' "' + g.latest.message + '"' : ''}</span></td>
+                  <td className="num">{g.tries}</td>
+                  <td>{ago(g.latest.created_at)}</td>
+                  <td><span className={'op-pill ' + cls}>{st}</span></td>
+                  <td className="num">
+                    {g.email && <button className="op-link" onClick={() => openEmail(g.email, 'Your To The Cent account', 'Hi,\n\n' + (REASON_EMAIL[g.latest.reason] || DEFAULT_EMAIL) + '\n\nThanks')}>Email them</button>}
+                    {g.email && !g.account && <>{' · '}<button className="op-link" onClick={() => onCreateFor(g.email)}>Create account</button></>}
+                    {g.account && !g.account.confirmed && !links[g.account.id] && <>{' · '}<button className="op-link" disabled={busy === g.account.id} onClick={() => signinLink(g.account)}>Sign-in link</button></>}
+                  </td>
+                </tr>
+              );
+            }) : <tr><td colSpan={6} className="op-empty">No failed sign-ups recorded yet. They'll appear here as soon as one happens.</td></tr>}
+          </tbody>
+        </table></div>
+      </div>
+
+      <div className="op-card">
+        <div className="op-card-h"><h2>Signed up, never confirmed their email</h2><span className="op-meta">{unconfirmed.length}</span></div>
+        <div className="op-tablewrap"><table className="op-table">
+          <tbody>
+            {unconfirmed.length ? unconfirmed.map(u => (
+              <tr key={u.id}>
+                <td><span className="strong">{u.email}</span><span className="sub">Signed up {ago(u.created_at)}</span></td>
+                <td className="num">
+                  {links[u.id]
+                    ? <span className="op-meta">Link ready below</span>
+                    : <button className="op-btn" disabled={busy === u.id} onClick={() => signinLink(u)}>{busy === u.id ? 'Creating…' : 'Create sign-in link'}</button>}
+                </td>
+              </tr>
+            )) : <tr><td className="op-empty">Everyone who signed up has confirmed their email.</td></tr>}
+          </tbody>
+        </table></div>
+        <div className="op-card-b op-note" style={{ marginTop: 0 }}>They probably never received the confirmation email, or it went to spam. A sign-in link lets them set a password and confirms the account in one step.</div>
+      </div>
+
+      {Object.entries(links).map(([id, link]) => {
+        const u = users.find(x => x.id === id);
+        return u ? <div className="op-msg i" key={id} style={{ marginBottom: 12 }}>Sign-in link for <b>{u.email}</b>:<ShareLink link={link} email={u.email} kind="signin" /></div> : null;
+      })}
+    </>
+  );
+}
+
 // ---------- shell ----------
 const I = {
+  alert: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>,
   ret: <><path d="M3 17l5-5 4 4 8-8" /><path d="M15 8h5v5" /></>,
   dash: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
   people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2" /></>,
@@ -796,12 +921,13 @@ const I = {
   add: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>,
   db: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
 };
-const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
+const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.ret], ['alerts', 'Alerts', I.alert], ['people', 'People', I.people], ['businesses', 'Businesses', I.biz], ['signins', 'Sign-ins', I.signin], ['invites', 'Invites', I.invite], ['signup', 'Sign up', I.add], ['database', 'Database', I.db]];
 
 export default function AdminApp({ onExit }) {
   const { syncCfg, ensureToken } = useBudget();
   const [page, setPage] = useState(() => { try { return sessionStorage.getItem('wnOwnerPage') || 'dashboard'; } catch { return 'dashboard'; } });
   const [signupKind, setSignupKind] = useState('person');
+  const [signupEmail, setSignupEmail] = useState('');
   const [data, setData] = useState(null);
   const [db, setDb] = useState(null);
   const [dbLoading, setDbLoading] = useState(false);
@@ -817,15 +943,16 @@ export default function AdminApp({ onExit }) {
     setLoading(true); setErr('');
     try {
       const token = await ensureToken();
-      const [overview, users, sessions, businesses, invites, waitlist] = await Promise.all([
+      const [overview, users, sessions, businesses, invites, waitlist, attempts] = await Promise.all([
         adminApi.rpc(syncCfg, token, 'admin_overview'),
         adminApi.rpc(syncCfg, token, 'admin_users'),
         adminApi.rpc(syncCfg, token, 'admin_sessions'),
         adminApi.rpc(syncCfg, token, 'admin_businesses').catch(() => []),
         adminApi.select(syncCfg, token, 'app_invites', 'select=*&order=created_at.desc'),
         adminApi.select(syncCfg, token, 'waitlist_signups', 'select=*&order=created_at.desc').catch(() => []),
+        adminApi.select(syncCfg, token, 'signup_attempts', 'select=*&order=created_at.desc&limit=500').catch(() => []),
       ]);
-      setData({ overview, users: users || [], sessions: sessions || [], businesses: businesses || [], invites: invites || [], waitlist: waitlist || [] });
+      setData({ overview, users: users || [], sessions: sessions || [], businesses: businesses || [], invites: invites || [], waitlist: waitlist || [], attempts: attempts || [] });
       setLoadedAt(new Date());
     } catch (e) { setErr(e.message); } finally { setLoading(false); }
   }, [syncCfg, ensureToken]);
@@ -855,8 +982,17 @@ export default function AdminApp({ onExit }) {
     await adminApi.remove(syncCfg, token, 'app_invites', `id=eq.${id}`);
     await load();
   }
-  const startSignup = kind => { setSignupKind(kind); go('signup'); };
-  const counts = data ? { people: data.users.length, businesses: data.businesses.length, invites: data.invites.filter(i => !data.users.some(u => (u.email || '').toLowerCase() === i.email.toLowerCase())).length } : {};
+  const startSignup = (kind, email = '') => { setSignupKind(kind); setSignupEmail(email); go('signup'); };
+  // Mark every unseen sign-up alert as seen (the Alerts page keeps showing
+  // which ones were new for as long as it stays open).
+  async function markAlertsSeen() {
+    try {
+      const token = await ensureToken();
+      await adminApi.update(syncCfg, token, 'signup_attempts', 'seen_at=is.null', { seen_at: new Date().toISOString() });
+      setData(d => d && { ...d, attempts: d.attempts.map(a => a.seen_at ? a : { ...a, seen_at: new Date().toISOString() }) });
+    } catch { /* not critical */ }
+  }
+  const counts = data ? { alerts: data.attempts.filter(a => a.outcome === 'failed' && !a.seen_at).length, people: data.users.length, businesses: data.businesses.length, invites: data.invites.filter(i => !data.users.some(u => (u.email || '').toLowerCase() === i.email.toLowerCase())).length } : {};
 
   return (
     <div className="op">
@@ -884,12 +1020,19 @@ export default function AdminApp({ onExit }) {
                 <span className="op-meta">{loadedAt ? 'Updated ' + loadedAt.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 <button className="op-btn" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
               </div>}
+              {page === 'dashboard' && counts.alerts > 0 && (
+                <div className="op-msg e" style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <span><b>{counts.alerts} new failed sign-up {counts.alerts === 1 ? 'attempt' : 'attempts'}.</b> Someone tried to create an account and couldn't.</span>
+                  <button className="op-btn" onClick={() => go('alerts')}>View alerts</button>
+                </div>
+              )}
               {page === 'dashboard' && <Dashboard d={data} go={go} />}
               {page === 'people' && <People users={data.users} businesses={data.businesses} onNew={() => startSignup('person')} onChanged={load} me={syncCfg.email} />}
               {page === 'businesses' && <Businesses businesses={data.businesses} onNew={() => startSignup('business')} />}
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
-              {page === 'signup' && <SignUp key={signupKind} initialKind={signupKind} onCreated={load} />}
+              {page === 'signup' && <SignUp key={signupKind + signupEmail} initialKind={signupKind} initialEmail={signupEmail} onCreated={load} />}
+              {page === 'alerts' && <Alerts attempts={data.attempts} users={data.users} onCreateFor={email => startSignup('person', email)} onSeen={markAlertsSeen} />}
               {page === 'retention' && <Retention r={ret} loading={retLoading} onLoad={loadRet} />}
               {page === 'database' && <Database db={db} loading={dbLoading} onLoad={loadDb} />}
             </>

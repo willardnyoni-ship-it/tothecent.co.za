@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
 const HOSTED_SUPA_KEY = 'sb_publishable_foyO2Py6QAR3oG8IK4OyzQ_WOFBcuiN';
@@ -169,9 +170,14 @@ export default function Landing() {
       } catch (err) { setMsg(err.message); } finally { setBusy(false); }
       return;
     }
-    if (authMode === 'signup' && !segment) { setMsg('Choose Individual or Business to continue.'); return; }
-    if (!email.trim() || !pass) { setMsg('Email and password are both needed.'); return; }
-    if (authMode === 'signup' && pass.length < 6) { setMsg('Password must be at least 6 characters.'); return; }
+    // Sign-up attempts are reported (fire-and-forget) so the owner portal
+    // can alert on people who tried to create an account and failed.
+    const report = (outcome, stage, reason, message) => {
+      if (authMode === 'signup') reportSignupAttempt(HOSTED_SUPA_URL, HOSTED_SUPA_KEY, { email, outcome, stage, reason, message, segment });
+    };
+    if (authMode === 'signup' && !segment) { setMsg('Choose Individual or Business to continue.'); if (email.trim()) report('failed', 'form', 'no_plan'); return; }
+    if (!email.trim() || !pass) { setMsg('Email and password are both needed.'); if (email.trim()) report('failed', 'form', 'missing_fields'); return; }
+    if (authMode === 'signup' && pass.length < 6) { setMsg('Password must be at least 6 characters.'); report('failed', 'form', 'password_short'); return; }
     setMsg('Working…'); setBusy(true);
     try {
       if (authMode === 'signin') {
@@ -180,13 +186,31 @@ export default function Landing() {
         location.href = '/app/';
       } else {
         const d = await authFetch('/auth/v1/signup', { email: email.trim(), password: pass, data: { segment } });
+        // Supabase doesn't reveal an existing account as an error: it returns
+        // a placeholder user with no identities and sends no email. Without
+        // this check the person waits for a confirmation that never comes.
+        if (d && d.user && Array.isArray(d.user.identities) && d.user.identities.length === 0 && !d.access_token) {
+          report('failed', 'server', 'already_registered', 'Email already has an account');
+          setMsg('There is already an account with this email. Log in instead, or use "Forgot password?" below.');
+          setAuthModeState('signin');
+          return;
+        }
+        report('succeeded', 'server', d.access_token ? 'signed_in' : 'confirm_email');
         if (d.access_token) {
           saveSession(d);
           location.href = segment === 'business' ? '/app/?mode=business' : '/app/?onboard=1';
         }
         else setMsg('Check your email to confirm the account, then log in.');
       }
-    } catch (err) { setMsg(err.message); } finally { setBusy(false); }
+    } catch (err) {
+      if (authMode === 'signup') {
+        const reason = classifySignupError(err.message);
+        report('failed', reason === 'network' ? 'network' : 'server', reason, err.message);
+        if (reason === 'already_registered') { setMsg('There is already an account with this email. Log in instead, or use "Forgot password?" below.'); setAuthModeState('signin'); return; }
+        if (reason === 'rate_limited') { setMsg("We're getting a lot of sign-ups right now and couldn't send your confirmation email. Please try again in a few minutes."); return; }
+      }
+      setMsg(err.message);
+    } finally { setBusy(false); }
   }
 
   const isRecover = authMode === 'recover';
