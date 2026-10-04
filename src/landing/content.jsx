@@ -274,17 +274,75 @@ const CALLOUTS = [
   ['c4', 'SARS deadlines stress me', 'VAT201 numbers ready', 'R691 to pay by 25 Nov'],
 ];
 
-const BARS = [[62, 28], [40, 45], [78, 30], [50, 58], [92, 22], [34, 18], [58, 36]];
-const INVOICES = [
+// ---- live data for the animated scene ----
+// The scene plays a loop of everyday events (a payment lands, a slip is
+// scanned, an invoice goes out, a receipt is added). Each step is the full
+// set of numbers on screen; the numbers glide from one step to the next.
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const BASE_BARS = [62, 28, 40, 45, 78, 30, 50, 58, 92, 22, 34, 18, 58, 36]; // in/out per day
+const K0 = {
+  cash: 48230, income: 36900, expenses: 14215, net: 22685, out: 9750,
+  spent: 11240, left: 7260, safe: 327, groc: 2410, grocW: 80, fuel: 1950, fuelW: 97, eat: 1070, eatW: 64,
+  ...Object.fromEntries(BASE_BARS.map((v, i) => ['b' + i, v])),
+};
+const K1 = { ...K0, cash: 50530, income: 39200, out: 7450, net: 24985, b6: 72 };
+const K2 = { ...K1, spent: 11552, left: 6948, safe: 289, groc: 2722, grocW: 90 };
+const K3 = { ...K2, out: 13200, b12: 78 };
+const K4 = { ...K3, expenses: 15365, net: 23835, cash: 49380, b5: 54 };
+
+const INV0 = [
   ['INV-0042', 'Thandi M. · Bathroom', 'R4 600', 'paid', 'Paid'],
   ['INV-0041', 'Brightside Café', 'R3 150', 'sent', 'Sent'],
   ['INV-0038', 'K. Naidoo · Geyser', 'R2 300', 'late', 'Overdue'],
   ['QUO-0017', 'Mokoena · Renovation', 'R23 000', 'quote', 'Quote'],
 ];
+const INV1 = [INV0[0], INV0[1], ['INV-0038', 'K. Naidoo · Geyser', 'R2 300', 'paid', 'Paid'], INV0[3]];
+const INV3 = [['INV-0043', 'Brightside Café · Signage', 'R5 750', 'sent', 'Sent'], INV0[0], INV0[1], INV1[2]];
+
+const ATTN0 = ['INV-0038 overdue · R2 300', '3 bank lines need a receipt', 'VAT due 25 Nov · R691'];
+const ATTN1 = ['All overdue invoices paid', ATTN0[1], ATTN0[2]];
+const ATTN3 = ['INV-0043 sent · due in 7 days', ATTN0[1], ATTN0[2]];
+const ATTN4 = [ATTN3[0], '2 bank lines need a receipt', ATTN0[2]];
+
+const STEPS = [
+  { k: K0, inv: INV0, open: 3, attn: ATTN0, toast: null },
+  { k: K1, inv: INV1, open: 2, attn: ATTN1, toast: { kind: 'biz', title: 'Payment received', text: 'K. Naidoo paid INV-0038 · R2 300' } },
+  { k: K2, inv: INV1, open: 2, attn: ATTN1, toast: { kind: 'phone', title: 'Slip added', text: 'Woolworths · R312,40 · Groceries' } },
+  { k: K3, inv: INV3, open: 3, attn: ATTN3, toast: { kind: 'biz', title: 'Invoice sent on WhatsApp', text: 'INV-0043 · Brightside Café · R5 750' } },
+  { k: K4, inv: INV3, open: 3, attn: ATTN4, toast: { kind: 'biz', title: 'Receipt scanned', text: 'Builders Warehouse · R1 150 · Materials' } },
+];
+const STEP_MS = 3400;
+
+const money = n => 'R' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+// Glides every number in `target` from where it is now to its new value.
+function useTweened(target, enabled) {
+  const [val, setVal] = useState(target);
+  const cur = useRef(target);
+  useEffect(() => {
+    if (!enabled) { cur.current = target; setVal(target); return undefined; }
+    const from = cur.current, t0 = performance.now(), DUR = 1100;
+    let raf;
+    const tick = now => {
+      const p = Math.min(1, (now - t0) / DUR), e = 1 - Math.pow(1 - p, 3);
+      const next = {};
+      for (const k in target) next[k] = from[k] + (target[k] - from[k]) * e;
+      cur.current = next; setVal(next);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled]);
+  return val;
+}
 
 export function HeroScene() {
   const ref = useRef(null);
   const [fit, setFit] = useState({ scale: 1, left: 0, compact: false });
+  const [step, setStep] = useState(0);
+  const [live, setLive] = useState(false);
+  const reduced = useRef(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
@@ -307,10 +365,34 @@ export function HeroScene() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Only play while the picture is on screen and the tab is visible.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || reduced.current) return undefined;
+    let inView = true;
+    const apply = () => setLive(inView && !document.hidden);
+    const io = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(([e]) => { inView = e.isIntersecting; apply(); }, { threshold: 0.2 }) : null;
+    if (io) io.observe(el);
+    document.addEventListener('visibilitychange', apply);
+    apply();
+    return () => { if (io) io.disconnect(); document.removeEventListener('visibilitychange', apply); };
+  }, []);
+  useEffect(() => {
+    if (!live) return undefined;
+    const id = setInterval(() => setStep(s => (s + 1) % STEPS.length), STEP_MS);
+    return () => clearInterval(id);
+  }, [live]);
+
+  const S = STEPS[step], prevK = STEPS[(step + STEPS.length - 1) % STEPS.length].k;
+  const v = useTweened(S.k, !reduced.current);
+  const bump = key => step > 0 && prevK[key] !== S.k[key];
+  const toast = S.toast;
+
   return (
     <>
     <div className={'scene' + (fit.compact ? ' compact' : '')} ref={ref} style={{ height: (fit.compact ? SCENE_H - 30 : SCENE_H) * fit.scale }} role="img"
-      aria-label="Illustration of To The Cent with example data: a business dashboard on a laptop and a personal budget on a phone, with the everyday money problems each one solves">
+      aria-label="Illustration of To The Cent with example data: a business dashboard on a laptop and a personal budget on a phone, with the numbers updating as payments arrive, slips are scanned and invoices are sent">
       <div className="scene-in" style={{ width: SCENE_W, height: SCENE_H, left: fit.left, transform: `scale(${fit.scale})` }}>
 
         <div className="laptop">
@@ -320,40 +402,41 @@ export function HeroScene() {
               <div className="ap-tabs">{['Home', 'Money', 'Invoices', 'Jobs', 'Expenses', 'Reports', 'Team'].map((t, i) => <span key={t} className={i === 0 ? 'on' : ''}>{t}</span>)}</div>
               <span className="ap-avatar">S</span>
             </div>
+            {toast && toast.kind === 'biz' && (
+              <div className="ap-toast" key={step}><span className="ti"><Ic d={I.check} /></span><div><b>{toast.title}</b><span>{toast.text}</span></div></div>
+            )}
             <div className="ap-body">
-              <div className="ap-h"><b>Good morning, Sipho</b><span>Business · October 2026</span></div>
+              <div className="ap-h"><b>Good morning, Sipho</b><span><i className="livedot" />Live · October 2026</span></div>
               <div className="ap-cards">
-                {[['Cash available', 'R48 230', 'g'], ['Income', 'R36 900', ''], ['Expenses', 'R14 215', ''], ['Net profit', 'R22 685', 'g'], ['Outstanding', 'R9 750', 'o']].map(([l, v, c]) => (
-                  <div className="ap-card" key={l}><span>{l}</span><b className={c}>{v}</b></div>
+                {[['Cash available', 'cash', 'g'], ['Income', 'income', ''], ['Expenses', 'expenses', ''], ['Net profit', 'net', 'g'], ['Outstanding', 'out', 'o']].map(([l, key, c]) => (
+                  <div className={'ap-card' + (bump(key) ? ' bump' : '')} key={l + (bump(key) ? step : '')}><span>{l}</span><b className={c}>{money(v[key])}</b></div>
                 ))}
               </div>
               <div className="ap-row">
                 <div className="ap-panel">
                   <div className="ap-ph"><b>Cash flow · this week</b><span><i className="in" />In <i className="out" />Out</span></div>
                   <div className="ap-bars">
-                    {BARS.map(([a, b], i) => (
-                      <div key={i}>
+                    {DAYS.map((d, i) => (
+                      <div key={d}>
                         <div className="pair">
-                          <i className="in" style={{ height: a + '%', animationDelay: (0.4 + i * 0.07) + 's' }} />
-                          <i className="out" style={{ height: b + '%', animationDelay: (0.45 + i * 0.07) + 's' }} />
+                          <i className="in" style={{ height: v['b' + i * 2] + '%', animationDelay: (0.4 + i * 0.07) + 's' }} />
+                          <i className="out" style={{ height: v['b' + (i * 2 + 1)] + '%', animationDelay: (0.45 + i * 0.07) + 's' }} />
                         </div>
-                        <span>{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}</span>
+                        <span>{d}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="ap-panel">
-                  <div className="ap-ph"><b>Invoices &amp; quotes</b><span>4 open</span></div>
-                  {INVOICES.map(([n, w, a, c, l]) => (
-                    <div className="ap-inv" key={n}><span><b>{n}</b><small>{w}</small></span><span className="r"><b>{a}</b><em className={c}>{l}</em></span></div>
+                  <div className="ap-ph"><b>Invoices &amp; quotes</b><span>{S.open} open</span></div>
+                  {S.inv.map(([n, w, a, c, l]) => (
+                    <div className="ap-inv fl" key={n + c}><span><b>{n}</b><small>{w}</small></span><span className="r"><b>{a}</b><em className={c}>{l}</em></span></div>
                   ))}
                 </div>
               </div>
               <div className="ap-attn">
                 <b>Needs your attention</b>
-                <div><i>!</i>INV-0038 overdue · R2 300</div>
-                <div><i>!</i>3 bank lines need a receipt</div>
-                <div><i>!</i>VAT due 25 Nov · R691</div>
+                {S.attn.map((t, i) => <div key={i + t}><i>!</i>{t}</div>)}
               </div>
             </div>
           </div>
@@ -362,20 +445,23 @@ export function HeroScene() {
 
         <div className="mphone">
           <div className="mscreen">
+            {toast && toast.kind === 'phone' && (
+              <div className="m-notif" key={step}><span className="nic">TC</span><div><b>{toast.title}</b><span>{toast.text}</span></div></div>
+            )}
             <div className="m-status"><span>9:41</span><span className="dots"><i /><i /><i /></span></div>
             <div className="m-top"><b>Home</b><span className="ap-avatar">T</span></div>
             <div className="m-h"><b>Hi Thandi</b><span>25 Sep - 24 Oct</span></div>
             <div className="m-grid">
               <div className="m-stat sage"><span>Income</span><b>R18 500</b></div>
-              <div className="m-stat mustard"><span>Spent</span><b>R11 240</b></div>
-              <div className="m-stat lav"><span>Left</span><b>R7 260</b></div>
+              <div className={'m-stat mustard' + (bump('spent') ? ' bump' : '')} key={'sp' + (bump('spent') ? step : '')}><span>Spent</span><b>{money(v.spent)}</b></div>
+              <div className={'m-stat lav' + (bump('left') ? ' bump' : '')} key={'lf' + (bump('left') ? step : '')}><span>Left</span><b>{money(v.left)}</b></div>
             </div>
-            <div className="m-safe"><span>Safe to spend today</span><b>R327</b><small>Rent &amp; debit orders already set aside</small></div>
+            <div className={'m-safe' + (bump('safe') ? ' bump' : '')} key={'sf' + (bump('safe') ? step : '')}><span>Safe to spend today</span><b>{money(v.safe)}</b><small>Rent &amp; debit orders already set aside</small></div>
             <div className="m-cats">
-              {[[I.cart, 'Groceries', 'R2 410', 80, 'sage'], [I.fuel, 'Fuel', 'R1 950', 97, 'mustard'], [I.utensils, 'Eating out', 'R1 070', 64, 'lav']].map(([ic, n, v, w, c]) => (
+              {[[I.cart, 'Groceries', 'groc', 'grocW', 'sage'], [I.fuel, 'Fuel', 'fuel', 'fuelW', 'mustard'], [I.utensils, 'Eating out', 'eat', 'eatW', 'lav']].map(([ic, n, key, wk, c]) => (
                 <div className="m-cat" key={n}>
                   <span className="ic"><Ic d={ic} /></span>
-                  <div><div className="nm"><b>{n}</b><span>{v}</span></div><div className="m-bar"><i className={c} style={{ width: w + '%' }} /></div></div>
+                  <div><div className="nm"><b>{n}</b><span>{money(v[key])}</span></div><div className="m-bar"><i className={c} style={{ width: v[wk] + '%' }} /></div></div>
                 </div>
               ))}
             </div>

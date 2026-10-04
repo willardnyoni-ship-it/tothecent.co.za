@@ -469,3 +469,24 @@ footer.site .fcopy{color:var(--ink3);font-size:13.5px;margin-top:18px}
 .pnotes svg{width:16px;height:16px;color:var(--green)}
 .pfoot{text-align:center;color:var(--ink3);font-size:13px;margin-top:14px}
 @media (max-width:560px){ .plan{padding:22px} .plan .pprice{font-size:48px} }
+
+/* ---------- live scene: events, toasts, number highlights ---------- */
+.lscreen{position:relative}
+.livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green2);margin-right:6px;vertical-align:1px;animation:pulseDot 1.8s infinite}
+.ap-card.bump,.m-stat.bump,.m-safe.bump{animation:bump 1.3s var(--ease)}
+@keyframes bump{0%{box-shadow:0 0 0 0 rgba(35,139,87,.55);transform:scale(1.04)}60%{box-shadow:0 0 0 8px rgba(35,139,87,0)}100%{box-shadow:0 0 0 0 rgba(35,139,87,0);transform:none}}
+.ap-inv.fl{animation:rowflash 1.6s var(--ease)}
+@keyframes rowflash{0%{background:var(--greenSoft)}100%{background:transparent}}
+.ap-toast{position:absolute;z-index:6;top:54px;right:14px;display:flex;gap:9px;align-items:center;background:#111418;color:#fff;border-radius:12px;padding:9px 13px 9px 10px;
+  box-shadow:0 18px 30px -12px rgba(0,0,0,.5);animation:toast 3.1s var(--ease) both}
+.ap-toast .ti{width:22px;height:22px;border-radius:50%;background:var(--green2);display:grid;place-items:center;flex:none}
+.ap-toast .ti svg{width:13px;height:13px;color:#fff}
+.ap-toast b{display:block;font-size:12px}.ap-toast span:not(.ti){display:block;font-size:11px;color:#C9D1DA}
+@keyframes toast{0%{opacity:0;transform:translateY(-10px) scale(.96)}9%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px)}}
+.mscreen{position:relative}
+.m-notif{position:absolute;z-index:6;left:8px;right:8px;top:6px;display:flex;gap:8px;align-items:center;background:rgba(31,41,55,.96);color:#fff;border-radius:16px;padding:8px 10px;
+  box-shadow:0 14px 24px -10px rgba(0,0,0,.55);animation:toast 3.1s var(--ease) both}
+.m-notif .nic{width:24px;height:24px;border-radius:7px;background:var(--green);display:grid;place-items:center;font-size:9px;font-weight:700;flex:none}
+.m-notif b{display:block;font-size:10.5px}.m-notif span:not(.nic){display:block;font-size:9.5px;color:#CBD5E1;line-height:1.3}
+.ap-bars .pair i{transition:none}
+@media (prefers-reduced-motion: reduce){ .ap-toast,.m-notif{display:none} }
