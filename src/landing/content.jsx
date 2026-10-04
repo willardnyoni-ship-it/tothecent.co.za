@@ -104,55 +104,68 @@ export const FAQ = [
   ['Is this financial or tax advice?', 'No. PAYE, VAT and tax set-aside figures are estimates to help you plan. Check anything with real tax consequences with your accountant or SARS eFiling.'],
 ];
 
-// One example card per business type, shown beside its tool list.
-export function BizPreview({ kind }) {
-  if (kind === 'freelancer') return (
-    <div className="card">
-      <div className="pv-h"><b>Timer running</b><span>Brightside Café</span></div>
-      <div className="timer">01:42:10</div>
-      <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 10 }}>Logo concepts, round 2</div>
-      <div className="pv-row"><span>Ready to invoice<small>6.5 hours this week</small></span><b>R4 225,00</b></div>
-      <div className="pv-row"><span>Tax set-aside (25%)<small>from this month's profit</small></span><b>R3 180,00</b></div>
-      <div className="pv-btns"><span className="g">Create invoice</span><span>Stop timer</span></div>
-    </div>
-  );
-  if (kind === 'trades') return (
-    <div className="card">
-      <div className="pv-h"><b>Quote QUO-0017</b><span>Accepted</span></div>
-      <div className="pv-row"><span>Bathroom renovation<small>labour and materials</small></span><b>R20 000,00</b></div>
-      <div className="pv-row"><span>VAT (15%)</span><b>R3 000,00</b></div>
-      <div className="pv-total"><span>Total</span><span>R23 000,00</span></div>
-      <div className="pv-row" style={{ marginTop: 6 }}><span>Deposit invoice (50%)<small>INV-0041 · paid</small></span><b style={{ color: 'var(--green)' }}>R11 500,00</b></div>
-      <div className="pv-btns"><span className="g">Create final invoice (less deposit)</span><span>Job: Mokoena bathroom</span></div>
-    </div>
-  );
-  if (kind === 'retail') return (
-    <div className="card">
-      <div className="pv-h"><b>Stock</b><span>Value R18 640</span></div>
-      <div className="pv-row"><span>Coca-Cola 2L<small>Reorder at 12</small></span><b style={{ color: 'var(--bad)' }}>4 left</b></div>
-      <div className="pv-row"><span>White bread<small>Reorder at 10</small></span><b style={{ color: 'var(--bad)' }}>6 left</b></div>
-      <div className="pv-row"><span>Airtime vouchers<small>Reorder at 20</small></span><b>48 left</b></div>
-      <div className="pv-row"><span>Today's cash-up<small>Cash R3 200 · Card R4 100</small></span><b style={{ color: 'var(--green)' }}>Balanced</b></div>
-    </div>
-  );
-  if (kind === 'food') return (
-    <div className="card">
-      <div className="pv-h"><b>Close the day</b><span>Friday</span></div>
-      <div className="pv-row"><span>Cash sales</span><b>R3 200,00</b></div>
-      <div className="pv-row"><span>Card sales</span><b>R4 100,00</b></div>
-      <div className="pv-row"><span>SnapScan &amp; Zapper</span><b>R650,00</b></div>
-      <div className="pv-row"><span>Tips in the till</span><b>R120,00</b></div>
-      <div className="pv-total"><span>Total sales</span><span>R7 950,00</span></div>
-      <div className="pv-row" style={{ marginTop: 6 }}><span>Counted vs expected</span><b style={{ color: 'var(--bad)' }}>Short R40,00</b></div>
-    </div>
-  );
+// A short, example story per business type: who they are, what happens
+// step by step in To The Cent, and what they get out of it.
+const STORIES = {
+  freelancer: {
+    who: ['👩🏽‍💻', 'Lerato, graphic designer', 'Example'],
+    steps: [
+      ['⏱', 'Hours tracked as she works', '6.5 hours on the Brightside Café logo'],
+      ['🧾', 'Invoice in one tap', 'R4 225, sent straight to WhatsApp'],
+      ['🔔', 'A nudge when it\'s late', 'Paid two days after the reminder'],
+    ],
+    result: ['R3 180', 'put aside for SARS this month - no surprise tax bill'],
+  },
+  trades: {
+    who: ['👷🏾‍♂️', 'Sipho, plumber', 'Example'],
+    steps: [
+      ['📝', 'Quote sent on WhatsApp', 'Bathroom renovation · R23 000'],
+      ['💰', '50% deposit paid first', 'R11 500 in before buying the tiles'],
+      ['🧰', 'Costs tracked on the job', 'Tiles and fittings R12 200 · 42 km of travel'],
+      ['🧾', 'Final invoice, less the deposit', 'R11 500 · matched to his bank statement'],
+    ],
+    result: ['R7 600', 'profit on this job, worked out for him'],
+  },
+  retail: {
+    who: ['🧑🏾‍💼', 'Zanele, spaza shop owner', 'Example'],
+    steps: [
+      ['💵', 'Till closed in two minutes', 'Cash R3 200 · Card R4 100 · balanced'],
+      ['📦', 'Warned before she runs out', 'Coca-Cola 2L: 4 left - added to the reorder list'],
+      ['📊', 'Sales land in the books', 'No re-typing from the till'],
+    ],
+    result: ['R18 640', 'of stock on the shelf - always known'],
+  },
+  food: {
+    who: ['👩🏽‍🍳', 'Ayesha, café owner', 'Example'],
+    steps: [
+      ['💵', 'Friday cash-up', 'R7 950 in sales · R120 in tips'],
+      ['⚠️', 'Short R40 - flagged the same day', 'Not discovered at month end'],
+      ['🧾', 'VAT worked out from the sales', 'R1 037 included in today\'s takings'],
+    ],
+    result: ['Every day', 'balanced, recorded and ready for her accountant'],
+  },
+  appointments: {
+    who: ['💇🏾‍♀️', 'Nomsa, salon owner', 'Example'],
+    steps: [
+      ['📅', 'Booking with a deposit', 'Braids, Saturday 09:00 · R200 deposit'],
+      ['💬', 'WhatsApp reminder the day before', 'One tap - fewer no-shows'],
+      ['✅', 'Done & paid', 'R450 balance recorded automatically'],
+    ],
+    result: ['R14 600', 'earned by her team this month, shown per stylist'],
+  },
+};
+
+export function BizStory({ kind }) {
+  const st = STORIES[kind] || STORIES.trades;
   return (
-    <div className="card">
-      <div className="pv-h"><b>Today</b><span>3 bookings</span></div>
-      <div className="pv-row"><span>09:00 · Ayanda Z.<small>Braids · Nomsa · deposit R200</small></span><b>R650</b></div>
-      <div className="pv-row"><span>10:30 · Kim N.<small>Cut &amp; blow-dry · Nomsa</small></span><b>R350</b></div>
-      <div className="pv-row"><span>13:00 · Lerato K.<small>Colour · Thabo</small></span><b>R890</b></div>
-      <div className="pv-btns"><span className="g">Done &amp; paid</span><span>WhatsApp reminder</span><span>No-show</span></div>
+    <div className="story">
+      <div className="person"><span className="avatar" aria-hidden="true">{st.who[0]}</span><div><b>{st.who[1]}</b><span>{st.who[2]} - how To The Cent helps</span></div></div>
+      <ol>
+        {st.steps.map(([ic, t, d], i) => (
+          <li key={t} style={{ animationDelay: (i * 0.12) + 's' }}><span className="n" aria-hidden="true">{ic}</span><div className="t"><b>{t}</b><span>{d}</span></div></li>
+        ))}
+      </ol>
+      <div className="result" style={{ animationDelay: (st.steps.length * 0.12) + 's' }}><span className="big">{st.result[0]}</span><span>{st.result[1]}</span></div>
     </div>
   );
 }

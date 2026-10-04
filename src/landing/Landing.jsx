@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
-import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizPreview } from './content.jsx';
+import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory } from './content.jsx';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
 const HOSTED_SUPA_KEY = 'sb_publishable_foyO2Py6QAR3oG8IK4OyzQ_WOFBcuiN';
@@ -336,70 +336,38 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="stage" aria-label="Preview of the To The Cent app with example data">
-              <div className="desk">
-                <div className="chrome"><i /><i /><i /><span className="url">tothecent.co.za/app</span></div>
-                <div className="body">
-                  <div className="side">
-                    <div className="b">Mokoena Plumbing</div>
-                    {['Home', 'Money', 'Invoices', 'Jobs', 'Expenses', 'Reports', 'Team'].map((x, i) => <div key={x} className={'it' + (i === 0 ? ' on' : '')}>{x}</div>)}
-                  </div>
-                  <div className="main">
-                    <h4>Good morning, Sipho</h4>
-                    <div className="kpis">
-                      <div className="kpi"><div className="l">Cash available</div><div className="v g">R48 230</div></div>
-                      <div className="kpi"><div className="l">Income</div><div className="v">R36 900</div></div>
-                      <div className="kpi"><div className="l">Expenses</div><div className="v">R14 215</div></div>
-                      <div className="kpi"><div className="l">Outstanding</div><div className="v">R9 750</div></div>
-                    </div>
-                    <div className="row2">
-                      <div className="panel">
-                        <div className="h">Cash flow <span>This week</span></div>
-                        <div className="bars">
-                          {[[60, 25], [35, 40], [80, 30], [45, 55], [90, 20], [30, 15], [55, 35]].map(([a, b], i) => (
-                            <div className="d" key={i}>
-                              <div className="pair"><i className="in" style={{ height: a + '%', animationDelay: (0.6 + i * 0.06) + 's' }} /><i className="out" style={{ height: b + '%', animationDelay: (0.65 + i * 0.06) + 's' }} /></div>
-                              <span>{'MTWTFSS'[i]}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="panel">
-                        <div className="h">Invoices <span>4 open</span></div>
-                        <div className="inv"><span><b>INV-0042</b><small>Thandi M. · Bathroom</small></span><span className="tag paid">Paid</span></div>
-                        <div className="inv"><span><b>INV-0041</b><small>Brightside Café</small></span><span className="tag sent">Sent</span></div>
-                        <div className="inv"><span><b>INV-0038</b><small>K. Naidoo</small></span><span className="tag late">Overdue</span></div>
-                        <div className="inv"><span><b>QUO-0017</b><small>50% deposit</small></span><span className="tag sent">Quote</span></div>
-                      </div>
-                    </div>
-                  </div>
+            <div className="flow reveal d2" aria-label="Illustration with example data: your till slips, bank statements and invoice requests go into To The Cent and come back as clear answers">
+              <div className="col">
+                <div className="lbl">You bring</div>
+                <div className="paper item" style={{ animationDelay: '.2s' }}>
+                  <div className="shop">WOOLWORTHS FOOD</div>
+                  <div className="ln"><span>MILK 2L</span><span>32.99</span></div>
+                  <div className="ln"><span>BREAD WHL</span><span>18.99</span></div>
+                  <div className="ln"><span>CHICKEN FIL</span><span>89.99</span></div>
+                  <div className="ln"><span>VEG PACK</span><span>54.99</span></div>
+                  <div className="ln"><span>+ 6 ITEMS</span><span>115.44</span></div>
+                  <div className="tot"><span>TOTAL</span><span>R312.40</span></div>
+                </div>
+                <div className="pdf item" style={{ animationDelay: '.35s' }}><span className="ic">PDF</span><span><b>FNB statement</b><span>September · 142 transactions</span></span></div>
+                <div className="wabub item" style={{ animationDelay: '.5s' }}>Hi Sipho, please send the invoice for the bathroom 🙏<small>08:14 ✓✓</small></div>
+              </div>
+              <div className="hub">
+                <span className="wire l" /><span className="wire r" />
+                <div className="engine">
+                  <div className="mark">TC</div>
+                  <b>To The Cent</b>
+                  <div className="stp"><i>✓</i>Slip read</div>
+                  <div className="stp"><i>✓</i>Statement matched</div>
+                  <div className="stp"><i>✓</i>Invoice sent</div>
                 </div>
               </div>
-
-              <div className="phone" id="phone">
-                <div className="screen">
-                  <div className="status"><span>9:41</span><span>●●● ▮</span></div>
-                  <div className="ph"><b>This month</b><span>25 Sep - 24 Oct</span></div>
-                  <div className="safe">
-                    <div className="l">Safe to spend today</div>
-                    <div className="v" data-count="327" data-prefix="R">R0</div>
-                    <div className="n">R1 309 left this week · bills covered</div>
-                  </div>
-                  <div className="pc">
-                    <div className="r"><span>Spent</span><b>R6 840 <span style={{ color: 'var(--ink3)', fontWeight: 500 }}>of R10 219</span></b></div>
-                    <div className="meter"><i style={{ width: '67%' }} /></div>
-                  </div>
-                  <div className="pc">
-                    <div className="cat"><span className="ic">🛒</span><span className="grow"><b>Groceries</b><small>R2 410 of R3 000</small></span></div>
-                    <div className="meter"><i style={{ width: '80%' }} /></div>
-                    <div className="cat" style={{ marginTop: 6 }}><span className="ic">⛽</span><span className="grow"><b>Fuel</b><small>R1 950 of R2 000</small></span></div>
-                    <div className="meter"><i className="w" style={{ width: '97%' }} /></div>
-                  </div>
-                </div>
+              <div className="col">
+                <div className="lbl">You get</div>
+                <div className="outc item" style={{ animationDelay: '1s' }}><span className="oi g"><Ic d={I.wallet} /></span><span><span className="who">For you</span><b>Safe to spend today</b><span className="big">R327</span></span></div>
+                <div className="outc item" style={{ animationDelay: '1.25s' }}><span className="oi g"><Ic d={I.check} /></span><span><span className="who">For your business</span><b>Invoice paid · R4 600</b><span>Matched to your bank statement</span></span></div>
+                <div className="outc item" style={{ animationDelay: '1.5s' }}><span className="oi b"><Ic d={I.percent} /></span><span><b>VAT return ready</b><span>R691 to pay by 25 Nov</span></span></div>
+                <div className="outc item" style={{ animationDelay: '1.75s' }}><span className="oi w"><Ic d={I.doc} /></span><span><b>34 of 36 matched</b><span>2 still need a slip</span></span></div>
               </div>
-
-              <div className="toast t1"><span className="ti" style={{ background: 'var(--greenSoft)', color: 'var(--green)' }}><Ic d={I.check} /></span><span><b>INV-0042 paid · R4 600</b><span>Matched to your bank statement</span></span></div>
-              <div className="toast t2"><span className="ti" style={{ background: 'var(--blueSoft)', color: 'var(--blue)' }}><Ic d={I.scan} /></span><span><b>Slip read · Woolworths</b><span>R312,40 · Groceries</span></span></div>
             </div>
           </div>
         </div>
@@ -427,7 +395,11 @@ export default function Landing() {
             </ul>
           </div>
           <div className="shot reveal d2">
-            <div className="card chatbub"><div className="who">Khanyiso</div>You spent R1 070 more on eating out than last month - mostly weekends.</div>
+            <div className="convo">
+              <div className="persona"><span className="avatar" aria-hidden="true">👩🏾‍⚕️</span>Example: Thandi, a nurse in Durban</div>
+              <div className="bub me">Payday was 10 days ago. Can I afford dinner out tonight?</div>
+              <div className="bub app"><div className="who">To The Cent</div>Yes - you can safely spend <b>R327</b> today. Rent and your phone contract are already set aside.</div>
+            </div>
             <div className="card slip">
               <div className="top"><span className="ic"><Ic d={I.scan} /></span><span><b>Slip read</b><span>Just now · from a photo</span></span></div>
               <div className="field"><span>Shop</span><b>Woolworths Food</b></div>
@@ -469,8 +441,7 @@ export default function Landing() {
               ))}
             </div>
             <div className="preview">
-              <div className="cap">Example · {activeType.example}</div>
-              <BizPreview kind={bizType} />
+              <BizStory kind={bizType} />
             </div>
           </div>
         </div>
