@@ -155,8 +155,8 @@ export const PLANS = [
 ];
 
 export const FAQ = [
-  ['How does the free month work?', 'Every account starts with one month free on either plan, from the day you join. You can use everything during that month. After it, the plan is paid by monthly debit order.'],
-  ['How do I pay, and can I cancel?', 'By monthly debit order. You can cancel any time and your data stays yours - download a full backup or a CSV whenever you like.'],
+  ['How does the free month work?', 'Every account starts with one month free on either plan, from the day you join. You can use everything during that month. After it, the plan continues as a monthly subscription.'],
+  ['How do I pay, and can I cancel?', 'It is a monthly subscription. You can cancel any time and your data stays yours - download a full backup or a CSV whenever you like.'],
   ['What does it cost?', 'Personal is R89 a month and Business is R389 a month, after the free month. Business includes the personal budget as well.'],
   ['Do I need to give you my bank login?', 'No. You download your statement (PDF or CSV) from your bank\'s own app or website and upload it. We never ask for your banking username or password, and have no way to connect to your bank.'],
   ['Which banks are supported?', 'Statements from Capitec, FNB, Standard Bank, Absa and Nedbank are read automatically. Till slips are read straight from a photo.'],

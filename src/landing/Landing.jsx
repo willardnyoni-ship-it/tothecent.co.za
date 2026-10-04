@@ -598,7 +598,7 @@ export default function Landing() {
           <div className="center reveal">
             <span className="eyebrow">Pricing</span>
             <h2 className="sec">Simple pricing. Your first month is free.</h2>
-            <p className="sub">Try either plan free for a month. After that it's a monthly debit order, and you can cancel any time.</p>
+            <p className="sub">Try either plan free for a month. After that it's a simple monthly subscription, and you can cancel any time.</p>
           </div>
           <div className="plans">
             {PLANS.map((pl, i) => (
@@ -619,7 +619,7 @@ export default function Landing() {
           </div>
           <div className="pnotes reveal">
             <span><Ic d={I.check} /> One month free on either plan</span>
-            <span><Ic d={I.check} /> Monthly debit order</span>
+            <span><Ic d={I.check} /> Monthly subscription</span>
             <span><Ic d={I.check} /> Cancel any time</span>
             <span><Ic d={I.check} /> No bank login, ever</span>
           </div>
