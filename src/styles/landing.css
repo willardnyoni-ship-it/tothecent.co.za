@@ -429,3 +429,14 @@ footer.site .fcopy{color:var(--ink3);font-size:13.5px;margin-top:18px}
 .story .result .big{font-size:24px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;color:var(--mint)}
 .story .result span{font-size:13px;opacity:.9}
 @media (max-width:560px){ .preview{padding:16px} .story li .t{padding:8px 10px} .story .person .tag{display:none} }
+
+/* Google / Apple sign-in */
+.oauth{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
+.oauthBtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:46px;border-radius:12px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;
+  background:#fff;color:var(--ink);border:1px solid #D1D5DB;transition:background .15s,border-color .15s}
+.oauthBtn:hover{background:#F9FAFB;border-color:#9CA3AF}
+.oauthBtn.apple{background:#000;color:#fff;border-color:#000}
+.oauthBtn.apple:hover{background:#1F1F1F}
+.oauthBtn:disabled{opacity:.6;cursor:default}
+.orline{display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:12.5px;margin-top:4px}
+.orline::before,.orline::after{content:'';flex:1;height:1px;background:var(--line)}

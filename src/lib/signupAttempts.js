@@ -14,6 +14,7 @@ export const REASONS = {
   rate_limited: ['Too many sign-ups at once', 'Supabase\'s email limit was hit, so no confirmation email could be sent. Consider your own email provider (SMTP) in Supabase.'],
   email_send_failed: ['Confirmation email failed to send', 'Supabase couldn\'t send the confirmation email - check Auth → Emails / SMTP in Supabase.'],
   signups_disabled: ['Sign-ups are switched off', 'New sign-ups are disabled in Supabase Auth settings.'],
+  oauth_error: ['Google / Apple sign-in failed', 'They cancelled, or the provider returned an error - see the exact message.'],
   network: ['Network problem', 'Their connection dropped or the server couldn\'t be reached.'],
   other: ['Something else went wrong', 'See the exact message.'],
 };

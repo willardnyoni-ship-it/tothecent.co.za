@@ -25,6 +25,30 @@ function saveSession(d) {
   try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
 }
 
+// Google / Apple sign-in goes through Supabase's hosted OAuth flow and comes
+// back to this page with the session in the URL fragment. The plan picked on
+// "Create account" is kept here across that round trip.
+const PENDING_SEGMENT_KEY = 'wnPendingSegment';
+const OAUTH_PROVIDERS = [
+  ['google', 'Continue with Google'],
+  ['apple', 'Continue with Apple'],
+];
+function ProviderLogo({ id }) {
+  if (id === 'google') return (
+    <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
+  );
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
+      <path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.66 1.37-.58.67-1.09 1.75-.96 2.79 1.02.08 2.05-.52 2.68-1.27z" />
+    </svg>
+  );
+}
+
 // Numbers count up when they scroll into view. Ease-out so they decelerate
 // into place. Ported unchanged from index.html.
 function fmt(n, prefix, suffix) {
@@ -83,6 +107,7 @@ export default function Landing() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [alreadySignedIn, setAlreadySignedIn] = useState(false);
+  const [providers, setProviders] = useState([]); // OAuth providers switched on in Supabase
   const [scrolled, setScrolled] = useState(false);
   const [bizType, setBizType] = useState('trades');
   const activeType = BIZ_TYPES.find(t => t.key === bizType) || BIZ_TYPES[0];
@@ -105,6 +130,64 @@ export default function Landing() {
       const cfg = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}');
       if (cfg.token) setAlreadySignedIn(true);
     } catch (e) { /* ignore */ }
+  }, []);
+
+  // Only show the Google / Apple buttons for providers that are switched on
+  // in Supabase, so a half-configured provider never leads to an error page.
+  useEffect(() => {
+    fetch(HOSTED_SUPA_URL + '/auth/v1/settings', { headers: { apikey: HOSTED_SUPA_KEY } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d && d.external) setProviders(OAUTH_PROVIDERS.filter(([id]) => d.external[id])); })
+      .catch(() => { /* offline - email sign-in still works */ });
+  }, []);
+
+  // Back from Google / Apple: the session is in the fragment (or an error in
+  // the query/fragment). Save it, record the plan for a new account, go in.
+  useEffect(() => {
+    const hp = new URLSearchParams(location.hash.slice(1));
+    const qp = new URLSearchParams(location.search);
+    const err = hp.get('error_description') || qp.get('error_description') || hp.get('error') || qp.get('error');
+    let pending = '';
+    try { pending = localStorage.getItem(PENDING_SEGMENT_KEY) || ''; } catch (e) { /* ignore */ }
+    if (err) {
+      history.replaceState(null, '', location.pathname);
+      try { localStorage.removeItem(PENDING_SEGMENT_KEY); } catch (e) { /* ignore */ }
+      if (pending) reportSignupAttempt(HOSTED_SUPA_URL, HOSTED_SUPA_KEY, { email: '', outcome: 'failed', stage: 'server', reason: 'oauth_error', message: err, segment: pending });
+      openAuth(pending ? 'signup' : 'signin');
+      setMsg(/denied|cancel/i.test(err) ? 'Sign-in was cancelled. You can try again, or use your email instead.' : 'Sign-in didn\'t work: ' + err);
+      return;
+    }
+    const token = hp.get('access_token');
+    const type = hp.get('type');
+    if (!token || type === 'recovery' || type === 'invite') return;
+    history.replaceState(null, '', location.pathname + location.search);
+    (async () => {
+      try {
+        const r = await fetch(HOSTED_SUPA_URL + '/auth/v1/user', { headers: { apikey: HOSTED_SUPA_KEY, Authorization: 'Bearer ' + token } });
+        let user = await r.json();
+        if (!r.ok || !user.id) throw new Error(user.msg || user.message || 'Could not finish signing in.');
+        const meta = user.user_metadata || {};
+        const isNew = !meta.segment && Date.now() - new Date(user.created_at).getTime() < 10 * 60 * 1000;
+        let segmentNow = meta.segment || '';
+        if (isNew) {
+          segmentNow = pending || 'personal';
+          const u = await fetch(HOSTED_SUPA_URL + '/auth/v1/user', {
+            method: 'PUT',
+            headers: { apikey: HOSTED_SUPA_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: { segment: segmentNow } }),
+          });
+          if (u.ok) user = await u.json();
+          reportSignupAttempt(HOSTED_SUPA_URL, HOSTED_SUPA_KEY, { email: user.email || '', outcome: 'succeeded', stage: 'server', reason: 'signed_in', message: 'via ' + ((user.app_metadata && user.app_metadata.provider) || 'oauth'), segment: segmentNow });
+        }
+        try { localStorage.removeItem(PENDING_SEGMENT_KEY); } catch (e) { /* ignore */ }
+        saveSession({ access_token: token, refresh_token: hp.get('refresh_token'), expires_in: Number(hp.get('expires_in')) || 3600, user });
+        location.href = !isNew ? '/app/' : segmentNow === 'business' ? '/app/?mode=business' : '/app/?onboard=1';
+      } catch (e2) {
+        openAuth('signin');
+        setMsg(e2.message || 'Could not finish signing in. Please try again.');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Landing here from a password-reset email link - Supabase appends the
@@ -160,6 +243,18 @@ export default function Landing() {
     setTimeout(() => (mode === 'recover' ? passRef : emailRef).current?.focus(), 150);
   }
   function closeAuth() { setAuthOpen(false); }
+
+  function signInWith(provider) {
+    if (authMode === 'signup' && !segment) { setMsg('Choose your plan first, then continue.'); return; }
+    try {
+      if (authMode === 'signup') localStorage.setItem(PENDING_SEGMENT_KEY, segment);
+      else localStorage.removeItem(PENDING_SEGMENT_KEY);
+    } catch (e) { /* ignore */ }
+    setBusy(true);
+    setMsg('Opening ' + (provider === 'google' ? 'Google' : 'Apple') + '…');
+    const back = location.origin + '/';
+    location.href = HOSTED_SUPA_URL + '/auth/v1/authorize?provider=' + provider + '&redirect_to=' + encodeURIComponent(back);
+  }
 
   async function forgotPassword() {
     if (!email.trim()) { setMsg('Enter your email above first.'); return; }
@@ -269,6 +364,16 @@ export default function Landing() {
                     <div className="d">Find out where the money actually goes each month</div>
                   </button>
                 </div>
+              </div>
+            )}
+            {!isRecover && providers.length > 0 && (
+              <div className="oauth">
+                {providers.map(([id, label]) => (
+                  <button key={id} type="button" className={'oauthBtn ' + id} disabled={busy} onClick={() => signInWith(id)}>
+                    <ProviderLogo id={id} />{label}
+                  </button>
+                ))}
+                <div className="orline"><span>or use your email</span></div>
               </div>
             )}
             {!isRecover && (
