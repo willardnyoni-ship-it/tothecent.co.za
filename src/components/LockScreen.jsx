@@ -27,7 +27,7 @@ export default function LockScreen() {
     <div style={{ display: 'flex', position: 'fixed', inset: 0, zIndex: 200, background: 'var(--bg)', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ maxWidth: 340, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 44 }}>&#128274;</div>
-        <h1 style={{ marginTop: 10 }}>Budget</h1>
+        <h1 style={{ marginTop: 10 }}>To The Cent</h1>
         <div className="sub" style={{ marginBottom: 18 }}>Enter your PIN or passphrase</div>
         <input type="password" inputMode="numeric" style={{ textAlign: 'center', fontSize: 23 }}
           value={val} onChange={e => setVal(e.target.value)}

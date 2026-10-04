@@ -338,7 +338,7 @@ export default function Landing() {
         <section className="reveal" style={{ paddingTop: 10 }}>
           <h2 className="sec-h">About</h2>
           <div className="about-card">
-            <p>Budget is built in South Africa, for the way people actually get paid and spend here - pay-day-to-pay-day budgeting, till slips, and bank statements from the big five, not a generic monthly calendar built for somewhere else.</p>
+            <p>To The Cent is built in South Africa, for the way people actually get paid and spend here - pay-day-to-pay-day budgeting, till slips, and bank statements from the big five, not a generic monthly calendar built for somewhere else.</p>
             <p>It works fully without an account. Signing in only adds sync across your devices and more accurate slip/statement reading - it never adds a requirement to hand over a bank login, which this app will never ask for.</p>
             <p style={{ marginTop: 16 }}>Questions, feedback, or something not working right? <a href="mailto:info@tothecent.co.za">info@tothecent.co.za</a></p>
           </div>
@@ -348,14 +348,14 @@ export default function Landing() {
       <footer className="site">
         <div className="wrap">
           <div className="frow">
-            <div className="fbrand">Budget</div>
+            <div className="fbrand">To The Cent</div>
             <div className="flinks">
               <a href="mailto:info@tothecent.co.za">Contact</a>
               <a href="/privacy/">Privacy Policy</a>
               <a href="/terms/">Terms of Service</a>
             </div>
           </div>
-          <div className="fcopy">&copy; {new Date().getFullYear()} Budget. Built in South Africa.</div>
+          <div className="fcopy">&copy; {new Date().getFullYear()} To The Cent. Built in South Africa.</div>
         </div>
       </footer>
     </div>

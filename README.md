@@ -1,4 +1,4 @@
-# Budget
+# To The Cent
 
 A private, offline-first budget tracker. Receipt scanning and bank-statement parsing
 both run in the browser first, always. Signing in is optional and adds account sync

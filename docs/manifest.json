@@ -1,6 +1,6 @@
 {
-  "name": "Budget",
-  "short_name": "Budget",
+  "name": "To The Cent",
+  "short_name": "To The Cent",
   "description": "Private offline budget tracker with receipt scanning and bank statement reconciliation.",
   "start_url": "./app/",
   "scope": "./",

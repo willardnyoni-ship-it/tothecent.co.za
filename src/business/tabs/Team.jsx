@@ -73,7 +73,7 @@ export default function Team() {
             {msg && <div className="msg s">{msg}</div>}
             <div style={{ height: 10 }} />
             <button className="b" onClick={invite}>Send Invitation</button>
-            <div className="mini" style={{ marginTop: 8 }}>They'll get access the next time they sign in to Budget with this email - no invite email is sent automatically yet, so let them know directly.</div>
+            <div className="mini" style={{ marginTop: 8 }}>They'll get access the next time they sign in to To The Cent with this email - no invite email is sent automatically yet, so let them know directly.</div>
           </div>
         </>
       )}
