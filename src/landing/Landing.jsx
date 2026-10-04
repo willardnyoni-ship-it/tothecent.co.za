@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
+import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizPreview } from './content.jsx';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
 const HOSTED_SUPA_KEY = 'sb_publishable_foyO2Py6QAR3oG8IK4OyzQ_WOFBcuiN';
@@ -82,6 +83,17 @@ export default function Landing() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [alreadySignedIn, setAlreadySignedIn] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [bizType, setBizType] = useState('trades');
+  const activeType = BIZ_TYPES.find(t => t.key === bizType) || BIZ_TYPES[0];
+
+  // The navigation bar turns solid once the page scrolls past the hero top.
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 20);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
   const [invite, setInvite] = useState(null); // { email, name } from an ?invite= link
   const recoverRef = useRef({ token: null, refresh: null, expiresIn: null });
   const emailRef = useRef(null), passRef = useRef(null);
@@ -225,7 +237,6 @@ export default function Landing() {
 
   return (
     <div ref={rootRef}>
-      <div className="glow" />
 
       {authOpen && (
         <div className="authOverlay on" id="authOverlay" onClick={e => { if (e.target.id === 'authOverlay') closeAuth(); }}>
@@ -273,7 +284,7 @@ export default function Landing() {
               onChange={e => setPass(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') submitAuth(); }} />
             <div style={{ height: 6 }} />
-            <button className="btn" disabled={busy} onClick={submitAuth} type="button">
+            <button className="btn primary" disabled={busy} onClick={submitAuth} type="button">
               {isRecover ? 'Set new password' : authMode === 'signin' ? 'Log in' : 'Create account'}
             </button>
             {!isRecover && (
@@ -286,84 +297,282 @@ export default function Landing() {
         </div>
       )}
 
-      <div className="wrap">
-        <div className="topnav">
-          {alreadySignedIn
-            ? <button className="loginlink" onClick={() => { location.href = '/app/'; }} type="button">Open app &rarr;</button>
-            : <button className="loginlink" onClick={() => openAuth('signin')} type="button">Log in</button>}
+      <nav className={'nav' + (scrolled ? ' scrolled' : '')}>
+        <div className="wrap">
+          <a className="logo" href="/"><span className="mark">TC</span><span>To The Cent</span></a>
+          <div className="links">
+            <a href="#personal">Personal</a>
+            <a href="#business">Business</a>
+            <a href="#how">How it works</a>
+            <a href="#security">Security</a>
+            <a href="#faq">FAQ</a>
+          </div>
+          <div className="right">
+            {alreadySignedIn
+              ? <a className="btn primary sm" href="/app/">Open the app</a>
+              : <>
+                  <button className="login" type="button" onClick={() => openAuth('signin')}>Log in</button>
+                  <button className="btn primary sm" type="button" onClick={() => openAuth('signup')}>Get started</button>
+                </>}
+          </div>
         </div>
+      </nav>
 
-        <section style={{ paddingTop: 56 }}>
+      <header className="hero">
+        <div className="wrap">
           <div className="hero-grid">
             <div>
-              <h1 className="reveal">EVERY RAND, DOWN TO THE CENT.</h1>
-              <p className="lede reveal d2">Upload your financial data. We organize it, understand it, and tell you what matters.</p>
-              <div style={{ height: 30 }} />
-              <button className="btn reveal d3" style={{ maxWidth: 300 }} onClick={() => openAuth('signup')}>Get started</button>
-            </div>
-
-            <div className="reveal d2">
-              <div className="phone" id="phone">
-                <div className="scan" />
-                <div className="notch" />
-                <div className="pcard phero">
-                  <div className="plbl">Safe to spend today</div>
-                  <div className="pbig" data-count="327" data-prefix="R">R0</div>
-                  <div className="pnote">R1 309 left this week (week 1 of 5)<br />R3 499 of bills still to come</div>
-                </div>
-                <div className="pcard">
-                  <div className="prow"><span className="mini" style={{ fontSize: 18 }}>Spent</span>
-                    <span className="mini" style={{ fontSize: 18 }}>Budget</span></div>
-                  <div className="prow" style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>
-                    <span data-count="35" data-prefix="R">R0</span>
-                    <span style={{ color: 'var(--dim)' }} data-count="10219" data-prefix="R">R0</span></div>
-                  <div className="pbar"><i style={{ width: '4%' }} /></div>
-                </div>
-                <div className="pcard">
-                  <div className="prow" style={{ marginBottom: 6 }}>
-                    <span style={{ fontWeight: 800, fontSize: 18 }}>Still to come</span>
-                    <span style={{ fontWeight: 800, fontSize: 18 }} data-count="3499" data-prefix="R">R0</span></div>
-                  <div className="pline"><span><span className="n">Rent</span><br /><span className="s">usually the 4th</span></span><span>R2 519</span></div>
-                  <div className="pline"><span><span className="n">Internet</span><br /><span className="s">usually the 15th</span></span><span>R715</span></div>
-                  <div className="pline"><span><span className="n">Laundry</span><br /><span className="s">usually the 14th</span></span><span>R80</span></div>
-                </div>
+              <span className="pill reveal"><span className="dot" /> Built in South Africa, for South African money</span>
+              <h1 className="reveal d1">Every rand,<br /><em>down to the cent.</em></h1>
+              <p className="lede reveal d2">Your personal budget and your business books in one app. Snap till slips, drop in bank statements, send invoices on WhatsApp, and always know what you can safely spend.</p>
+              <div className="ctas reveal d3">
+                <button className="btn primary" type="button" onClick={() => openAuth('signup')}>Create your account <Ic d={I.arrow} /></button>
+                <a className="btn light" href="#business">See it for business</a>
+              </div>
+              <div className="ticks reveal d3">
+                <span><Ic d={I.check} /> No bank login, ever</span>
+                <span><Ic d={I.check} /> Same data on phone &amp; PC</span>
+                <span><Ic d={I.check} /> Personal &amp; business</span>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section className="reveal">
-          <h2 className="sec-h">How it works</h2>
-          <p className="sec-sub">Four things, in either order - snap slips as you spend, drop in a statement whenever suits you.</p>
-          <div className="grid four">
-            <div className="feature"><div className="num">1</div><h3>Snap a slip</h3><p>Photograph a till slip and the amount, date and merchant are read for you - no typing.</p></div>
-            <div className="feature"><div className="num">2</div><h3>Import a statement</h3><p>Download a CSV or PDF from your bank's own app and drop it in. Capitec, FNB, Standard Bank, Absa, Nedbank - no bank login, ever.</p></div>
-            <div className="feature"><div className="num">3</div><h3>It reconciles itself</h3><p>Slips you logged are matched against the statement automatically, so you can see what's accounted for and what still needs a receipt.</p></div>
-            <div className="feature"><div className="num">4</div><h3>See what matters</h3><p>A daily safe-to-spend number that already accounts for upcoming bills, category budgets, and a monthly review of where it actually went.</p></div>
-          </div>
-        </section>
+            <div className="stage" aria-label="Preview of the To The Cent app with example data">
+              <div className="desk">
+                <div className="chrome"><i /><i /><i /><span className="url">tothecent.co.za/app</span></div>
+                <div className="body">
+                  <div className="side">
+                    <div className="b">Mokoena Plumbing</div>
+                    {['Home', 'Money', 'Invoices', 'Jobs', 'Expenses', 'Reports', 'Team'].map((x, i) => <div key={x} className={'it' + (i === 0 ? ' on' : '')}>{x}</div>)}
+                  </div>
+                  <div className="main">
+                    <h4>Good morning, Sipho</h4>
+                    <div className="kpis">
+                      <div className="kpi"><div className="l">Cash available</div><div className="v g">R48 230</div></div>
+                      <div className="kpi"><div className="l">Income</div><div className="v">R36 900</div></div>
+                      <div className="kpi"><div className="l">Expenses</div><div className="v">R14 215</div></div>
+                      <div className="kpi"><div className="l">Outstanding</div><div className="v">R9 750</div></div>
+                    </div>
+                    <div className="row2">
+                      <div className="panel">
+                        <div className="h">Cash flow <span>This week</span></div>
+                        <div className="bars">
+                          {[[60, 25], [35, 40], [80, 30], [45, 55], [90, 20], [30, 15], [55, 35]].map(([a, b], i) => (
+                            <div className="d" key={i}>
+                              <div className="pair"><i className="in" style={{ height: a + '%', animationDelay: (0.6 + i * 0.06) + 's' }} /><i className="out" style={{ height: b + '%', animationDelay: (0.65 + i * 0.06) + 's' }} /></div>
+                              <span>{'MTWTFSS'[i]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="panel">
+                        <div className="h">Invoices <span>4 open</span></div>
+                        <div className="inv"><span><b>INV-0042</b><small>Thandi M. · Bathroom</small></span><span className="tag paid">Paid</span></div>
+                        <div className="inv"><span><b>INV-0041</b><small>Brightside Café</small></span><span className="tag sent">Sent</span></div>
+                        <div className="inv"><span><b>INV-0038</b><small>K. Naidoo</small></span><span className="tag late">Overdue</span></div>
+                        <div className="inv"><span><b>QUO-0017</b><small>50% deposit</small></span><span className="tag sent">Quote</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-        <section className="reveal" style={{ paddingTop: 10 }}>
-          <h2 className="sec-h">About</h2>
-          <div className="about-card">
-            <p>To The Cent is built in South Africa, for the way people actually get paid and spend here - pay-day-to-pay-day budgeting, till slips, and bank statements from the big five, not a generic monthly calendar built for somewhere else.</p>
-            <p>Your account keeps everything in sync, so your budget and your business are the same on your phone and your computer. And we will never ask you to hand over a bank login.</p>
-            <p style={{ marginTop: 16 }}>Questions, feedback, or something not working right? <a href="mailto:info@tothecent.co.za">info@tothecent.co.za</a></p>
+              <div className="phone" id="phone">
+                <div className="screen">
+                  <div className="status"><span>9:41</span><span>●●● ▮</span></div>
+                  <div className="ph"><b>This month</b><span>25 Sep - 24 Oct</span></div>
+                  <div className="safe">
+                    <div className="l">Safe to spend today</div>
+                    <div className="v" data-count="327" data-prefix="R">R0</div>
+                    <div className="n">R1 309 left this week · bills covered</div>
+                  </div>
+                  <div className="pc">
+                    <div className="r"><span>Spent</span><b>R6 840 <span style={{ color: 'var(--ink3)', fontWeight: 500 }}>of R10 219</span></b></div>
+                    <div className="meter"><i style={{ width: '67%' }} /></div>
+                  </div>
+                  <div className="pc">
+                    <div className="cat"><span className="ic">🛒</span><span className="grow"><b>Groceries</b><small>R2 410 of R3 000</small></span></div>
+                    <div className="meter"><i style={{ width: '80%' }} /></div>
+                    <div className="cat" style={{ marginTop: 6 }}><span className="ic">⛽</span><span className="grow"><b>Fuel</b><small>R1 950 of R2 000</small></span></div>
+                    <div className="meter"><i className="w" style={{ width: '97%' }} /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="toast t1"><span className="ti" style={{ background: 'var(--greenSoft)', color: 'var(--green)' }}><Ic d={I.check} /></span><span><b>INV-0042 paid · R4 600</b><span>Matched to your bank statement</span></span></div>
+              <div className="toast t2"><span className="ti" style={{ background: 'var(--blueSoft)', color: 'var(--blue)' }}><Ic d={I.scan} /></span><span><b>Slip read · Woolworths</b><span>R312,40 · Groceries</span></span></div>
+            </div>
           </div>
-        </section>
+        </div>
+      </header>
+
+      <div className="banks">
+        <div className="wrap">
+          <span className="lab">Import statements from</span>
+          {['Capitec', 'FNB', 'Standard Bank', 'Absa', 'Nedbank'].map(b => <span className="bank" key={b}>{b}</span>)}
+          <span className="note"><Ic d={I.lock} /> No bank login needed</span>
+        </div>
       </div>
+
+      <section id="personal">
+        <div className="wrap split">
+          <div className="reveal">
+            <span className="eyebrow">Personal budget</span>
+            <h2 className="sec">Know what you can spend - today.</h2>
+            <p className="sub">Built around how South Africans actually get paid: pay day to pay day, with the bills that are still coming already set aside.</p>
+            <ul className="flist">
+              <li><span className="fi"><Ic d={I.wallet} /></span><div><b>Safe to spend, every day</b><p>One number that already accounts for rent, subscriptions and debit orders still to come this cycle.</p></div></li>
+              <li><span className="fi"><Ic d={I.scan} /></span><div><b>Snap a till slip</b><p>Take a photo - the shop, date, total and line items are read for you. No typing.</p></div></li>
+              <li><span className="fi"><Ic d={I.doc} /></span><div><b>Drop in your bank statement</b><p>PDF or CSV from your bank's app. Slips and statement lines match up automatically, so nothing is counted twice.</p></div></li>
+              <li><span className="fi"><Ic d={I.chat} /></span><div><b>Ask Khanyiso</b><p>A built-in assistant that answers questions about your own spending, like "where did my money go this month?"</p></div></li>
+            </ul>
+          </div>
+          <div className="shot reveal d2">
+            <div className="card chatbub"><div className="who">Khanyiso</div>You spent R1 070 more on eating out than last month - mostly weekends.</div>
+            <div className="card slip">
+              <div className="top"><span className="ic"><Ic d={I.scan} /></span><span><b>Slip read</b><span>Just now · from a photo</span></span></div>
+              <div className="field"><span>Shop</span><b>Woolworths Food</b></div>
+              <div className="field"><span>Date</span><b>3 Oct 2026</b></div>
+              <div className="field"><span>Category</span><b>Groceries</b></div>
+              <div className="field"><span>VAT</span><b>R40,75</b></div>
+              <div className="field"><span>Total</span><b>R312,40</b></div>
+            </div>
+            <div className="card match">
+              <div className="h">Statement matching</div>
+              <div className="m"><span>Woolworths · R312,40</span><span className="ok">✓ Matched</span></div>
+              <div className="m"><span>Engen · R650,00</span><span className="ok">✓ Matched</span></div>
+              <div className="m"><span>Takealot · R899,00</span><span style={{ color: 'var(--warn)', fontWeight: 700 }}>No slip</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="business" className="biz">
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">For business</span>
+            <h2 className="sec">Tools that fit the business you run.</h2>
+            <p className="sub">Tell us what you do when you sign up and the right tools switch on. Change them any time.</p>
+          </div>
+          <div className="types" role="tablist">
+            {BIZ_TYPES.map(t => (
+              <button key={t.key} role="tab" aria-selected={bizType === t.key} className={bizType === t.key ? 'on' : ''} onClick={() => setBizType(t.key)} type="button">
+                <span aria-hidden="true">{t.icon}</span>{t.label}
+              </button>
+            ))}
+          </div>
+          <div className="types-body" key={bizType}>
+            <div className="tools">
+              {activeType.tools.map(([icon, name, desc], i) => (
+                <div className="tool" key={name} style={{ animationDelay: i * 0.05 + 's' }}>
+                  <span className="fi" aria-hidden="true">{icon}</span><div><b>{name}</b><p>{desc}</p></div>
+                </div>
+              ))}
+            </div>
+            <div className="preview">
+              <div className="cap">Example · {activeType.example}</div>
+              <BizPreview kind={bizType} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">Every business gets</span>
+            <h2 className="sec">The essentials, done properly.</h2>
+          </div>
+          <div className="grid3">
+            {ESSENTIALS.map(([icon, title, text], i) => (
+              <div className={'card ess reveal d' + (i % 3)} key={title}>
+                <span className="fi"><Ic d={icon} /></span><h3>{title}</h3><p>{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">How it works</span>
+            <h2 className="sec">Up and running in minutes.</h2>
+          </div>
+          <div className="steps">
+            <div className="card step reveal"><div className="n">1</div><h3>Create your account</h3><p>Choose personal or business. For a business, pick what you do and the right tools switch on.</p></div>
+            <div className="card step reveal d1"><div className="n">2</div><h3>Add your money</h3><p>Snap slips as you spend and drop in a bank statement whenever it suits you. No bank login.</p></div>
+            <div className="card step reveal d2"><div className="n">3</div><h3>See what matters</h3><p>Safe-to-spend, overdue invoices, VAT and what still needs a receipt - all waiting on your home screen.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sync">
+        <div className="wrap split">
+          <div className="reveal">
+            <span className="eyebrow" style={{ color: 'var(--mint)' }}>Phone and computer</span>
+            <h2 className="sec">Start on your phone. Finish on your PC.</h2>
+            <p className="sub">Everything is saved to your account within seconds, so the slip you snapped at the till is already there when you sit down to do the books. Invite your accountant or staff with their own access.</p>
+          </div>
+          <div className="devs reveal d2">
+            <div className="dev"><Ic d={I.phone} cls="ic" /><b>Phone</b><span>Snap slips on the go</span></div>
+            <span className="synclink"><i /> in sync <i /></span>
+            <div className="dev"><Ic d={I.laptop} cls="ic" /><b>Computer</b><span>Invoices &amp; reports</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="security">
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">Security &amp; privacy</span>
+            <h2 className="sec">Your money stays yours.</h2>
+            <p className="sub">We built To The Cent so you never have to hand over the keys to your bank account.</p>
+          </div>
+          <div className="sec-grid">
+            {SECURITY.map(([icon, title, text], i) => (
+              <div className={'card secc reveal d' + (i % 3)} key={title}><span className="fi"><Ic d={icon} /></span><h3>{title}</h3><p>{text}</p></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">FAQ</span>
+            <h2 className="sec">Questions, answered.</h2>
+          </div>
+          <div className="faq">
+            {FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="final">
+        <div className="wrap">
+          <div className="box reveal">
+            <h2>Take control of every rand.</h2>
+            <p>Your budget and your business, on your phone and your computer.</p>
+            {alreadySignedIn
+              ? <a className="btn primary" href="/app/">Open the app <Ic d={I.arrow} /></a>
+              : <button className="btn primary" type="button" onClick={() => openAuth('signup')}>Create your account <Ic d={I.arrow} /></button>}
+          </div>
+        </div>
+      </section>
 
       <footer className="site">
         <div className="wrap">
           <div className="frow">
-            <div className="fbrand">To The Cent</div>
+            <a className="logo" href="/"><span className="mark">TC</span><span>To The Cent</span></a>
             <div className="flinks">
+              <a href="#personal">Personal</a>
+              <a href="#business">Business</a>
               <a href="mailto:info@tothecent.co.za">Contact</a>
               <a href="/privacy/">Privacy Policy</a>
               <a href="/terms/">Terms of Service</a>
             </div>
           </div>
-          <div className="fcopy">&copy; {new Date().getFullYear()} To The Cent. Built in South Africa.</div>
+          <div className="fcopy">&copy; {new Date().getFullYear()} To The Cent. Built in South Africa. Not a bank, and not financial or tax advice.</div>
         </div>
       </footer>
     </div>
