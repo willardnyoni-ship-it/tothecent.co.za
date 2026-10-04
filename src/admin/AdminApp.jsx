@@ -139,7 +139,9 @@ function PageHead({ title, subtitle, children }) {
 function ShareLink({ link, email, name, kind = 'invite' }) {
   const [copied, setCopied] = useState(false);
   const first = name ? ' ' + name.split(' ')[0] : '';
-  const msg = kind === 'account'
+  const msg = kind === 'team'
+    ? `Hi${first}, I've added you to the To The Cent owner portal. Open this link to choose your password: ${link}\n\nThen sign in and open the portal here: ${SITE}app/?mode=admin`
+    : kind === 'account'
     ? `Hi${first}, I've set up your To The Cent account. Open this link to choose your password and get started: ${link}`
     : kind === 'signin'
     ? `Hi${first}, here's a link to set a new password and sign in to To The Cent. It works once: ${link}`
@@ -152,7 +154,7 @@ function ShareLink({ link, email, name, kind = 'invite' }) {
       </div>
       <div className="op-actions" style={{ marginTop: 8 }}>
         <button className="op-btn primary" onClick={() => openWhatsApp('', msg)}>Send by WhatsApp</button>
-        <button className="op-btn" onClick={() => openEmail(email, kind === 'account' ? 'Your To The Cent account' : kind === 'signin' ? 'Sign in to To The Cent' : "You're invited to To The Cent", msg)}>Send by email</button>
+        <button className="op-btn" onClick={() => openEmail(email, kind === 'team' ? 'Your To The Cent portal access' : kind === 'account' ? 'Your To The Cent account' : kind === 'signin' ? 'Sign in to To The Cent' : "You're invited to To The Cent", msg)}>Send by email</button>
       </div>
     </>
   );
@@ -631,14 +633,16 @@ function SignIns({ users, sessions }) {
 
 // The To The Cent staff who can open this portal. "Owner" can also change the team;
 // "Team member" can use the portal but not add or remove people here.
-function Team({ me, onCreateFor }) {
+function Team({ me, users }) {
   const { syncCfg, ensureToken } = useBudget();
+  const call = useAccountFn();
+  const [made, setMade] = useState(null);
   const [rows, setRows] = useState(null);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('team');
+  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [missing, setMissing] = useState('');
   const [sure, setSure] = useState('');
 
   const load = useCallback(async () => {
@@ -651,12 +655,28 @@ function Team({ me, onCreateFor }) {
   const isOwner = !!mine && mine.role === 'owner';
 
   async function run(fn, ok) {
-    setBusy(true); setMsg(null); setMissing('');
+    setBusy(true); setMsg(null);
     try { const token = await ensureToken(); await fn(token); setMsg({ t: ok }); await load(); }
     catch (e) {
       setMsg({ e: true, t: e.message });
-      if (/no account for that email/i.test(e.message)) setMissing(email.trim().toLowerCase());
     } finally { setBusy(false); setSure(''); }
+  }
+  // Makes the account if needed, gives portal access, and hands back a one-time link to send them.
+  async function makeLink() {
+    const addr = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(addr)) { setMsg({ e: true, t: 'Enter a valid email address.' }); return; }
+    setBusy(true); setMsg(null); setMade(null);
+    try {
+      let link;
+      const known = (users || []).find(u => (u.email || '').toLowerCase() === addr);
+      if (known) link = (await call({ action: 'signin_link', user_id: known.id })).link;
+      else link = (await call({ action: 'create', email: addr, name: name.trim(), segment: 'personal' })).link;
+      const token = await ensureToken();
+      await adminApi.rpc(syncCfg, token, 'admin_add_team_member', { p_email: addr, p_role: role });
+      setMade({ link, email: addr, name: name.trim(), existing: !!known });
+      setEmail(''); setName('');
+      await load();
+    } catch (e) { setMsg({ e: true, t: e.message }); } finally { setBusy(false); }
   }
   const add = () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setMsg({ e: true, t: 'Enter a valid email address.' }); return; }
@@ -697,16 +717,24 @@ function Team({ me, onCreateFor }) {
               <>
                 <label className="op-lbl" style={{ marginTop: 0 }}>Their email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
+                <label className="op-lbl">Name (optional)</label>
+                <input value={name} onChange={e => setName(e.target.value)} />
                 <label className="op-lbl">Access</label>
                 <select value={role} onChange={e => setRole(e.target.value)}>
                   <option value="team">Team member - uses the portal</option>
                   <option value="owner">Owner - also manages the team</option>
                 </select>
                 {msg && <div className={'op-msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
-                {missing && <div style={{ marginTop: 8 }}><button className="op-btn" onClick={() => onCreateFor(missing)}>Create their account</button></div>}
                 <div style={{ height: 12 }} />
-                <button className="op-btn primary" disabled={busy} onClick={add}>Add to portal</button>
-                <div className="op-note" style={{ marginTop: 12 }}>They need a To The Cent account first (use Sign up or Invites). Team members never pay or get locked out, and can see everything in this portal, including customers' totals.</div>
+                <button className="op-btn primary" disabled={busy} onClick={makeLink}>{busy ? 'Working…' : 'Create link to send'}</button>
+                {made && (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="op-msg s">{made.email} now has portal access. {made.existing ? 'They already had an account, so this link lets them set a new password.' : 'Their account is ready.'} Send them this link. It works once.</div>
+                    <ShareLink link={made.link} email={made.email} name={made.name} kind="team" />
+                  </div>
+                )}
+                <div className="op-note" style={{ marginTop: 12 }}>The link lets them choose their own password, and you never see it. Team members never pay or get locked out, and can see everything in this portal, including customers' totals.</div>
+                <button className="op-link" style={{ marginTop: 8 }} disabled={busy || !email.trim()} onClick={add}>Already have an account? Add without a link</button>
               </>
             ) : (
               <div className="op-note">Only an owner can add or remove team members.{msg && msg.e ? ' ' + msg.t : ''}</div>
@@ -1258,7 +1286,7 @@ export default function AdminApp({ onExit }) {
               {page === 'preview' && <Preview />}
               {page === 'signins' && <SignIns users={data.users} sessions={data.sessions} />}
               {page === 'invites' && <Invites invites={data.invites} waitlist={data.waitlist} users={data.users} onCreate={createInvite} onDelete={deleteInvite} />}
-              {page === 'team' && <Team me={syncCfg.email} onCreateFor={email => startSignup('person', email)} />}
+              {page === 'team' && <Team me={syncCfg.email} users={data.users} />}
               {page === 'signup' && <SignUp key={signupKind + signupEmail} initialKind={signupKind} initialEmail={signupEmail} onCreated={load} />}
               {page === 'alerts' && <Alerts attempts={data.attempts} users={data.users} onCreateFor={email => startSignup('person', email)} onSeen={markAlertsSeen} />}
               {page === 'retention' && <Retention r={ret} loading={retLoading} onLoad={loadRet} />}
