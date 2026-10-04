@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
-import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory } from './content.jsx';
+import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory, HeroScene, PROBLEMS } from './content.jsx';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
 const HOSTED_SUPA_KEY = 'sb_publishable_foyO2Py6QAR3oG8IK4OyzQ_WOFBcuiN';
@@ -320,56 +320,21 @@ export default function Landing() {
 
       <header className="hero">
         <div className="wrap">
-          <div className="hero-grid">
-            <div>
-              <span className="pill reveal"><span className="dot" /> Built in South Africa, for South African money</span>
-              <h1 className="reveal d1">Every rand,<br /><em>down to the cent.</em></h1>
-              <p className="lede reveal d2">Your personal budget and your business books in one app. Snap till slips, drop in bank statements, send invoices on WhatsApp, and always know what you can safely spend.</p>
-              <div className="ctas reveal d3">
-                <button className="btn primary" type="button" onClick={() => openAuth('signup')}>Create your account <Ic d={I.arrow} /></button>
-                <a className="btn light" href="#business">See it for business</a>
-              </div>
-              <div className="ticks reveal d3">
-                <span><Ic d={I.check} /> No bank login, ever</span>
-                <span><Ic d={I.check} /> Same data on phone &amp; PC</span>
-                <span><Ic d={I.check} /> Personal &amp; business</span>
-              </div>
+          <div className="hero-top">
+            <h1 className="reveal">Every rand,<br /><em>down to the cent.</em></h1>
+            <p className="lede reveal d1">Money slips away for families and small businesses alike - late-paying clients, lost receipts, surprise debit orders, SARS deadlines. To The Cent puts your personal budget and your business books in one app, so you always know where you stand.</p>
+            <div className="ctas reveal d2">
+              <button className="btn primary" type="button" onClick={() => openAuth('signup')}>Create your account <Ic d={I.arrow} /></button>
+              <a className="btn light" href="#problems">See what it fixes</a>
             </div>
-
-            <div className="flow reveal d2" aria-label="Illustration with example data: your till slips, bank statements and invoice requests go into To The Cent and come back as clear answers">
-              <div className="col">
-                <div className="lbl">You bring</div>
-                <div className="paper item" style={{ animationDelay: '.2s' }}>
-                  <div className="shop">WOOLWORTHS FOOD</div>
-                  <div className="ln"><span>MILK 2L</span><span>32.99</span></div>
-                  <div className="ln"><span>BREAD WHL</span><span>18.99</span></div>
-                  <div className="ln"><span>CHICKEN FIL</span><span>89.99</span></div>
-                  <div className="ln"><span>VEG PACK</span><span>54.99</span></div>
-                  <div className="ln"><span>+ 6 ITEMS</span><span>115.44</span></div>
-                  <div className="tot"><span>TOTAL</span><span>R312.40</span></div>
-                </div>
-                <div className="pdf item" style={{ animationDelay: '.35s' }}><span className="ic">PDF</span><span><b>FNB statement</b><span>September · 142 transactions</span></span></div>
-                <div className="wabub item" style={{ animationDelay: '.5s' }}>Hi Sipho, please send the invoice for the bathroom 🙏<small>08:14 ✓✓</small></div>
-              </div>
-              <div className="hub">
-                <span className="wire l" /><span className="wire r" />
-                <div className="engine">
-                  <div className="mark">TC</div>
-                  <b>To The Cent</b>
-                  <div className="stp"><i>✓</i>Slip read</div>
-                  <div className="stp"><i>✓</i>Statement matched</div>
-                  <div className="stp"><i>✓</i>Invoice sent</div>
-                </div>
-              </div>
-              <div className="col">
-                <div className="lbl">You get</div>
-                <div className="outc item" style={{ animationDelay: '1s' }}><span className="oi g"><Ic d={I.wallet} /></span><span><span className="who">For you</span><b>Safe to spend today</b><span className="big">R327</span></span></div>
-                <div className="outc item" style={{ animationDelay: '1.25s' }}><span className="oi g"><Ic d={I.check} /></span><span><span className="who">For your business</span><b>Invoice paid · R4 600</b><span>Matched to your bank statement</span></span></div>
-                <div className="outc item" style={{ animationDelay: '1.5s' }}><span className="oi b"><Ic d={I.percent} /></span><span><b>VAT return ready</b><span>R691 to pay by 25 Nov</span></span></div>
-                <div className="outc item" style={{ animationDelay: '1.75s' }}><span className="oi w"><Ic d={I.doc} /></span><span><b>34 of 36 matched</b><span>2 still need a slip</span></span></div>
-              </div>
+            <div className="ticks reveal d2">
+              <span><Ic d={I.check} /> No bank login, ever</span>
+              <span><Ic d={I.check} /> Same data on phone &amp; PC</span>
+              <span><Ic d={I.check} /> Personal &amp; business</span>
             </div>
           </div>
+          <div className="reveal d3"><HeroScene /></div>
+          <p className="scene-note">Example data, shown for illustration.</p>
         </div>
       </header>
 
@@ -380,6 +345,29 @@ export default function Landing() {
           <span className="note"><Ic d={I.lock} /> No bank login needed</span>
         </div>
       </div>
+
+      <section id="problems" className="problems">
+        <div className="wrap">
+          <div className="center reveal">
+            <span className="eyebrow">Sound familiar?</span>
+            <h2 className="sec">The money problems we fix.</h2>
+            <p className="sub">Whether it's your household or your business, the same things keep going wrong. Here's what To The Cent does about each one.</p>
+          </div>
+          <div className="pgrid">
+            {[['people', '👩🏾', 'For you and your family', PROBLEMS.people], ['business', '🧰', 'For your business', PROBLEMS.business]].map(([k, ic, t, rows]) => (
+              <div className={'pcol reveal ' + k} key={k}>
+                <div className="phead"><span aria-hidden="true">{ic}</span><b>{t}</b></div>
+                {rows.map(([p, f]) => (
+                  <div className="prow" key={p}>
+                    <div className="pain"><i aria-hidden="true">✕</i>{p}</div>
+                    <div className="fix"><i aria-hidden="true">✓</i>{f}</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section id="personal">
         <div className="wrap split">
