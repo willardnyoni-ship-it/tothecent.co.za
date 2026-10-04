@@ -124,7 +124,7 @@ export const SECURITY = [
 // Prices are per month in rand, after the first month free.
 export const PLANS = [
   {
-    key: 'personal', name: 'Personal', price: 79, segment: 'personal',
+    key: 'personal', name: 'Personal', price: 89, segment: 'personal',
     tagline: 'For your own money: know what is safe to spend, every day.',
     features: [
       'Safe-to-spend number that sets aside rent and debit orders',
@@ -137,7 +137,7 @@ export const PLANS = [
     ],
   },
   {
-    key: 'business', name: 'Business', price: 349, segment: 'business', dark: true,
+    key: 'business', name: 'Business', price: 389, segment: 'business', dark: true,
     tagline: 'For the business you run: get paid, stay on top of tax and see what each job makes.',
     includes: 'Everything in Personal, plus:',
     features: [
@@ -157,7 +157,7 @@ export const PLANS = [
 export const FAQ = [
   ['How does the free month work?', 'Every account starts with one month free on either plan, from the day you join. You can use everything during that month. After it, the plan is paid by monthly debit order.'],
   ['How do I pay, and can I cancel?', 'By monthly debit order. You can cancel any time and your data stays yours - download a full backup or a CSV whenever you like.'],
-  ['What does it cost?', 'Personal is R79 a month and Business is R349 a month, after the free month. Business includes the personal budget as well.'],
+  ['What does it cost?', 'Personal is R89 a month and Business is R389 a month, after the free month. Business includes the personal budget as well.'],
   ['Do I need to give you my bank login?', 'No. You download your statement (PDF or CSV) from your bank\'s own app or website and upload it. We never ask for your banking username or password, and have no way to connect to your bank.'],
   ['Which banks are supported?', 'Statements from Capitec, FNB, Standard Bank, Absa and Nedbank are read automatically. Till slips are read straight from a photo.'],
   ['Can I use it on my phone and my computer?', 'Yes. Sign in on both and everything stays in sync - add a slip on your phone and it\'s on your computer seconds later.'],
