@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { useCreateInvoice } from '../CreateInvoiceSheet.jsx';
+import { fmt } from '../../lib/currency.js';
 
 // The running timer lives in this browser only (it's a stopwatch, not a
 // record) - nothing is saved to the business until it's stopped and the
@@ -39,13 +40,14 @@ export default function Time() {
   const showJobs = hasFeature('jobs') && jobs.length > 0;
   const [editId, setEditId] = useState('');
   const [ef, setEf] = useState(null);
+  const curOf = id => (customers.find(x => x.id === id) || {}).currency || 'ZAR';
   const rateFor = id => { const c = customers.find(x => x.id === id); return c && +c.hourly_rate > 0 ? +c.hourly_rate : 0; };
   // Choosing a customer fills in their saved rate (the last rate used stays if they have none).
   const pickCustomer = id => setF(x => ({ ...x, customer_id: id, rate: rateFor(id) || x.rate }));
   const chosen = customers.find(c => c.id === f.customer_id);
   const canSaveRate = !readOnly && chosen && +f.rate > 0 && +f.rate !== rateFor(chosen.id);
   async function saveRate() {
-    try { await updateCustomer(chosen.id, { hourly_rate: +f.rate }); setMsg({ t: `Saved ${R(+f.rate)} an hour for ${chosen.name}.` }); } catch (e) { setMsg({ e: true, t: e.message }); }
+    try { await updateCustomer(chosen.id, { hourly_rate: +f.rate }); setMsg({ t: `Saved ${fmt(+f.rate, curOf(chosen.id))} an hour for ${chosen.name}.` }); } catch (e) { setMsg({ e: true, t: e.message }); }
   }
   async function saveEdit() {
     if (!(+ef.hours > 0)) { setMsg({ e: true, t: 'Enter how many hours.' }); return; }
@@ -87,7 +89,9 @@ export default function Time() {
   const hoursWeek = timeEntries.filter(t => t.date >= weekStart).reduce((a, t) => a + +t.hours, 0);
   const hoursMonth = timeEntries.filter(t => t.date.slice(0, 7) === monthKey).reduce((a, t) => a + +t.hours, 0);
   const unbilled = timeEntries.filter(t => !t.invoice_id && +t.rate > 0);
-  const unbilledValue = unbilled.reduce((a, t) => a + +t.hours * +t.rate, 0);
+  const unbilledValue = unbilled.filter(t => curOf(t.customer_id) === 'ZAR').reduce((a, t) => a + +t.hours * +t.rate, 0);
+  const unbilledForeign = {};
+  unbilled.filter(t => curOf(t.customer_id) !== 'ZAR').forEach(t => { const c = curOf(t.customer_id); unbilledForeign[c] = (unbilledForeign[c] || 0) + +t.hours * +t.rate; });
 
   const byCustomer = useMemo(() => {
     const m = {};
@@ -95,7 +99,7 @@ export default function Time() {
     return Object.entries(m).map(([cid, entries]) => ({
       customer: customers.find(c => c.id === cid), cid, entries,
       hours: entries.reduce((a, t) => a + +t.hours, 0),
-      value: entries.reduce((a, t) => a + +t.hours * +t.rate, 0),
+      value: entries.reduce((a, t) => a + +t.hours * +t.rate, 0), currency: curOf(cid),
     }));
   }, [unbilled, customers]);
 
@@ -105,6 +109,7 @@ export default function Time() {
     createInvoice({
       prefill: {
         customerId: group.cid || '',
+        currency: group.currency,
         jobId: jobIds.length === 1 ? jobIds[0] : '',
         items: sorted.map(t => ({ description: t.date + ' - ' + (t.description || 'Work'), qty: +t.hours, price: +t.rate })),
       },
@@ -124,6 +129,7 @@ export default function Time() {
         <div className="biz-card"><div className="lbl">This month</div><div className="val">{hoursMonth} h</div></div>
         <div className="biz-card"><div className="lbl">Not yet invoiced</div><div className="val">{R(unbilledValue)}</div></div>
       </div>
+      {Object.keys(unbilledForeign).length > 0 && <div className="mini" style={{ marginBottom: 8 }}>Also not yet invoiced: {Object.entries(unbilledForeign).map(([c, v]) => fmt(v, c)).join(', ')}</div>}
 
       {!readOnly && (
         <div className="card">
@@ -157,10 +163,10 @@ export default function Time() {
           <div className="biz-grid" style={{ marginTop: 10 }}>
             <input type="date" value={f.date} onChange={e => set('date', e.target.value)} />
             <input type="number" inputMode="decimal" step="0.25" placeholder="Hours" value={f.hours} onChange={e => set('hours', e.target.value)} />
-            <input type="number" inputMode="decimal" placeholder="Rate R/h" value={f.rate} onChange={e => set('rate', e.target.value)} />
+            <input type="number" inputMode="decimal" placeholder={'Rate ' + (f.customer_id && curOf(f.customer_id) !== 'ZAR' ? curOf(f.customer_id) : 'R') + '/h'} value={f.rate} onChange={e => set('rate', e.target.value)} />
           </div>
-          {chosen && rateFor(chosen.id) > 0 && +f.rate === rateFor(chosen.id) && <div className="mini">Saved rate for {chosen.name}: {R(rateFor(chosen.id))} an hour.</div>}
-          {canSaveRate && <div className="mini">{rateFor(chosen.id) ? 'This differs from the saved rate.' : 'No rate saved for them yet.'} <a href="#" style={{ color: 'var(--acc)' }} onClick={e => { e.preventDefault(); saveRate(); }}>Save {R(+f.rate)} an hour for {chosen.name}</a></div>}
+          {chosen && rateFor(chosen.id) > 0 && +f.rate === rateFor(chosen.id) && <div className="mini">Saved rate for {chosen.name}: {fmt(rateFor(chosen.id), curOf(chosen.id))} an hour.</div>}
+          {canSaveRate && <div className="mini">{rateFor(chosen.id) ? 'This differs from the saved rate.' : 'No rate saved for them yet.'} <a href="#" style={{ color: 'var(--acc)' }} onClick={e => { e.preventDefault(); saveRate(); }}>Save {fmt(+f.rate, curOf(chosen.id))} an hour for {chosen.name}</a></div>}
           {msg && <div className={'msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
           <div style={{ height: 8 }} />
           <button className="b" disabled={busy} onClick={save}>Log Time</button>
@@ -174,7 +180,7 @@ export default function Time() {
             <div className="card row" key={g.cid || 'none'}>
               <div>
                 <div style={{ fontWeight: 600 }}>{g.customer?.name || 'No customer'}</div>
-                <div className="tag">{g.hours} h &middot; {R2(g.value)} before VAT</div>
+                <div className="tag">{g.hours} h &middot; {fmt(g.value, g.currency)} before VAT</div>
               </div>
               {!readOnly && <button className="b sm" style={{ width: 'auto' }} onClick={() => invoiceTime(g)}>Create Invoice</button>}
             </div>
@@ -193,7 +199,7 @@ export default function Time() {
               </td>
               <td className="r">
                 {+t.hours} h
-                {+t.rate > 0 ? <div className="mini">{R2(+t.hours * +t.rate)}</div> : <div className="mini" style={{ color: 'var(--bad)' }}>No rate, so it won't be invoiced</div>}
+                {+t.rate > 0 ? <div className="mini">{fmt(+t.hours * +t.rate, curOf(t.customer_id))}</div> : <div className="mini" style={{ color: 'var(--bad)' }}>No rate, so it won't be invoiced</div>}
                 {!readOnly && !t.invoice_id && (
                   <div>
                     <a href="#" style={{ color: 'var(--acc)', marginRight: 10 }} onClick={e => { e.preventDefault(); setEf({ date: t.date, hours: String(+t.hours), rate: t.rate == null ? '' : String(+t.rate), customer_id: t.customer_id || '', description: t.description || '' }); setEditId(editId === t.id ? '' : t.id); }}>Edit</a>

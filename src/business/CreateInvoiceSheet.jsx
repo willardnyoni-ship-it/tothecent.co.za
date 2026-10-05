@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { useSheet } from '../components/Sheet.jsx';
 import { R2, iso, uid } from '../lib/format.js';
 import { computeInvoiceTotals, nextInvoiceNumber, nextQuoteNumber } from '../lib/businessMath.js';
+import { CURRENCIES, fetchRate, fmt, rateText, zar } from '../lib/currency.js';
 import { SaleOptionList, useSaleOptions } from './saleOptions.jsx';
 
 const blankItem = () => ({ id: uid(), description: '', qty: 1, price: 0, stock_item_id: null, recipe_id: null });
@@ -33,6 +34,24 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
   // VAT question existed keep the old default (on).
   const [vatEnabled, setVatEnabled] = useState(prefill.vatEnabled ?? (business.business_profile ? hasFeature('vat') : true));
   const [discount, setDiscount] = useState(0);
+  // Foreign currency: every amount is typed and stored in that currency, with the rand rate it was made at.
+  const prefCustomer = customers.find(c => c.id === prefill.customerId);
+  const [currency, setCurrency] = useState(prefill.currency || (prefCustomer && prefCustomer.currency) || 'ZAR');
+  const [rate, setRate] = useState(prefill.exchangeRate ? String(prefill.exchangeRate) : '');
+  const [rateNote, setRateNote] = useState('');
+  const m = n => fmt(n, currency);
+  useEffect(() => {
+    if (currency === 'ZAR') { setRate(''); setRateNote(''); return; }
+    setVatEnabled(false); // services sold abroad are usually zero-rated; the box can be ticked again
+    if (prefill.exchangeRate && currency === prefill.currency) return;
+    let live = true;
+    setRateNote("Getting today's rate...");
+    fetchRate(currency).then(r => {
+      if (!live) return;
+      if (r) { setRate(String(r)); setRateNote("Today's rate. You can change it."); } else { setRate(''); setRateNote("Couldn't get today's rate. Type it in."); }
+    });
+    return () => { live = false; };
+  }, [currency]); // eslint-disable-line react-hooks/exhaustive-deps
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState(business.default_payment_terms || '');
   const [banking, setBanking] = useState(business.banking_details || '');
@@ -68,6 +87,8 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
       } catch (e) { setErr(e.message); } finally { setBusy(false); }
     } else {
       if (!customerId) { setErr('Choose a customer, or add a new one.'); return; }
+      const cu = customers.find(x => x.id === customerId);
+      if (cu && cu.currency && cu.currency !== 'ZAR' && currency === 'ZAR') setCurrency(cu.currency);
       setErr(''); setStep(2);
     }
   }
@@ -82,6 +103,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
       if (isQuote) {
         created = await createQuote({
           customer_id: cust?.id || null, job_id: jobId || null, quote_number: invoiceNumber, issue_date: issueDate, valid_until: dueDate,
+          currency, exchange_rate: currency === 'ZAR' ? 1 : +rate,
           status: sendAfter ? 'sent' : 'draft', items: lines, vat_enabled: vatEnabled,
           subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0, total: totals.total,
           deposit_pct: Math.min(100, Math.max(0, +depositPct || 0)), notes, payment_terms: terms, banking_details: banking,
@@ -89,6 +111,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
       } else {
         created = await createInvoice({
           customer_id: cust?.id || null, job_id: jobId || null, invoice_number: invoiceNumber, issue_date: issueDate, due_date: dueDate,
+          currency, exchange_rate: currency === 'ZAR' ? 1 : +rate,
           status: sendAfter ? 'sent' : 'draft', subtotal: totals.subtotal, vat: totals.vat, discount: +discount || 0,
           total: totals.total, notes, payment_terms: terms, banking_details: banking,
         }, lines);
@@ -146,6 +169,18 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
           <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} />
           <label>{isQuote ? 'Valid Until' : 'Due Date'}</label>
           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          <label>Currency</label>
+          <select value={currency} onChange={e => setCurrency(e.target.value)}>
+            {CURRENCIES.map(([c, n]) => <option key={c} value={c}>{c} - {n}</option>)}
+          </select>
+          {currency !== 'ZAR' && (
+            <>
+              <label>Exchange rate <span className="mini">(rand for 1 {currency})</span></label>
+              <input type="number" inputMode="decimal" step="0.0001" min="0" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g. 18.45" />
+              {rateNote && <div className="mini">{rateNote}</div>}
+              <div className="mini">The customer pays in {currency}. Your books keep the rand value at this rate. When the money arrives you record the rand you actually received.</div>
+            </>
+          )}
           {showJobs && (
             <>
               <label>Job <span className="mini">(optional)</span></label>
@@ -170,7 +205,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
               <input placeholder="Description" value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
               <input type="number" placeholder="Qty" value={it.qty} onChange={e => setItem(i, { qty: e.target.value })} />
               <input type="number" placeholder="Price" value={it.price} onChange={e => setItem(i, { price: e.target.value })} />
-              <div className="mono r" style={{ fontWeight: 600 }}>{R2((+it.qty || 0) * (+it.price || 0))}</div>
+              <div className="mono r" style={{ fontWeight: 600 }}>{m((+it.qty || 0) * (+it.price || 0))}</div>
               <button className="b d sm" onClick={() => removeItem(i)}>&times;</button>
             </div>
             {refOf(it) && !shortOn(it) && !isQuote && <div className="mini biz-stk-note">Takes {it.recipe_id ? 'its ingredients' : 'this'} off your stock when the invoice is sent.</div>}
@@ -180,7 +215,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
           <button className="b g sm" onClick={addItem}>+ Add item</button>
 
           <label className="chk" style={{ marginTop: 14 }}><input type="checkbox" checked={vatEnabled} onChange={e => setVatEnabled(e.target.checked)} /><span>Add 15% VAT</span></label>
-          <label>Discount (R)</label>
+          <label>Discount ({currency})</label>
           <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} />
           {isQuote && (
             <>
@@ -190,15 +225,16 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
           )}
 
           <div className="biz-totals">
-            <div className="row"><span>Subtotal</span><span className="mono">{R2(totals.subtotal)}</span></div>
-            <div className="row"><span>VAT</span><span className="mono">{R2(totals.vat)}</span></div>
-            <div className="row"><span>Discount</span><span className="mono">-{R2(+discount || 0)}</span></div>
-            <div className="row grand"><span>TOTAL</span><span className="mono">{R2(totals.total)}</span></div>
-            {isQuote && +depositPct > 0 && <div className="row"><span>Deposit ({Math.min(100, +depositPct)}%)</span><span className="mono">{R2(totals.total * Math.min(100, +depositPct) / 100)}</span></div>}
+            <div className="row"><span>Subtotal</span><span className="mono">{m(totals.subtotal)}</span></div>
+            <div className="row"><span>VAT</span><span className="mono">{m(totals.vat)}</span></div>
+            <div className="row"><span>Discount</span><span className="mono">-{m(+discount || 0)}</span></div>
+            <div className="row grand"><span>TOTAL</span><span className="mono">{m(totals.total)}</span></div>
+            {currency !== 'ZAR' && +rate > 0 && <div className="row"><span className="mini">Worth about, at {rateText(currency, +rate)}</span><span className="mono">{fmt(zar({ currency, exchange_rate: rate }, totals.total))}</span></div>}
+            {isQuote && +depositPct > 0 && <div className="row"><span>Deposit ({Math.min(100, +depositPct)}%)</span><span className="mono">{m(totals.total * Math.min(100, +depositPct) / 100)}</span></div>}
           </div>
           {err && <div className="msg e">{err}</div>}
           <div style={{ height: 12 }} />
-          <button className="b" onClick={() => setStep(3)}>Continue</button>
+          <button className="b" onClick={() => { if (currency !== 'ZAR' && !(+rate > 0)) { setErr('Enter the exchange rate, or choose rand.'); return; } setErr(''); setStep(3); }}>Continue</button>
         </div>
       )}
 
@@ -210,7 +246,7 @@ export function CreateInvoiceContent({ mode = 'invoice', prefill = {}, onCreated
           <label>Notes</label>
           <textarea rows="3" value={notes} onChange={e => setNotes(e.target.value)} />
           <label>Banking Details</label>
-          <textarea rows="3" value={banking} onChange={e => setBanking(e.target.value)} placeholder="Bank, account number, branch code" />
+          <textarea rows="3" value={banking} onChange={e => setBanking(e.target.value)} placeholder={currency === 'ZAR' ? 'Bank, account number, branch code' : 'Bank, account number, SWIFT/BIC code (and IBAN if needed)'} />
           {err && <div className="msg e">{err}</div>}
           <div style={{ height: 14 }} />
           <button className="b" disabled={busy} onClick={() => save(true)}>Save & Mark as Sent</button>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
+import { currencyOf, fmt, isForeign, zar } from '../../lib/currency.js';
 import { invoiceStatusLabel, quoteStatusLabel, findInvoiceMatches, customerLedger, RECURRING_FREQUENCY_LABEL } from '../../lib/businessMath.js';
 import { useCreateInvoice, useCreateQuote } from '../CreateInvoiceSheet.jsx';
 import { useQuoteDetail } from '../QuoteDetailSheet.jsx';
@@ -149,7 +150,7 @@ function QuotesView({ readOnly }) {
                 <div className="tag">Valid until {q.valid_until || '-'}{+q.deposit_pct > 0 ? ' · ' + +q.deposit_pct + '% deposit' : ''}</div>
               </td>
               <td className="r">
-                {R2(+q.total)}
+                {fmt(+q.total, currencyOf(q))}
                 <div><span className={'status-badge ' + q.status}>{quoteStatusLabel(q)}</span></div>
               </td>
             </tr>
@@ -172,11 +173,12 @@ export default function Invoices() {
 
   const withCustomer = useMemo(() => invoices.map(i => ({ ...i, customerName: (customers.find(c => c.id === i.customer_id) || {}).name || '' })), [invoices, customers]);
 
-  const total = invoices.reduce((a, i) => a + +i.total, 0);
-  const paid = invoices.filter(i => i.status === 'paid').reduce((a, i) => a + +i.total, 0);
+  const total = invoices.reduce((a, i) => a + zar(i, +i.total), 0);
+  const paid = invoices.filter(i => i.status === 'paid').reduce((a, i) => a + zar(i, +i.total), 0);
+  const hasForeign = invoices.some(isForeign);
   const todayStr = new Date().toISOString().slice(0, 10);
-  const outstanding = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status)).reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
-  const overdue = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status) && i.due_date && i.due_date < todayStr).reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
+  const outstanding = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status)).reduce((a, i) => a + zar(i, +i.total - +(i.paid_amount || 0)), 0);
+  const overdue = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status) && i.due_date && i.due_date < todayStr).reduce((a, i) => a + zar(i, +i.total - +(i.paid_amount || 0)), 0);
 
   const shown = filter === 'all' ? withCustomer : withCustomer.filter(i => filter === 'overdue'
     ? (!['paid', 'cancelled', 'draft'].includes(i.status) && i.due_date && i.due_date < todayStr)
@@ -200,6 +202,7 @@ export default function Invoices() {
         <div className="biz-card"><div className="lbl">Outstanding</div><div className="val">{R(outstanding)}</div></div>
         <div className="biz-card"><div className="lbl">Overdue</div><div className="val bd">{R(overdue)}</div></div>
       </div>
+      {hasForeign && <div className="mini" style={{ marginTop: 6 }}>Foreign-currency invoices are counted in rand at the rate they were made at.</div>}
 
       <div className="seg" style={{ marginTop: 12 }}>
         {views.map(v => (
@@ -239,7 +242,7 @@ export default function Invoices() {
                     <div className="tag">Due {inv.due_date || '-'}</div>
                   </td>
                   <td className="r">
-                    {R2(inv.total)}
+                    {fmt(inv.total, currencyOf(inv))}
                     <div><span className={'status-badge ' + inv.status}>{invoiceStatusLabel(inv)}</span></div>
                     {!readOnly && hasFeature('reminders') && invoiceStatusLabel(inv) === 'Overdue' && (
                       <button className="b g sm" style={{ width: 'auto', marginTop: 6 }}

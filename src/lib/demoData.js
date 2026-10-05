@@ -51,16 +51,18 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
   const biz = DEMO_BIZ_ID;
   const customer = (name, email, phone) => { const c = { id: id('cust'), business_id: biz, name, email, phone, address: null, tax_number: null, created_at: created() }; db.customers.push(c); return c; };
   let invNo = 0, quoNo = 0;
-  const invoice = ({ cust, issued, due, status, items, paid, job, quote, notes }) => {
+  const invoice = ({ cust, issued, due, status, items, paid, job, quote, notes, currency, rate }) => {
     const sub = r2(items.reduce((a, [, q, p]) => a + q * p, 0));
-    const vatAmt = vat ? r2(sub * 0.15) : 0;
+    const vatAmt = vat && !currency ? r2(sub * 0.15) : 0;
     const total = r2(sub + vatAmt);
     const inv = {
       id: id('inv'), business_id: biz, customer_id: cust.id, invoice_number: 'INV-' + String(++invNo).padStart(4, '0'), issue_date: issued, due_date: due, status,
       subtotal: sub, vat: vatAmt, discount: 0, total, paid_amount: status === 'paid' ? total : (paid || 0), notes: notes || null,
+      currency: 'ZAR', exchange_rate: 1,
       payment_terms: db.businesses[0].default_payment_terms, banking_details: db.businesses[0].banking_details, share_token: id('share'), created_at: issued + 'T08:00:00Z',
       job_id: job ? job.id : null, quote_id: quote ? quote.id : null, recurring_invoice_id: null, last_reminded_at: null,
     };
+    if (currency) { inv.currency = currency; inv.exchange_rate = rate; }
     db.invoices.push(inv);
     items.forEach(([d, q, p], i) => db.invoice_items.push({ id: id('item'), invoice_id: inv.id, description: d, qty: q, price: p, total: r2(q * p), sort_order: i }));
     if (inv.paid_amount > 0) {
@@ -125,6 +127,10 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     invoice({ cust: bright, issued: day(-9), due: day(5), status: 'paid', items: [['Logo design - Brightside Café', 6.5, 650]] });
     invoice({ cust: karabo, issued: day(-3), due: day(11), status: 'sent', items: [['Social media templates (12)', 1, 4200]] });
     invoice({ cust: bright, issued: day(0), due: day(14), status: 'draft', items: [['Menu design', 1, 3800]] });
+    const wave = customer('Brightwave Studio (USA)', 'ap@brightwave.example', null);
+    wave.currency = 'USD'; wave.hourly_rate = 45;
+    invoice({ cust: wave, issued: day(-5), due: day(25), status: 'sent', currency: 'USD', rate: 18.42, items: [['Landing page design', 1, 900], ['Icon set (24)', 1, 300]] });
+    db.time_entries.push({ id: id('time'), business_id: biz, customer_id: wave.id, job_id: null, date: day(-1), hours: 6, rate: 45, description: 'Dashboard mockups', invoice_id: null, created_at: created() });
     quote({ cust: ubuntu, status: 'sent', issued: day(-6), valid: day(24), deposit: 50, items: [{ description: 'Annual report layout', qty: 1, price: 18500 }] });
     quote({ cust: nine, status: 'accepted', issued: day(-12), valid: day(18), deposit: 30, items: [{ description: 'Brand guidelines document', qty: 1, price: 7200 }] });
     [[-1, bright, 3, 'Menu concepts'], [-2, karabo, 4.5, 'Wireframes'], [-3, karabo, 2, 'Client feedback round'], [-5, ubuntu, 5, 'Label artwork'], [-6, nine, 1.5, 'Brand guideline outline'], [-8, bright, 2.5, 'Logo refinements']]

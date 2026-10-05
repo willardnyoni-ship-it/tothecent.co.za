@@ -4,6 +4,7 @@ import { useSheet } from '../components/Sheet.jsx';
 import { R2 } from '../lib/format.js';
 import { customerLedger, invoiceStatusLabel } from '../lib/businessMath.js';
 import { useInvoiceDetail } from './InvoiceDetailSheet.jsx';
+import { CURRENCIES, currencyOf, fmt } from '../lib/currency.js';
 
 export function CustomerDetailContent({ customerId }) {
   const { close } = useSheet();
@@ -20,7 +21,11 @@ export function CustomerDetailContent({ customerId }) {
 
   async function save() {
     setBusy(true);
-    try { await updateCustomer(customer.id, fields); setEditing(false); } finally { setBusy(false); }
+    try {
+      const rate = fields.hourly_rate === '' || fields.hourly_rate == null ? null : Math.max(0, +fields.hourly_rate || 0);
+      await updateCustomer(customer.id, { ...fields, hourly_rate: rate, currency: fields.currency || 'ZAR' });
+      setEditing(false);
+    } finally { setBusy(false); }
   }
 
   return (
@@ -47,6 +52,12 @@ export function CustomerDetailContent({ customerId }) {
             <input value={fields.address || ''} onChange={e => setFields({ ...fields, address: e.target.value })} />
             <label>Tax/VAT number</label>
             <input value={fields.tax_number || ''} onChange={e => setFields({ ...fields, tax_number: e.target.value })} />
+            <label>Bills in</label>
+            <select value={fields.currency || 'ZAR'} onChange={e => setFields({ ...fields, currency: e.target.value })}>
+              {CURRENCIES.map(([c, n]) => <option key={c} value={c}>{c} - {n}</option>)}
+            </select>
+            <label>Hourly rate ({fields.currency || 'ZAR'} per hour) <span className="mini">- used when you log time for them</span></label>
+            <input type="number" inputMode="decimal" min="0" placeholder="e.g. 650" value={fields.hourly_rate ?? ''} onChange={e => setFields({ ...fields, hourly_rate: e.target.value })} />
             <div style={{ height: 12 }} />
             <button className="b" disabled={busy} onClick={save}>Save</button>
             <div style={{ height: 8 }} />
@@ -58,6 +69,8 @@ export function CustomerDetailContent({ customerId }) {
             <div className="row"><span className="mini">Phone</span><span>{customer.phone || '-'}</span></div>
             <div className="row"><span className="mini">Address</span><span>{customer.address || '-'}</span></div>
             <div className="row"><span className="mini">Tax/VAT number</span><span>{customer.tax_number || '-'}</span></div>
+            <div className="row"><span className="mini">Bills in</span><span>{customer.currency || 'ZAR'}</span></div>
+            <div className="row"><span className="mini">Hourly rate</span><span>{+customer.hourly_rate > 0 ? fmt(+customer.hourly_rate, customer.currency) + ' / h' : '-'}</span></div>
           </>
         )}
       </div>
@@ -72,7 +85,7 @@ export function CustomerDetailContent({ customerId }) {
                 <div className="tag">Issued {inv.issue_date}</div>
               </td>
               <td className="r">
-                {R2(inv.total)}
+                {fmt(inv.total, currencyOf(inv))}
                 <div><span className={'status-badge ' + inv.status}>{invoiceStatusLabel(inv)}</span></div>
               </td>
             </tr>

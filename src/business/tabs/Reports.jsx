@@ -3,6 +3,7 @@ import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso, vatOf } from '../../lib/format.js';
 import { vatPeriods, currentVatPeriod, PAYE_TABLE_LABEL } from '../../lib/saTax.js';
 import { provisionalPlan } from '../../lib/provisionalTax.js';
+import { currencyOf, zar } from '../../lib/currency.js';
 import { saTaxYear, taxYearLabel } from '../../lib/tax.js';
 
 function dl(blob, name) {
@@ -21,14 +22,14 @@ export function vatReturn(period, { invoices, expenses, transactions }) {
   const inv = invoices.filter(i => inP(i.issue_date) && !['draft', 'cancelled'].includes(i.status));
   const counterSales = transactions.filter(t => t.kind === 'income' && inP(t.date) && ['cashup', 'stock', 'booking', 'yoco'].includes(t.source));
   const exp = expenses.filter(e => inP(e.date) && e.status !== 'rejected');
-  const salesExcl = inv.reduce((a, i) => a + +i.total - +i.vat, 0) + counterSales.reduce((a, t) => a + +t.amount - vatOf(+t.amount), 0);
+  const salesExcl = inv.reduce((a, i) => a + zar(i, +i.total - +i.vat), 0) + counterSales.reduce((a, t) => a + +t.amount - vatOf(+t.amount), 0);
   // Bank transactions the owner marked as including VAT while reviewing them.
   // Invoice payments (linked) are skipped - the invoice already counts - and
   // so are cash-up / stock / booking sales, counted above.
   const txVat = transactions.filter(t => inP(t.date) && +t.vat_amount > 0 && !t.linked_invoice_id && !['cashup', 'stock', 'booking', 'yoco'].includes(t.source));
   const txOut = txVat.filter(t => t.kind === 'income');
   const txIn = txVat.filter(t => t.kind === 'expense');
-  const outputVat = inv.reduce((a, i) => a + +i.vat, 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0) + txOut.reduce((a, t) => a + +t.vat_amount, 0);
+  const outputVat = inv.reduce((a, i) => a + zar(i, +i.vat), 0) + counterSales.reduce((a, t) => a + vatOf(+t.amount), 0) + txOut.reduce((a, t) => a + +t.vat_amount, 0);
   const inputVat = exp.reduce((a, e) => a + +(e.vat || 0), 0) + txIn.reduce((a, t) => a + +t.vat_amount, 0);
   const missingVat = exp.filter(e => !+e.vat).length;
   return { inv, counterSales, exp, txOut, txIn, salesExcl: salesExcl + txOut.reduce((a, t) => a + +t.amount - +t.vat_amount, 0), outputVat, inputVat, payable: outputVat - inputVat, missingVat };
@@ -45,8 +46,8 @@ function VatView() {
   const v = vatReturn(period, biz);
 
   function exportCsv() {
-    const rows = [['type', 'date', 'reference', 'amount incl VAT', 'VAT']];
-    v.inv.forEach(i => rows.push(['output: invoice', i.issue_date, i.invoice_number, i.total, i.vat]));
+    const rows = [['type', 'date', 'reference', 'amount incl VAT (rand)', 'VAT (rand)', 'invoice currency', 'invoice amount']];
+    v.inv.forEach(i => rows.push(['output: invoice', i.issue_date, i.invoice_number, zar(i, +i.total), zar(i, +i.vat), currencyOf(i), i.total]));
     v.counterSales.forEach(t => rows.push(['output: ' + t.source, t.date, t.description || '', t.amount, vatOf(+t.amount).toFixed(2)]));
     v.exp.forEach(e => rows.push(['input: expense', e.date, e.description || e.merchant || '', e.amount, e.vat || 0]));
     v.txOut.forEach(t => rows.push(['output: bank transaction', t.date, t.description || '', t.amount, t.vat_amount]));
@@ -187,10 +188,10 @@ export default function Reports() {
     dl(new Blob([rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')], { type: 'text/csv' }), 'transactions-' + iso(new Date()) + '.csv');
   }
   function exportTaxRecords() {
-    const rows = [['type', 'date', 'description', 'amount', 'vat']];
+    const rows = [['type', 'date', 'description', 'amount (rand)', 'vat (rand)', 'currency', 'amount in currency']];
     transactions.forEach(t => rows.push(['transaction:' + t.kind, t.date, t.description || '', t.amount, '']));
     expenses.forEach(e => rows.push(['expense', e.date, e.description || e.merchant || '', e.amount, e.vat || 0]));
-    invoices.forEach(i => rows.push(['invoice:' + i.status, i.issue_date, i.invoice_number, i.total, i.vat]));
+    invoices.forEach(i => rows.push(['invoice:' + i.status, i.issue_date, i.invoice_number, zar(i, +i.total), zar(i, +i.vat), currencyOf(i), i.total]));
     dl(new Blob([rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')], { type: 'text/csv' }), 'tax-records-' + iso(new Date()) + '.csv');
   }
 

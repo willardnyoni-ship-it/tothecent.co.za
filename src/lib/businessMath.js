@@ -1,4 +1,6 @@
 // Invoice totals, VAT, and invoice<->transaction payment matching.
+import { currencyOf, isForeign, plausibleRand, zar } from './currency.js';
+
 const VAT_RATE = 0.15;
 
 export function computeInvoiceTotals(items, vatEnabled, discount) {
@@ -31,10 +33,13 @@ export function findInvoiceMatches(invoices, transactions) {
   for (const inv of open) {
     const remaining = +(inv.total - (inv.paid_amount || 0)).toFixed(2);
     for (const t of incoming) {
-      if (Math.abs(+t.amount - remaining) > 0.01) continue;
       const name = (inv.customerName || '').toLowerCase();
       const desc = (t.description || '').toLowerCase();
       const nameHit = name && desc.includes(name.split(' ')[0]);
+      // A foreign invoice is paid in rand at whatever rate the bank used, so the amount
+      // only has to be near what the invoice was worth; then the name has to agree too.
+      if (isForeign(inv)) { if (!nameHit || !plausibleRand(inv, remaining, +t.amount)) continue; }
+      else if (Math.abs(+t.amount - remaining) > 0.01) continue;
       matches.push({ invoice: inv, transaction: t, confidence: nameHit ? 'high' : 'amount-only' });
     }
   }
@@ -101,7 +106,7 @@ export function advanceDate(dateStr, frequency) {
 export function customerLedger(customerId, invoices) {
   const theirs = invoices.filter(i => i.customer_id === customerId && i.status !== 'cancelled');
   const outstanding = theirs.filter(i => i.status !== 'paid' && i.status !== 'draft')
-    .reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
+    .reduce((a, i) => a + zar(i, +i.total - +(i.paid_amount || 0)), 0);
   const history = [...theirs].sort((a, b) => (b.issue_date || '').localeCompare(a.issue_date || ''));
   return { outstanding, history };
 }

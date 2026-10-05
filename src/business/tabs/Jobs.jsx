@@ -8,6 +8,7 @@ import { useCreateInvoice, useCreateQuote } from '../CreateInvoiceSheet.jsx';
 import { useInvoiceDetail } from '../InvoiceDetailSheet.jsx';
 import { useQuoteDetail } from '../QuoteDetailSheet.jsx';
 import MileageView from '../Mileage.jsx';
+import { currencyOf, fmt, zar } from '../../lib/currency.js';
 
 const STATUS_LABEL = { quoted: 'Quoted', active: 'In progress', done: 'Done', cancelled: 'Cancelled' };
 const COST_CATEGORIES = ['Materials', 'Subcontractor', 'Equipment hire', 'Fuel', 'Labour', 'Other'];
@@ -18,8 +19,8 @@ const COST_CATEGORIES = ['Materials', 'Subcontractor', 'Equipment hire', 'Fuel',
 // at the business's per-km rate.
 export function jobFinancials(job, { invoices, expenses, transactions, mileageTrips, timeEntries }, rate) {
   const inv = invoices.filter(i => i.job_id === job.id && !['cancelled', 'draft'].includes(i.status));
-  const invoiced = inv.reduce((a, i) => a + (+i.subtotal - +(i.discount || 0)), 0);
-  const paid = inv.reduce((a, i) => a + +(i.paid_amount || 0), 0);
+  const invoiced = inv.reduce((a, i) => a + zar(i, +i.subtotal - +(i.discount || 0)), 0);
+  const paid = inv.reduce((a, i) => a + zar(i, +(i.paid_amount || 0)), 0);
   const exp = expenses.filter(e => e.job_id === job.id && e.status !== 'rejected' && !e.matched_transaction_id);
   const tx = transactions.filter(t => t.job_id === job.id && t.kind === 'expense');
   const trips = mileageTrips.filter(t => t.job_id === job.id);
@@ -104,13 +105,13 @@ function JobDetailContent({ jobId }) {
           {jobQuotes.map(q => (
             <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => openQuote(q.id)}>
               <td>Quote {q.quote_number}</td>
-              <td className="r">{R2(+q.total)}<div><span className={'status-badge ' + q.status}>{quoteStatusLabel(q)}</span></div></td>
+              <td className="r">{fmt(+q.total, currencyOf(q))}<div><span className={'status-badge ' + q.status}>{quoteStatusLabel(q)}</span></div></td>
             </tr>
           ))}
           {jobInvoices.map(i => (
             <tr key={i.id} style={{ cursor: 'pointer' }} onClick={() => openInvoice(i.id)}>
               <td>Invoice {i.invoice_number}</td>
-              <td className="r">{R2(+i.total)}<div><span className={'status-badge ' + i.status}>{invoiceStatusLabel(i)}</span></div></td>
+              <td className="r">{fmt(+i.total, currencyOf(i))}<div><span className={'status-badge ' + i.status}>{invoiceStatusLabel(i)}</span></div></td>
             </tr>
           ))}
           {!jobQuotes.length && !jobInvoices.length && <tr><td className="mini">Nothing yet.</td></tr>}

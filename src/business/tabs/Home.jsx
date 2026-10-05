@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { zar } from '../../lib/currency.js';
 import { useBudget } from '../../store/BudgetStore.jsx';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2 } from '../../lib/format.js';
@@ -45,7 +46,7 @@ export default function BizHome({ go, onOpenSettings }) {
     + monthExpenseRecords.reduce((a, e) => a + +e.amount, 0);
   const net = income - expensesTotal;
   const outstanding = invoices.filter(i => !['paid', 'cancelled', 'draft'].includes(i.status))
-    .reduce((a, i) => a + (+i.total - +(i.paid_amount || 0)), 0);
+    .reduce((a, i) => a + zar(i, +i.total - +(i.paid_amount || 0)), 0);
 
   // All-time cumulative income minus expenses - a stand-in for "cash
   // available" in the absence of any real bank-balance integration.

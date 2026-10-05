@@ -1,4 +1,4 @@
-import { R2 } from './format.js';
+import { fmtDoc } from './currency.js';
 import { invoiceStatusLabel, quoteStatusLabel } from './businessMath.js';
 
 // jsPDF loads as a plain global script from the CDN (see app/index.html's
@@ -35,6 +35,7 @@ export function buildQuotePdfFile(business, customer, q) {
 
 function buildPdf(business, customer, inv, kind) {
   const doc = jsPDF();
+  const M = n => fmtDoc(inv, n);
   let y = 56;
 
   doc.setFont('helvetica', 'bold').setFontSize(16);
@@ -78,8 +79,8 @@ function buildPdf(business, customer, inv, kind) {
     if (y > 740) { doc.addPage(); y = 56; }
     doc.text(it.description || '', MARGIN, y);
     doc.text(String(it.qty), RIGHT - 170, y, { align: 'right' });
-    doc.text(R2(+it.price), RIGHT - 90, y, { align: 'right' });
-    doc.text(R2(+it.total), RIGHT, y, { align: 'right' });
+    doc.text(M(+it.price), RIGHT - 90, y, { align: 'right' });
+    doc.text(M(+it.total), RIGHT, y, { align: 'right' });
     y += 18;
   });
 
@@ -92,11 +93,11 @@ function buildPdf(business, customer, inv, kind) {
     doc.text(value, RIGHT, y, { align: 'right' });
     y += bold ? 20 : 16;
   };
-  totalsRow('Subtotal', R2(+inv.subtotal));
-  totalsRow('VAT', R2(+inv.vat));
-  totalsRow('Discount', '-' + R2(+inv.discount));
-  totalsRow('TOTAL', R2(+inv.total), true);
-  if (kind.deposit) totalsRow('Deposit due (' + kind.deposit.pct + '%)', R2(kind.deposit.amount));
+  totalsRow('Subtotal', M(+inv.subtotal));
+  totalsRow('VAT', M(+inv.vat));
+  totalsRow('Discount', '-' + M(+inv.discount));
+  totalsRow('TOTAL', M(+inv.total), true);
+  if (kind.deposit) totalsRow('Deposit due (' + kind.deposit.pct + '%)', M(kind.deposit.amount));
 
   if (inv.notes) {
     y += 14; doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(130); doc.text('NOTES', MARGIN, y);

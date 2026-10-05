@@ -6,6 +6,7 @@ import { computeInvoiceTotals, nextInvoiceNumber, quoteStatusLabel } from '../li
 import { buildQuotePdfFile } from '../lib/invoicePdf.js';
 import { downloadFile, shareFile, openWhatsApp, openEmail } from './share.js';
 import { useInvoiceDetail } from './InvoiceDetailSheet.jsx';
+import { currencyOf, fmt } from '../lib/currency.js';
 
 const VAT_FACTOR = 1.15;
 
@@ -19,12 +20,13 @@ export function QuoteDetailContent({ quoteId }) {
   const [err, setErr] = useState('');
   if (!q) return null;
   const customer = customers.find(c => c.id === q.customer_id);
+  const m = n => fmt(n, currencyOf(q));
   const job = jobs.find(j => j.id === q.job_id);
   const depositInv = invoices.find(i => i.id === q.deposit_invoice_id);
   const finalInv = invoices.find(i => i.id === q.final_invoice_id);
   const depositAmount = +q.deposit_pct > 0 ? +(+q.total * +q.deposit_pct / 100).toFixed(2) : 0;
-  const summary = `Quote ${q.quote_number} from ${business.name} for ${R2(+q.total)}, valid until ${q.valid_until || 'further notice'}.`
-    + (depositAmount ? ` A ${+q.deposit_pct}% deposit of ${R2(depositAmount)} secures the booking.` : '');
+  const summary = `Quote ${q.quote_number} from ${business.name} for ${m(+q.total)}, valid until ${q.valid_until || 'further notice'}.`
+    + (depositAmount ? ` A ${+q.deposit_pct}% deposit of ${m(depositAmount)} secures the booking.` : '');
 
   async function run(fn) {
     setBusy(true); setErr('');
@@ -51,6 +53,7 @@ export function QuoteDetailContent({ quoteId }) {
     const t = computeInvoiceTotals(items, q.vat_enabled, 0);
     const inv = await createInvoice({
       customer_id: q.customer_id, job_id: q.job_id, quote_id: q.id, invoice_number: nextInvoiceNumber(business),
+      currency: q.currency || 'ZAR', exchange_rate: +q.exchange_rate || 1,
       issue_date: iso(new Date()), due_date: iso(new Date(Date.now() + 7 * 86400000)), status: 'sent',
       subtotal: t.subtotal, vat: t.vat, discount: 0, total: t.total,
       notes: 'Deposit to confirm quote ' + q.quote_number, payment_terms: q.payment_terms, banking_details: q.banking_details,
@@ -67,6 +70,7 @@ export function QuoteDetailContent({ quoteId }) {
     const t = computeInvoiceTotals(items, q.vat_enabled, q.discount);
     const inv = await createInvoice({
       customer_id: q.customer_id, job_id: q.job_id, quote_id: q.id, invoice_number: nextInvoiceNumber(business),
+      currency: q.currency || 'ZAR', exchange_rate: +q.exchange_rate || 1,
       issue_date: iso(new Date()), due_date: iso(new Date(Date.now() + 20 * 86400000)), status: 'draft',
       subtotal: t.subtotal, vat: t.vat, discount: +q.discount || 0, total: t.total,
       notes: q.notes, payment_terms: q.payment_terms, banking_details: q.banking_details,
@@ -98,15 +102,15 @@ export function QuoteDetailContent({ quoteId }) {
       <div className="card" style={{ marginTop: 12 }}>
         <table><tbody>
           {(q.items || []).map((it, i) => (
-            <tr key={i}><td>{it.description}<div className="tag">{it.qty} &times; {R2(+it.price)}</div></td><td className="r">{R2(+it.total)}</td></tr>
+            <tr key={i}><td>{it.description}<div className="tag">{it.qty} &times; {m(+it.price)}</div></td><td className="r">{m(+it.total)}</td></tr>
           ))}
         </tbody></table>
         <div className="biz-totals">
-          <div className="row"><span>Subtotal</span><span className="mono">{R2(+q.subtotal)}</span></div>
-          <div className="row"><span>VAT</span><span className="mono">{R2(+q.vat)}</span></div>
-          <div className="row"><span>Discount</span><span className="mono">-{R2(+q.discount)}</span></div>
-          <div className="row grand"><span>TOTAL</span><span className="mono">{R2(+q.total)}</span></div>
-          {depositAmount > 0 && <div className="row"><span>Deposit ({+q.deposit_pct}%)</span><span className="mono">{R2(depositAmount)}</span></div>}
+          <div className="row"><span>Subtotal</span><span className="mono">{m(+q.subtotal)}</span></div>
+          <div className="row"><span>VAT</span><span className="mono">{m(+q.vat)}</span></div>
+          <div className="row"><span>Discount</span><span className="mono">-{m(+q.discount)}</span></div>
+          <div className="row grand"><span>TOTAL</span><span className="mono">{m(+q.total)}</span></div>
+          {depositAmount > 0 && <div className="row"><span>Deposit ({+q.deposit_pct}%)</span><span className="mono">{m(depositAmount)}</span></div>}
         </div>
       </div>
       {q.notes && <div className="card"><div className="mini">Notes</div>{q.notes}</div>}
@@ -131,7 +135,7 @@ export function QuoteDetailContent({ quoteId }) {
           {q.status === 'draft' && <><div style={{ height: 8 }} /><button className="b g" disabled={busy} onClick={() => setStatus('sent')}>Mark as Sent</button></>}
           {open_ && <><div style={{ height: 8 }} /><button className="b" disabled={busy} onClick={() => setStatus('accepted')}>Customer Accepted</button></>}
           {['draft', 'sent', 'accepted'].includes(q.status) && depositAmount > 0 && !depositInv && (
-            <><div style={{ height: 8 }} /><button className="b g" disabled={busy} onClick={createDeposit}>Create Deposit Invoice ({R2(depositAmount)})</button></>
+            <><div style={{ height: 8 }} /><button className="b g" disabled={busy} onClick={createDeposit}>Create Deposit Invoice ({m(depositAmount)})</button></>
           )}
           {['sent', 'accepted'].includes(q.status) && !finalInv && (
             <><div style={{ height: 8 }} /><button className="b g" disabled={busy} onClick={convert}>{depositInv ? 'Create Final Invoice (less deposit)' : 'Convert to Invoice'}</button></>

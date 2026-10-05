@@ -5,6 +5,7 @@ import { R2, iso } from '../lib/format.js';
 import { invoiceStatusLabel, RECURRING_FREQUENCIES, RECURRING_FREQUENCY_LABEL } from '../lib/businessMath.js';
 import { buildInvoicePdfFile } from '../lib/invoicePdf.js';
 import { openWhatsApp, openEmail } from './share.js';
+import { currencyOf, fmt, isForeign, rateOf, rateText, zar } from '../lib/currency.js';
 
 // A friendly nudge about an unpaid invoice, as plain text in WhatsApp or
 // email (the invoice itself was already sent). Records when it went out so
@@ -13,7 +14,7 @@ export function reminderText(business, customer, inv) {
   const owed = +inv.total - +(inv.paid_amount || 0);
   const today = new Date().toISOString().slice(0, 10);
   const late = inv.due_date && inv.due_date < today;
-  return `Hi${customer?.name ? ' ' + customer.name.split(' ')[0] : ''}, a friendly reminder that invoice ${inv.invoice_number} from ${business.name} for ${R2(owed)} `
+  return `Hi${customer?.name ? ' ' + customer.name.split(' ')[0] : ''}, a friendly reminder that invoice ${inv.invoice_number} from ${business.name} for ${fmt(owed, currencyOf(inv))} `
     + (late ? `was due on ${inv.due_date}` : `is due ${inv.due_date ? 'on ' + inv.due_date : 'now'}`)
     + `. ${inv.banking_details ? 'Banking details: ' + inv.banking_details.replace(/\s*\n\s*/g, ', ') + '. ' : ''}`
     + `If you've already paid, thank you - please ignore this message.`;
@@ -46,13 +47,17 @@ export function InvoiceDetailContent({ invoiceId }) {
   const inv = invoices.find(i => i.id === invoiceId);
   const [busy, setBusy] = useState(false);
   const [pickingFrequency, setPickingFrequency] = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const [randIn, setRandIn] = useState('');
   if (!inv) return null;
   const customer = customers.find(c => c.id === inv.customer_id);
   const series = inv.recurring_invoice_id ? recurringInvoices.find(r => r.id === inv.recurring_invoice_id) : null;
   const job = inv.job_id ? jobs.find(j => j.id === inv.job_id) : null;
   const canRemind = !readOnly && hasFeature('reminders') && ['sent', 'viewed', 'partially_paid', 'overdue'].includes(inv.status);
 
-  const summary = `Invoice ${inv.invoice_number} from ${business.name} for ${R2(inv.total)}, due ${inv.due_date || 'on receipt'}.`;
+  const m = n => fmt(n, currencyOf(inv));
+  const foreign = isForeign(inv);
+  const summary = `Invoice ${inv.invoice_number} from ${business.name} for ${m(inv.total)}, due ${inv.due_date || 'on receipt'}.`;
 
   function downloadPdf() {
     downloadFile(buildInvoicePdfFile(business, customer, inv));
@@ -89,6 +94,7 @@ export function InvoiceDetailContent({ invoiceId }) {
     navigator.clipboard?.writeText(summary);
   }
   async function markPaid() {
+    if (foreign && !(+randIn > 0)) return;
     setBusy(true);
     try {
       await updateInvoice(inv.id, { status: 'paid', paid_amount: inv.total });
@@ -101,11 +107,12 @@ export function InvoiceDetailContent({ invoiceId }) {
       const alreadyLinked = transactions.some(t => t.linked_invoice_id === inv.id);
       if (!alreadyLinked) {
         await addTransaction({
-          amount: inv.total, kind: 'income',
-          description: inv.invoice_number + (customer ? ' - ' + customer.name : ''),
+          amount: foreign ? +randIn : inv.total, kind: 'income',
+          description: inv.invoice_number + (customer ? ' - ' + customer.name : '') + (foreign ? ` (${m(inv.total)})` : ''),
           date: iso(new Date()), status: 'reviewed', source: 'manual', linked_invoice_id: inv.id,
         });
       }
+      setReceiving(false);
     } finally { setBusy(false); }
   }
   async function setStatus(status) {
@@ -135,14 +142,15 @@ export function InvoiceDetailContent({ invoiceId }) {
         <div className="card" style={{ marginTop: 12 }}>
           <table><tbody>
             {(inv.items || []).map(it => (
-              <tr key={it.id}><td>{it.description}<div className="tag">{it.qty} &times; {R2(it.price)}</div></td><td className="r">{R2(it.total)}</td></tr>
+              <tr key={it.id}><td>{it.description}<div className="tag">{it.qty} &times; {m(it.price)}</div></td><td className="r">{m(it.total)}</td></tr>
             ))}
           </tbody></table>
           <div className="biz-totals">
-            <div className="row"><span>Subtotal</span><span className="mono">{R2(inv.subtotal)}</span></div>
-            <div className="row"><span>VAT</span><span className="mono">{R2(inv.vat)}</span></div>
-            <div className="row"><span>Discount</span><span className="mono">-{R2(inv.discount)}</span></div>
-            <div className="row grand"><span>TOTAL</span><span className="mono">{R2(inv.total)}</span></div>
+            <div className="row"><span>Subtotal</span><span className="mono">{m(inv.subtotal)}</span></div>
+            <div className="row"><span>VAT</span><span className="mono">{m(inv.vat)}</span></div>
+            <div className="row"><span>Discount</span><span className="mono">-{m(inv.discount)}</span></div>
+            <div className="row grand"><span>TOTAL</span><span className="mono">{m(inv.total)}</span></div>
+            {foreign && <div className="row biz-noprint"><span className="mini">Rand value at {rateText(currencyOf(inv), rateOf(inv))}</span><span className="mono">{fmt(zar(inv, inv.total))}</span></div>}
           </div>
         </div>
         {inv.notes && <div className="card"><div className="mini">Notes</div>{inv.notes}</div>}
@@ -174,7 +182,19 @@ export function InvoiceDetailContent({ invoiceId }) {
         {!readOnly && inv.status !== 'paid' && inv.status !== 'cancelled' && (
           <>
             <div style={{ height: 8 }} />
-            <button className="b g" disabled={busy} onClick={markPaid}>Mark as Paid</button>
+            {foreign && receiving ? (
+              <div className="card">
+                <b>How much rand did you receive?</b>
+                <div className="mini" style={{ margin: '4px 0 8px' }}>The customer paid {m(inv.total)}. Enter the rand that reached your bank, after any bank fees, so your books show the real amount.</div>
+                <input type="number" inputMode="decimal" min="0" value={randIn} onChange={e => setRandIn(e.target.value)} placeholder={String(zar(inv, inv.total))} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button className="b" disabled={busy || !(+randIn > 0)} onClick={markPaid}>Record payment</button>
+                  <button className="b g" disabled={busy} onClick={() => setReceiving(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button className="b g" disabled={busy} onClick={() => { if (foreign) { setRandIn(String(zar(inv, +inv.total - +(inv.paid_amount || 0)))); setReceiving(true); } else markPaid(); }}>Mark as Paid</button>
+            )}
           </>
         )}
         {!readOnly && inv.status === 'draft' && (
@@ -183,7 +203,7 @@ export function InvoiceDetailContent({ invoiceId }) {
             <button className="b g" disabled={busy} onClick={() => setStatus('sent')}>Mark as Sent</button>
           </>
         )}
-        {!readOnly && !series && inv.status !== 'cancelled' && (
+        {!readOnly && !series && !foreign && inv.status !== 'cancelled' && (
           <>
             <div style={{ height: 8 }} />
             {pickingFrequency ? (
