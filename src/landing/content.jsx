@@ -93,6 +93,17 @@ export const BIZ_TYPES = [
     ],
   },
   {
+    key: 'motor', icon: I.car, label: 'Motor trade',
+    for: 'Car dealers, bakkie and bike sellers, and vehicle importers',
+    pain: 'You buy a car, then spend on tyres, panel work and a valet before it sells. By then nobody can say what that car really cost, or what it made.',
+    tools: [
+      [I.car, 'A record for every vehicle', 'Make, model, reg and VIN, what you paid, who you bought it from and the price you are asking.', '2018 VW Polo · bought R128 000'],
+      [I.invoice, 'Everything spent on the car', 'Add every repair, part, tyre and valet to the car it belongs to, and see the running total in.', 'Spent R5 280 · total in R133 280'],
+      [I.chart, 'Profit on every sale', 'See the profit at your asking price, a warning if you price below cost, and the real profit once it sells.', 'Sold R136 000 · profit R14 350'],
+      [I.clock, 'Days on the lot', 'Know how much money is tied up in cars and which ones have been sitting the longest.', 'Kwid · 55 days on the lot'],
+    ],
+  },
+  {
     key: 'appointments', icon: I.scissors, label: 'Salon & services',
     for: 'Salons, barbers, nail and beauty techs, therapists and tutors',
     pain: 'A no-show is a slot you can never sell again, and with several staff it is hard to see who earned what.',
