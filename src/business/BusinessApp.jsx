@@ -20,10 +20,11 @@ import Bookings from './tabs/Bookings.jsx';
 import Vehicles from './tabs/Vehicles.jsx';
 import Clients from './tabs/Clients.jsx';
 import Activity from './tabs/Activity.jsx';
+import MonthEnd from './tabs/MonthEnd.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
 import { isDemo } from '../lib/demo.js';
 
-const TABS = { activity: Activity, clients: Clients, home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
+const TABS = { monthend: MonthEnd, activity: Activity, clients: Clients, home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
 
 const TOUR_STEPS = [
   { tab: 'clients', title: 'Clients', body: 'Every business you look after, with what is overdue, unreviewed or missing a receipt. Open one to work in its books.' },
@@ -37,6 +38,7 @@ const TOUR_STEPS = [
   { tab: 'vehicles', title: 'Vehicles', body: 'Each car from purchase to sale: what you paid, everything you spent on it, and the profit when it sells.' },
   { tab: 'stock', title: 'Stock', body: 'What you have on the shelf, what it is worth, and what is running low.' },
   { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
+  { tab: 'monthend', title: 'Month-end', body: 'What is left to do before a month can be signed off: bank lines to review, missing receipts, unmatched payments. Then sign it off.' },
   { tab: 'activity', title: 'Activity', body: 'A record of who added, changed or deleted what, and when. It cannot be edited from the app.' },
   { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
 ];

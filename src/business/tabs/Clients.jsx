@@ -7,6 +7,7 @@ import { isDemo } from '../../lib/demo.js';
 import { attention, overviewFor, roleLabel } from '../../lib/clients.js';
 import { profileByKey } from '../../lib/businessProfiles.js';
 import { R, iso } from '../../lib/format.js';
+import { monthKey, monthLabel, shiftMonth } from '../../lib/monthEnd.js';
 
 const ago = ts => {
   if (!ts) return 'No activity yet';
@@ -19,6 +20,8 @@ export default function Clients({ go }) {
   const { syncCfg, ensureToken } = useBudget();
   const { business, businesses, switchBusiness, claimInvites } = useBusiness();
   const [rows, setRows] = useState(null);
+  const [signed, setSigned] = useState({});
+  const lastMonth = shiftMonth(monthKey(iso(new Date())), -1);
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [only, setOnly] = useState(false);
@@ -27,6 +30,8 @@ export default function Clients({ go }) {
     setErr('');
     try {
       const token = await ensureToken();
+      businessApi.select(syncCfg, token, 'month_reviews', `month=eq.${lastMonth}-01&select=business_id,reviewed_by_email,reviewed_at`)
+        .then(r => setSigned(Object.fromEntries((r || []).map(x => [x.business_id, x])))).catch(() => setSigned({}));
       if (isDemo()) {
         const [invoices, transactions, expenses, members] = await Promise.all(['invoices', 'business_transactions', 'expenses', 'business_members']
           .map(t => businessApi.select(syncCfg, token, t, 'select=*')));
@@ -72,7 +77,7 @@ export default function Clients({ go }) {
                 <span className={c.review_count ? 'warn' : ''}><small>To review</small><b>{c.review_count}</b></span>
                 <span className={c.no_receipt_count ? 'warn' : ''}><small>No receipt</small><b>{c.no_receipt_count}</b></span>
               </div>
-              <div className="mini cl-foot">{ago(c.last_activity)}</div>
+              <div className="cl-foot2"><span className={'cl-rev' + (signed[c.business_id] ? ' yes' : '')}>{monthLabel(lastMonth).split(' ')[0]} {signed[c.business_id] ? 'reviewed' : 'not reviewed'}</span><span className="mini">{ago(c.last_activity)}</span></div>
             </div>
           );
         })}

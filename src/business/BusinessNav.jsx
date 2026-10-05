@@ -18,6 +18,7 @@ export const BIZ_TABS = [
   { t: 'vehicles', label: 'Vehicles', feature: 'vehicles' },
   { t: 'stock', label: 'Stock', feature: 'stock' },
   { t: 'reports', label: 'Reports' },
+  { t: 'monthend', label: 'Month-end', roles: ['owner', 'admin', 'accountant'] },
   { t: 'activity', label: 'Activity', roles: ['owner', 'admin', 'accountant'] },
   { t: 'team', label: 'Team' },
 ];

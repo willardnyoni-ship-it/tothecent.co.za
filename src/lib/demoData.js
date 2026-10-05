@@ -58,7 +58,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false, viewer = ''
   const db = {
     businesses: [], customers: [], invoices: [], invoice_items: [], business_transactions: [], expenses: [], business_members: [],
     bank_accounts: [], business_categories: [], recurring_invoices: [],
-    audit_log: [], jobs: [], vehicles: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
+    audit_log: [], month_reviews: [], jobs: [], vehicles: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
   };
   const created = () => new Date().toISOString();
 
@@ -331,5 +331,9 @@ export function buildDemoDb(profile, { vat = false, payroll = false, viewer = ''
   aud(6, '09', true, 'update', 'business_members', acctMail, { role: ['employee', 'accountant'], status: ['invited', 'active'] });
   aud(9, '15', true, 'update', 'businesses', who.biz, { tax_number: [null, '4123456789'] });
   aud(12, '10', false, 'update', 'invoices', invRef(0), { due_date: [day(-20), day(-6)] });
+  if (key === 'trades' && viewer === 'accountant') {
+    const lm = month(-1) + '-01';
+    db.month_reviews.push({ id: id('rev'), business_id: biz, month: lm, reviewed_by: DEMO_USER_ID, reviewed_by_email: acctMail, reviewed_at: new Date().toISOString(), note: null });
+  }
   return db;
 }
