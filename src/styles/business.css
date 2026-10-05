@@ -212,3 +212,14 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .veh-cost{padding:8px 0;border-top:1px solid #EEF0EF;align-items:center}
 
 .exp-veh{margin-top:6px;padding:5px 8px;font-size:13px;border-radius:8px;max-width:100%;width:auto}
+
+/* Vehicle page */
+.veh-back{margin-bottom:10px;width:auto}
+.veh-hero{height:110px;border-radius:16px;display:grid;place-items:center;margin-bottom:12px}
+.veh-title{align-items:flex-start;margin-bottom:6px}
+.veh-title .veh-tag{margin-top:6px}
+.veh-cols{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+.veh-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.veh-actions{display:flex;flex-direction:column;gap:8px;margin:0}
+.veh-form{max-width:640px}
+@media (min-width:900px){.veh-cols{grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr)}.veh-hero{height:130px}}

@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
-import { useSheet } from '../../components/Sheet.jsx';
 import { R, R2, iso } from '../../lib/format.js';
 import { COST_CATEGORIES, STATUS_LABEL, costsFor, lotSummary, paintColour, vehicleFinancials, vehicleTitle } from '../../lib/vehicles.js';
 import { useCreateInvoice } from '../CreateInvoiceSheet.jsx';
@@ -52,8 +51,8 @@ function VehicleFields({ f, setF }) {
   );
 }
 
-function VehicleSheet({ vehicleId }) {
-  const { close } = useSheet();
+function VehiclePage({ vehicleId, onBack }) {
+  const close = onBack;
   const { vehicles, expenses, transactions, customers, addExpense, removeRow, updateRow, updateTransaction, myRole } = useBusiness();
   const createInvoice = useCreateInvoice();
   const readOnly = myRole === 'accountant';
@@ -97,9 +96,20 @@ function VehicleSheet({ vehicleId }) {
   const setStatus = (status, extra = {}) => run(() => updateRow('vehicles', v.id, { status, ...extra }));
 
   return (
-    <>
-      <div className="row"><h1>{vehicleTitle(v)}</h1><button className="b g sm" onClick={close}>Close</button></div>
-      <div className="mini">{[v.reg, v.colour, v.mileage_km != null ? Number(v.mileage_km).toLocaleString('en-ZA') + ' km' : null].filter(Boolean).join(' · ')} {v.reg || v.colour || v.mileage_km != null ? '· ' : ''}<b>{STATUS_LABEL[v.status]}</b></div>
+    <section className="tab on light-tab veh-page">
+      <button className="b g sm veh-back" onClick={onBack}>← All vehicles</button>
+      <div className="veh-hero" style={{ background: paintColour(v.colour) || '#D9DEE3' }}>
+        <svg width="96" height="60" viewBox="0 0 24 24" fill="none" stroke="rgba(14,21,18,.5)" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 15l1.6-5.2A2 2 0 0 1 8.5 8.5h7a2 2 0 0 1 1.9 1.3L19 15" /><path d="M3 15h18v4H3z" /><path d="M7 19v2M17 19v2" />
+        </svg>
+      </div>
+      <div className="row veh-title">
+        <div>
+          <h1 style={{ margin: 0 }}>{vehicleTitle(v)}</h1>
+          <div className="mini">{[v.reg, v.colour, v.mileage_km != null ? Number(v.mileage_km).toLocaleString('en-ZA') + ' km' : null, v.vin ? 'VIN ' + v.vin : null].filter(Boolean).join(' · ') || 'No details yet'}</div>
+        </div>
+        <span className={'veh-tag ' + v.status}>{STATUS_LABEL[v.status]}</span>
+      </div>
 
       <div className="biz-cards">
         <div className="biz-card"><div className="lbl">Bought for</div><div className="val">{R(f.purchase)}</div></div>
@@ -116,7 +126,9 @@ function VehicleSheet({ vehicleId }) {
         {v.bought_from ? ` · bought from ${v.bought_from}` : ''}
       </div>
 
-      <div className="card">
+      <div className="veh-cols">
+      <div className="veh-col">
+      <div className="card" style={{ margin: 0 }}>
         <div className="row"><h2 style={{ margin: 0 }}>Spent on this car</h2><span className="mono">{R2(f.costs)}</span></div>
         {f.list.length === 0 && <div className="mini" style={{ marginTop: 8 }}>Nothing yet. Add parts, repairs, valet and anything else you spend before selling.</div>}
         {f.list.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(e => (
@@ -144,10 +156,12 @@ function VehicleSheet({ vehicleId }) {
           </>
         )}
       </div>
-      {msg && <div className={'msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
+      </div>
+      <div className="veh-col">
+      {msg && <div className={'msg ' + (msg.e ? 'e' : 's')} style={{ marginTop: 0 }}>{msg.t}</div>}
 
       {!readOnly && mode === '' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+        <div className="card veh-actions">
           {v.status !== 'sold' && <button className="b" disabled={busy} onClick={() => { setSale({ price: v.asking_price || '', date: iso(new Date()), customer: '' }); setMode('sell'); }}>Mark as sold</button>}
           {v.status === 'in_stock' && <button className="b g" disabled={busy} onClick={() => setStatus('reserved')}>Reserve it</button>}
           {v.status === 'reserved' && <button className="b g" disabled={busy} onClick={() => setStatus('in_stock')}>Back on the lot</button>}
@@ -196,12 +210,14 @@ function VehicleSheet({ vehicleId }) {
           </div>
         </div>
       )}
-    </>
+      </div>
+      </div>
+    </section>
   );
 }
 
-function AddVehicleSheet() {
-  const { close } = useSheet();
+function AddVehiclePage({ onBack }) {
+  const close = onBack;
   const { addRow, business } = useBusiness();
   const [f, setF] = useState(blank);
   const [err, setErr] = useState('');
@@ -212,16 +228,17 @@ function AddVehicleSheet() {
     try { await addRow('vehicles', { ...toRow(f), status: 'in_stock' }); close(); } catch (e) { setErr(e.message); setBusy(false); }
   }
   return (
-    <>
-      <div className="row"><h1>Add a vehicle</h1><button className="b g sm" onClick={close}>Cancel</button></div>
-      <div className="card" style={{ marginTop: 10 }}>
+    <section className="tab on light-tab veh-page">
+      <button className="b g sm veh-back" onClick={onBack}>← All vehicles</button>
+      <h1>Add a vehicle</h1>
+      <div className="card veh-form">
         <VehicleFields f={f} setF={setF} />
         {err && <div className="msg e">{err}</div>}
         <div style={{ height: 10 }} />
         <button className="b" disabled={busy} onClick={save}>Add vehicle</button>
         <div className="mini" style={{ marginTop: 6 }}>{business ? 'Then add everything you spend on it, and mark it sold to see the profit.' : ''}</div>
       </div>
-    </>
+    </section>
   );
 }
 
@@ -229,8 +246,16 @@ const FILTERS = [['lot', 'On the lot'], ['sold', 'Sold'], ['all', 'All']];
 
 export default function Vehicles() {
   const { vehicles, expenses, transactions, myRole } = useBusiness();
-  const { open } = useSheet();
   const readOnly = myRole === 'accountant';
+  // The open vehicle (or 'new') is a full page of its own; the browser's back button returns to the list.
+  const [view, setView] = useState('');
+  useEffect(() => {
+    const h = e => setView((e.state && e.state.veh) || '');
+    window.addEventListener('popstate', h);
+    return () => window.removeEventListener('popstate', h);
+  }, []);
+  const show = id => { window.history.pushState({ veh: id }, ''); setView(id); window.scrollTo(0, 0); };
+  const back = () => { if (window.history.state && window.history.state.veh) window.history.back(); else setView(''); window.scrollTo(0, 0); };
   const [filter, setFilter] = useState('lot');
   const [search, setSearch] = useState('');
   const today = iso(new Date());
@@ -249,6 +274,9 @@ export default function Vehicles() {
       })),
     'vehicles-' + today + '.csv');
 
+  if (view === 'new' && !readOnly) return <AddVehiclePage onBack={back} />;
+  if (view && view !== 'new' && vehicles.some(x => x.id === view)) return <VehiclePage vehicleId={view} onBack={back} />;
+
   return (
     <section className="tab on light-tab">
       <h1>Vehicles</h1>
@@ -261,7 +289,7 @@ export default function Vehicles() {
       <div className="mini" style={{ marginBottom: 8 }}>Money tied up is what you paid plus what you have spent on the cars still on the lot{sum.avgDays ? ` · they have been here ${sum.avgDays} days on average` : ''}.</div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        {!readOnly && <button className="b" style={{ flex: 1 }} onClick={() => open(() => <AddVehicleSheet />)}>+ Add vehicle</button>}
+        {!readOnly && <button className="b" style={{ flex: 1 }} onClick={() => show('new')}>+ Add vehicle</button>}
         <button className="b g" style={{ flex: 1 }} disabled={!vehicles.length} onClick={exportCsv}>Export CSV</button>
       </div>
 
@@ -283,7 +311,7 @@ export default function Vehicles() {
           const f = vehicleFinancials(v, expenses, today, transactions);
           const tint = paintColour(v.colour) || '#D9DEE3';
           const age = f.sold ? '' : f.daysIn > 60 ? ' old' : f.daysIn > 30 ? ' mid' : '';
-          const go = () => open(() => <VehicleSheet vehicleId={v.id} />);
+          const go = () => show(v.id);
           return (
             <div key={v.id} className="veh-card" role="button" tabIndex={0} onClick={go} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }}>
               <div className="veh-art" style={{ background: tint }}>
