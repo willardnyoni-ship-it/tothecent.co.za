@@ -1,6 +1,6 @@
 // Run with:  node src/lib/vehicles.test.mjs
 import assert from 'node:assert/strict';
-import { vehicleFinancials, lotSummary, vehicleTitle, costsFor } from './vehicles.js';
+import { vehicleFinancials, lotSummary, vehicleTitle, costsFor, paintColour } from './vehicles.js';
 
 const polo = { id: 'v1', make: 'VW', model: 'Polo 1.4', year: 2018, status: 'in_stock', purchase_price: 120000, purchase_date: '2026-09-20', asking_price: 149000 };
 const exp = [
@@ -36,4 +36,5 @@ const sum = lotSummary([polo, other, sold, old], exp, '2026-10-05');
 assert.equal(sum.inStock, 1); assert.equal(sum.reserved, 1); assert.equal(sum.soldThisMonth, 1); assert.equal(sum.profitThisMonth, 20299.5, 'only this month, last month excluded');
 assert.equal(sum.tiedUp, 124700.5 + 307777); assert.equal(sum.avgDays, Math.round((15 + 4) / 2));
 assert.deepEqual(lotSummary([], [], '2026-10-05'), { inStock: 0, reserved: 0, tiedUp: 0, soldThisMonth: 0, profitThisMonth: 0, avgDays: 0 });
+assert.equal(paintColour('Pearl White'), '#F3F4F6'); assert.equal(paintColour('dark blue'), '#8FB4E3'); assert.equal(paintColour(''), null); assert.equal(paintColour('Chameleon'), null);
 console.log('vehicles: all checks passed');

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { useSheet } from '../../components/Sheet.jsx';
 import { R, R2, iso } from '../../lib/format.js';
-import { COST_CATEGORIES, STATUS_LABEL, costsFor, lotSummary, vehicleFinancials, vehicleTitle } from '../../lib/vehicles.js';
+import { COST_CATEGORIES, STATUS_LABEL, costsFor, lotSummary, paintColour, vehicleFinancials, vehicleTitle } from '../../lib/vehicles.js';
 import { useCreateInvoice } from '../CreateInvoiceSheet.jsx';
 
 const csvCell = v => {
@@ -278,26 +278,35 @@ export default function Vehicles() {
       )}
       {vehicles.length > 0 && rows.length === 0 && <div className="mini" style={{ marginTop: 12 }}>Nothing here.</div>}
 
-      <div className="veh-list">
+      <div className="veh-grid">
         {rows.map(v => {
           const f = vehicleFinancials(v, expenses, today);
+          const tint = paintColour(v.colour) || '#D9DEE3';
+          const age = f.sold ? '' : f.daysIn > 60 ? ' old' : f.daysIn > 30 ? ' mid' : '';
+          const go = () => open(() => <VehicleSheet vehicleId={v.id} />);
           return (
-            <button key={v.id} className="card veh-row" onClick={() => open(() => <VehicleSheet vehicleId={v.id} />)}>
-              <div className="veh-top">
-                <b>{vehicleTitle(v)}</b>
+            <div key={v.id} className="veh-card" role="button" tabIndex={0} onClick={go} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }}>
+              <div className="veh-art" style={{ background: tint }}>
+                <svg width="64" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(14,21,18,.55)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 15l1.6-5.2A2 2 0 0 1 8.5 8.5h7a2 2 0 0 1 1.9 1.3L19 15" /><path d="M3 15h18v4H3z" /><path d="M7 19v2M17 19v2" />
+                </svg>
                 <span className={'veh-tag ' + v.status}>{STATUS_LABEL[v.status]}</span>
               </div>
-              <div className="mini">{[v.reg, v.colour, v.mileage_km != null ? Number(v.mileage_km).toLocaleString('en-ZA') + ' km' : null].filter(Boolean).join(' · ') || 'No details yet'}</div>
-              <div className="veh-nums">
-                <span>Bought <b>{R(f.purchase)}</b></span>
-                <span>Spent <b>{R(f.costs)}</b></span>
-                <span>Total in <b>{R(f.totalIn)}</b></span>
-                {f.sold
-                  ? <span>Profit <b className={f.profit < 0 ? 'bd' : 'gd'}>{money(f.profit)}</b></span>
-                  : <span>Asking <b>{v.asking_price ? R(+v.asking_price) : '-'}</b>{f.underwater ? <em className="bd"> below cost</em> : null}</span>}
+              <div className="veh-body">
+                <div className="veh-name">{vehicleTitle(v)}</div>
+                <div className="veh-sub">{[v.reg, v.colour, v.mileage_km != null ? Number(v.mileage_km).toLocaleString('en-ZA') + ' km' : null].filter(Boolean).join(' · ') || 'No details yet'}</div>
+                <div className="veh-big">
+                  <small>{f.sold ? 'Profit' : 'Total in'}</small>
+                  <b className={f.sold ? (f.profit < 0 ? 'bd' : 'gd') : ''}>{f.sold ? money(f.profit) : R(f.totalIn)}</b>
+                </div>
+                <div className="veh-split">
+                  <span><small>Bought</small><b>{R(f.purchase)}</b></span>
+                  <span><small>Spent</small><b>{R(f.costs)}</b></span>
+                  <span><small>{f.sold ? 'Sold for' : 'Asking'}</small><b className={f.underwater ? 'bd' : ''}>{f.sold ? R(+v.sold_price) : v.asking_price ? R(+v.asking_price) : '-'}</b></span>
+                </div>
+                <div className={'veh-foot' + age}>{f.sold ? `Sold ${v.sold_date}` : f.underwater ? 'Priced below cost' : `${f.daysIn} day${f.daysIn === 1 ? '' : 's'} on the lot`}</div>
               </div>
-              <div className="mini">{f.sold ? `Sold ${v.sold_date}` : `${f.daysIn} day${f.daysIn === 1 ? '' : 's'} on the lot`}</div>
-            </button>
+            </div>
           );
         })}
       </div>

@@ -52,3 +52,14 @@ export function lotSummary(vehicles, expenses, today) {
   out.avgDays = n ? Math.round(days / n) : 0;
   return out;
 }
+
+// A paint colour typed by a person ("Pearl white", "dark blue") -> a swatch colour, or null if we can't tell.
+const PAINT = [
+  ['white', '#F3F4F6'], ['silver', '#CBD0D6'], ['grey', '#B8BDC4'], ['gray', '#B8BDC4'], ['black', '#4B5563'], ['red', '#E58C84'], ['maroon', '#B66B6B'],
+  ['orange', '#F0B07A'], ['yellow', '#F2D679'], ['gold', '#E3C46A'], ['green', '#8DC7A0'], ['blue', '#8FB4E3'], ['brown', '#B9987E'], ['beige', '#E4D5BC'], ['purple', '#B7A1D6'],
+];
+export function paintColour(name) {
+  const t = String(name || '').toLowerCase();
+  const hit = PAINT.find(([k]) => t.includes(k));
+  return hit ? hit[1] : null;
+}
