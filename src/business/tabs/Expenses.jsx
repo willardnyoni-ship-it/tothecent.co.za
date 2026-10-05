@@ -117,7 +117,7 @@ function ScanReceipt({ onDone }) {
 
 export default function Expenses() {
   const { syncCfg } = useBudget();
-  const { expenses, transactions, vehicles, updateExpense, myRole, hasFeature } = useBusiness();
+  const { expenses, transactions, vehicles, updateExpense, myRole, hasFeature, monthLocked } = useBusiness();
   const hasCars = hasFeature('vehicles');
   const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('all');
@@ -187,7 +187,7 @@ export default function Expenses() {
             <tr key={e.id}>
               <td>
                 <div style={{ fontWeight: 600 }}>{e.description || e.merchant || '(no description)'}</div>
-                <div className="tag">{e.date} &middot; {e.category || 'Uncategorised'}</div>
+                <div className="tag">{e.date} &middot; {e.category || 'Uncategorised'}{monthLocked(e.date) ? ' · signed off' : ''}</div>
                 {hasCars && (readOnly
                   ? (e.vehicle_id && vehicles.find(v => v.id === e.vehicle_id) && <div className="mini">{carLabel(vehicles.find(v => v.id === e.vehicle_id))}</div>)
                   : (
@@ -199,7 +199,7 @@ export default function Expenses() {
               </td>
               <td className="r">
                 {R2(e.amount)}
-                {!readOnly && (e.status === 'needs_review' || e.status === 'pending_approval') && (
+                {!readOnly && !monthLocked(e.date) && (e.status === 'needs_review' || e.status === 'pending_approval') && (
                   <div style={{ marginTop: 4 }}>
                     <a href="#" onClick={ev => { ev.preventDefault(); approve(e.id); }} style={{ color: 'var(--acc)', marginRight: 10 }}>Approve</a>
                     <a href="#" onClick={ev => { ev.preventDefault(); reject(e.id); }} style={{ color: 'var(--bad)' }}>Reject</a>

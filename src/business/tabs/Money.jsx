@@ -10,7 +10,7 @@ import { useYoco } from '../../lib/yoco.js';
 import { vehicleTitle } from '../../lib/vehicles.js';
 
 function TransactionsView({ filter, setFilter, readOnly }) {
-  const { transactions, vehicles } = useBusiness();
+  const { transactions, vehicles, monthLocked } = useBusiness();
   useYoco({ poll: true }); // new card sales show up here by themselves
   const [openId, setOpenId] = useState(null);
   const shown = useMemo(() => {
@@ -40,7 +40,7 @@ function TransactionsView({ filter, setFilter, readOnly }) {
                 onClick={() => editable && setOpenId(open ? null : t.id)}>
                 <td>
                   <div style={{ fontWeight: 600 }}>{t.description || '(no description)'}</div>
-                  <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.vat_amount > 0 ? ` · VAT ${R2(t.vat_amount)}` : t.vat_amount != null && t.kind !== 'transfer' ? ' · no VAT' : ''}{t.status === 'needs_review' ? ' · needs review' : ''}{t.vehicle_id && vehicles.find(v => v.id === t.vehicle_id) ? ' · ' + vehicleTitle(vehicles.find(v => v.id === t.vehicle_id)) : ''}</div>
+                  <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.vat_amount > 0 ? ` · VAT ${R2(t.vat_amount)}` : t.vat_amount != null && t.kind !== 'transfer' ? ' · no VAT' : ''}{t.status === 'needs_review' ? ' · needs review' : ''}{monthLocked(t.date) ? ' · signed off' : ''}{t.vehicle_id && vehicles.find(v => v.id === t.vehicle_id) ? ' · ' + vehicleTitle(vehicles.find(v => v.id === t.vehicle_id)) : ''}</div>
                 </td>
                 <td className="r">
                   <span className={t.kind === 'income' ? 'ok' : t.kind === 'expense' ? 'bd' : ''}>
@@ -51,7 +51,7 @@ function TransactionsView({ filter, setFilter, readOnly }) {
               </tr>,
               open && (
                 <tr key={t.id + '-ed'}><td colSpan={2} style={{ paddingTop: 0 }}>
-                  <TransactionEditor tx={t} onDone={() => setOpenId(null)} />
+                  <TransactionEditor tx={t} locked={monthLocked(t.date)} onDone={() => setOpenId(null)} />
                 </td></tr>
               ),
             ];

@@ -17,7 +17,7 @@ const INCOME_CATEGORIES = ['Sales', 'Services', 'Deposit', 'Other income'];
 const round2 = n => Math.round(n * 100) / 100;
 
 // A compact editor that opens under a transaction row: category and VAT.
-export default function TransactionEditor({ tx, onDone }) {
+export default function TransactionEditor({ tx, onDone, locked = false }) {
   const { updateTransaction, vehicles, hasFeature } = useBusiness();
   const amount = +tx.amount || 0;
   const isIncome = tx.kind === 'income';
@@ -83,17 +83,18 @@ export default function TransactionEditor({ tx, onDone }) {
           <span>excl. VAT {R2(amount - (vatValue || 0))}</span>
         </div>
       )}
+      {locked && <div className="txed-err">This month is signed off, so this line can't be changed. Re-open the month under Month-end first.</div>}
       {msg && <div className="txed-err">{msg}</div>}
       <div className="txed-act">
         <button type="button" className="lnk" onClick={onDone}>Cancel</button>
         {tx.status === 'needs_review'
           ? (
             <>
-              <button type="button" className="sec" disabled={busy} onClick={() => save(false)}>Save</button>
-              <button type="button" className="pri" disabled={busy} onClick={() => save(true)}>Save &amp; reviewed</button>
+              <button type="button" className="sec" disabled={busy || locked} onClick={() => save(false)}>Save</button>
+              <button type="button" className="pri" disabled={busy || locked} onClick={() => save(true)}>Save &amp; reviewed</button>
             </>
           )
-          : <button type="button" className="pri" disabled={busy} onClick={() => save(false)}>Save</button>}
+          : <button type="button" className="pri" disabled={busy || locked} onClick={() => save(false)}>Save</button>}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export function useBusiness() {
   return ctx;
 }
 
-const EMPTY_TOOLS = { jobs: [], quotes: [], timeEntries: [], mileageTrips: [], vehicles: [], stockItems: [], stockMovements: [], cashUps: [], bookings: [], employees: [], payRuns: [], recipes: [], recipeLines: [] };
+const EMPTY_TOOLS = { jobs: [], quotes: [], timeEntries: [], mileageTrips: [], vehicles: [], monthReviews: [], stockItems: [], stockMovements: [], cashUps: [], bookings: [], employees: [], payRuns: [], recipes: [], recipeLines: [] };
 const EMPTY = { customers: [], invoices: [], transactions: [], expenses: [], members: [], bankAccounts: [], categories: [], recurringInvoices: [], ...EMPTY_TOOLS };
 
 // The tailored-tool tables (see the business_profiles_and_tools migration).
@@ -26,6 +26,7 @@ const TOOL_TABLES = [
   ['timeEntries', 'time_entries', 'order=date.desc'],
   ['mileageTrips', 'mileage_trips', 'order=date.desc'],
   ['vehicles', 'vehicles', 'order=created_at.desc'],
+  ['monthReviews', 'month_reviews', 'order=month.desc'],
   ['stockItems', 'stock_items', 'order=name.asc'],
   ['stockMovements', 'stock_movements', 'order=created_at.desc'],
   ['cashUps', 'cash_ups', 'order=date.desc'],
@@ -409,6 +410,8 @@ export function BusinessProvider({ children }) {
   }, [syncCfg, ensureToken, business, refreshAll]);
 
   const value = {
+    // true when the month a date falls in has been signed off (only owners, admins and accountants can see sign-offs)
+    monthLocked: d => (data.monthReviews || []).some(r => String(r.month).slice(0, 7) === String(d || '').slice(0, 7)),
     business, businesses, switchBusiness, loading, checked, hasBusiness: !!business, ...data,
     createBusiness, updateBusiness, refreshAll,
     addCustomer, updateCustomer, addTransaction, addTransactions, updateTransaction,

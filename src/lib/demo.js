@@ -102,6 +102,34 @@ function sortRows(rows, order) {
 
 const clone = v => JSON.parse(JSON.stringify(v));
 
+// The database's month lock, for the demo (see the month_lock migration for the real rules).
+const LOCK_DATE = { invoices: 'issue_date', pay_runs: 'period' };
+const LOCK_ALLOWED = {
+  business_transactions: ['linked_invoice_id', 'job_id', 'vehicle_id'],
+  expenses: ['receipt_storage_path', 'matched_transaction_id', 'vehicle_id', 'job_id'],
+  invoices: ['paid_amount', 'last_reminded_at', 'due_date', 'notes', 'payment_terms', 'banking_details', 'job_id', 'recurring_invoice_id', 'quote_id', 'share_token'],
+  pay_runs: [],
+};
+function lockedMonthOf(table, row) {
+  if (!(table in LOCK_ALLOWED)) return null;
+  const col = LOCK_DATE[table] || 'date';
+  const m = String(row[col] || '').slice(0, 7);
+  return m && (data().month_reviews || []).some(r => r.business_id === row.business_id && String(r.month).slice(0, 7) === m) ? m : null;
+}
+function lockCheck(table, method, rows, body) {
+  for (const row of rows) {
+    const m = lockedMonthOf(table, row) || (method === 'PATCH' && body ? lockedMonthOf(table, { ...row, ...body }) : null);
+    if (!m) continue;
+    if (method === 'PATCH') {
+      const bad = Object.keys(body || {}).some(k => !LOCK_ALLOWED[table].includes(k) && k !== 'updated_at' && body[k] !== row[k]
+        && !(table === 'invoices' && k === 'status' && !['cancelled', 'draft'].includes(body[k]) && !['cancelled', 'draft'].includes(row[k])));
+      if (!bad) continue;
+    }
+    const label = new Date(m + '-01T12:00:00').toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+    throw new Error(`MONTH_LOCKED: ${label} is signed off. Re-open it under Month-end to add or change entries dated in it.`);
+  }
+}
+
 export async function demoRequest(path, opts = {}) {
   const [pathname, query = ''] = path.split('?');
   const table = pathname.replace(/^\//, '');
@@ -123,16 +151,19 @@ export async function demoRequest(path, opts = {}) {
     return out;
   }
   if (method === 'POST') {
+    lockCheck(table, 'POST', Array.isArray(body) ? body : [body], null);
     const made = (Array.isArray(body) ? body : [body]).map(r => ({ id: uuid(), created_at: new Date().toISOString(), ...(table === 'invoices' ? { share_token: uuid(), paid_amount: 0, status: 'draft' } : {}), ...r }));
     made.forEach(r => rows.push(r));
     return minimal ? null : clone(made);
   }
   if (method === 'PATCH') {
     const hit = rows.filter(where);
+    lockCheck(table, 'PATCH', hit, body);
     hit.forEach(r => Object.assign(r, body));
     return minimal ? null : clone(hit);
   }
   if (method === 'DELETE') {
+    lockCheck(table, 'DELETE', rows.filter(where), null);
     const hit = new Set(rows.filter(where));
     data()[table] = rows.filter(r => !hit.has(r));
     if (table === 'invoices') data().invoice_items = data().invoice_items.filter(it => data().invoices.some(i => i.id === it.invoice_id));

@@ -47,6 +47,13 @@ export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
   const { syncCfg } = useBudget();
   const { loading, checked, hasBusiness, claimInvites, refreshAll, features, businesses, business, myRole } = useBusiness();
   const { open, close } = useSheet();
+  // A change into a signed-off month is refused; say so, wherever it was tried.
+  const [lockMsg, setLockMsg] = useState('');
+  useEffect(() => {
+    const h = e => setLockMsg(String(e.detail || ''));
+    window.addEventListener('ttc-lock', h);
+    return () => window.removeEventListener('ttc-lock', h);
+  }, []);
   const [tab, goHash] = useHashTab(Object.keys(TABS), 'home');
   // Which section Money should open on - set when sign-up's "Upload Bank
   // Statement" button sends someone straight there.
@@ -97,6 +104,7 @@ export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
     <>
       <BusinessNav tab={tab} go={go} onSwitchMode={onSwitchMode} onOpenSettings={openSettings} onOpenAdmin={onOpenAdmin} />
       <div className="wrap">
+        {lockMsg && <div className="lock-banner" role="alert"><span><b>Locked.</b> {lockMsg}</span><button onClick={() => setLockMsg('')}>Dismiss</button></div>}
         {isDemo() && <div className="demo-bar"><b>Preview</b> Example data only - try anything, nothing is saved and nobody is notified.</div>}
         <Active key={business ? business.id : 'none'} go={go} onOpenSettings={openSettings} startSeg={tab === 'money' ? moneyStart : undefined} />
       </div>

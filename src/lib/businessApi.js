@@ -4,8 +4,20 @@ import { isDemo, demoRequest } from './demo.js';
 // server-backed (Supabase), unlike the personal side's localStorage -
 // team members, customers and invoices need to be visible to every
 // member of the business, not just one browser.
+// A write into a signed-off month is refused by the database with a message starting MONTH_LOCKED.
+// Show it to the person plainly (BusinessApp listens for this event) and pass a clean error on.
+function lockError(message) {
+  const m = String(message || '');
+  if (!m.startsWith('MONTH_LOCKED:')) return null;
+  const text = m.replace(/^MONTH_LOCKED:\s*/, '');
+  try { window.dispatchEvent(new CustomEvent('ttc-lock', { detail: text })); } catch { /* not in a browser */ }
+  return new Error(text);
+}
+
 async function pg(syncCfg, token, path, opts = {}) {
-  if (isDemo()) return demoRequest(path, opts);
+  if (isDemo()) {
+    try { return await demoRequest(path, opts); } catch (e) { throw lockError(e.message) || e; }
+  }
   const url = syncCfg.url.replace(/\/+$/, '') + '/rest/v1' + path;
   const r = await fetch(url, {
     ...opts,
@@ -19,7 +31,7 @@ async function pg(syncCfg, token, path, opts = {}) {
   });
   if (!r.ok) {
     const body = await r.json().catch(() => ({}));
-    throw new Error(body.message || body.error_description || `Request failed (${r.status})`);
+    throw lockError(body.message) || new Error(body.message || body.error_description || `Request failed (${r.status})`);
   }
   if (r.status === 204) return null;
   return r.json();

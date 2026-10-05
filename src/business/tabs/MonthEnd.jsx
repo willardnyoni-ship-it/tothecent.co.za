@@ -13,7 +13,8 @@ const TAB_LABEL = { money: 'Money', expenses: 'Expenses', invoices: 'Invoices', 
 // What is left to do before a month can be signed off for this business, and the sign-off itself.
 export default function MonthEnd({ go }) {
   const { syncCfg, ensureToken } = useBudget();
-  const { business, transactions, expenses, invoices, customers, employees, payRuns, features } = useBusiness();
+  const { business, transactions, expenses, invoices, customers, employees, payRuns, features, refreshAll } = useBusiness();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const today = iso(new Date());
   const thisMonth = monthKey(today);
   const [month, setMonth] = useState(shiftMonth(thisMonth, -1));
@@ -30,7 +31,7 @@ export default function MonthEnd({ go }) {
     } catch { setReviews([]); }
   }, [syncCfg, ensureToken, business.id]);
   useEffect(() => { loadReviews(); }, [loadReviews]);
-  useEffect(() => { setNote(''); setAnyway(false); setMsg(null); }, [month]);
+  useEffect(() => { setNote(''); setAnyway(false); setMsg(null); setConfirmOpen(false); }, [month]);
 
   const report = useMemo(() => monthEndReport({ month, today, features, transactions, expenses, invoices, customers, employees, payRuns }),
     [month, today, features, transactions, expenses, invoices, customers, employees, payRuns]);
@@ -48,7 +49,7 @@ export default function MonthEnd({ go }) {
     try {
       const token = await ensureToken();
       await businessApi.insert(syncCfg, token, 'month_reviews', [{ business_id: business.id, month: month + '-01', reviewed_by: syncCfg.userId, reviewed_by_email: syncCfg.email, note: note.trim() || null }]);
-      await loadReviews(); setMsg({ t: `${monthLabel(month)} is marked as reviewed.` });
+      await loadReviews(); await refreshAll(); setMsg({ t: `${monthLabel(month)} is signed off and locked.` });
     } catch (e) { setMsg({ e: true, t: e.message }); } finally { setBusy(false); }
   }
   async function reopen() {
@@ -56,7 +57,7 @@ export default function MonthEnd({ go }) {
     try {
       const token = await ensureToken();
       await businessApi.remove(syncCfg, token, 'month_reviews', `id=eq.${review.id}`);
-      await loadReviews();
+      await loadReviews(); await refreshAll(); setConfirmOpen(false);
     } catch (e) { setMsg({ e: true, t: e.message }); } finally { setBusy(false); }
   }
   function exportCsv() {
@@ -79,7 +80,7 @@ export default function MonthEnd({ go }) {
 
       <div className={'me-banner ' + (review ? 'done' : report.ready ? 'ready' : 'todo')}>
         {review
-          ? <><b>Reviewed</b> by {review.reviewed_by_email} on {new Date(review.reviewed_at || review.created_at || Date.now()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}{review.note ? ` - "${review.note}"` : ''}</>
+          ? <><b>Signed off and locked</b> by {review.reviewed_by_email} on {new Date(review.reviewed_at || review.created_at || Date.now()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}{review.note ? ` - "${review.note}"` : ''}</>
           : report.ready
             ? <><b>Ready for review.</b> Nothing blocking{report.warn ? `, ${report.warn} thing${report.warn === 1 ? '' : 's'} worth a look` : ''}.</>
             : <><b>{report.todo} thing{report.todo === 1 ? '' : 's'} to fix first.</b>{report.warn ? ` Plus ${report.warn} worth a look.` : ''}</>}
@@ -116,18 +117,20 @@ export default function MonthEnd({ go }) {
       <div className="card" style={{ marginTop: 12 }}>
         {review ? (
           <>
-            <b>This month is signed off.</b>
-            <div className="mini" style={{ margin: '4px 0 10px' }}>If something changes, re-open it and review again. Both actions are recorded under Activity.</div>
-            <button className="b g" disabled={busy} onClick={reopen}>Re-open this month</button>
+            <b>This month is locked.</b>
+            <div className="mini" style={{ margin: '4px 0 10px' }}>Bank lines, expenses, invoices and payslips dated in {monthLabel(month)} can't be added, changed or deleted. You can still link a bank line to an invoice, attach a receipt, and record a payment on an old invoice. Re-open the month to change anything else. Both actions are recorded under Activity.</div>
+            {confirmOpen
+              ? <div className="infobox"><b>Re-open {monthLabel(month)}?</b> Anyone with access will be able to change its entries again.<div style={{ marginTop: 8, display: 'flex', gap: 8 }}><button className="b" disabled={busy} onClick={reopen}>Yes, re-open</button><button className="b g" onClick={() => setConfirmOpen(false)}>Keep it locked</button></div></div>
+              : <button className="b g" disabled={busy} onClick={() => setConfirmOpen(true)}>Re-open this month</button>}
           </>
         ) : (
           <>
             <b>Sign off {monthLabel(month)}</b>
-            <div className="mini" style={{ margin: '4px 0 8px' }}>Records that you reviewed this month's books, with your name and the date.</div>
+            <div className="mini" style={{ margin: '4px 0 8px' }}>Records that you reviewed this month's books, with your name and the date, and locks them: nothing dated in this month can be added, changed or deleted until you re-open it.{report.complete ? '' : ' A month can only be signed off once it has ended.'}</div>
             <input placeholder="Note (optional), e.g. waiting on two slips" value={note} onChange={e => setNote(e.target.value)} maxLength={200} />
             {report.todo > 0 && <label className="chk" style={{ marginTop: 10 }}><input type="checkbox" checked={anyway} onChange={e => setAnyway(e.target.checked)} /><span>{report.todo === 1 ? 'There is 1 thing' : `There are ${report.todo} things`} still to fix. Sign off anyway.</span></label>}
             <div style={{ height: 10 }} />
-            <button className="b" disabled={busy || (report.todo > 0 && !anyway)} onClick={signOff}>Mark as reviewed</button>
+            <button className="b" disabled={busy || !report.complete || (report.todo > 0 && !anyway)} onClick={signOff}>Sign off and lock</button>
           </>
         )}
         {msg && <div className={'msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
