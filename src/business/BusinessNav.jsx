@@ -13,6 +13,7 @@ export const BIZ_TABS = [
   { t: 'jobs', label: 'Jobs', feature: 'jobs' },
   { t: 'time', label: 'Time', feature: 'time' },
   { t: 'expenses', label: 'Expenses' },
+  { t: 'vehicles', label: 'Vehicles', feature: 'vehicles' },
   { t: 'stock', label: 'Stock', feature: 'stock' },
   { t: 'reports', label: 'Reports' },
   { t: 'team', label: 'Team' },

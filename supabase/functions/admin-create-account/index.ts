@@ -17,8 +17,8 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SITE = "https://tothecent.co.za/";
-const KNOWN_FEATURES = new Set(["quotes", "reminders", "time", "taxSavings", "jobs", "mileage", "stock", "cashup", "bookings", "payroll", "vat"]);
-const KNOWN_PROFILES = new Set(["freelancer", "trades", "retail", "food", "appointments", "general"]);
+const KNOWN_FEATURES = new Set(["quotes", "reminders", "time", "taxSavings", "jobs", "mileage", "stock", "cashup", "bookings", "payroll", "vat", "vehicles"]);
+const KNOWN_PROFILES = new Set(["freelancer", "trades", "retail", "food", "appointments", "motor", "general"]);
 const BUSINESS_TYPES = new Set(["Sole Proprietor", "Private Company", "Partnership", "Other"]);
 
 const CORS = {

@@ -18,6 +18,7 @@ const PEOPLE = {
   trades: { owner: 'Sipho Mokoena', biz: 'Mokoena Plumbing', type: 'Sole Proprietor' },
   retail: { owner: 'Zanele Dlamini', biz: 'Zanele\'s Corner Shop', type: 'Sole Proprietor' },
   food: { owner: 'Ayesha Khan', biz: 'The Corner Café', type: 'Private Company' },
+  motor: { owner: 'Pieter Botha', biz: 'Botha Motors', type: 'Private Company' },
   appointments: { owner: 'Nomsa Zulu', biz: 'Nomsa\'s Hair Studio', type: 'Sole Proprietor' },
   general: { owner: 'Thabo Nkosi', biz: 'Nkosi Trading', type: 'Private Company' },
 };
@@ -30,7 +31,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
   const db = {
     businesses: [], customers: [], invoices: [], invoice_items: [], business_transactions: [], expenses: [], business_members: [],
     bank_accounts: [], business_categories: [], recurring_invoices: [],
-    jobs: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
+    jobs: [], vehicles: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
   };
   const created = () => new Date().toISOString();
 
@@ -197,6 +198,31 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     invoice({ cust: bright, issued: day(-6), due: day(8), status: 'sent', items: [['Monthly coffee service', 1, 3400]] });
     expense(day(-5), 4300, 'Stock purchases', 'Fresh produce market'); expense(day(-8), 2250, 'Stock purchases', 'Coffee roaster'); expense(day(-12), 12500, 'Rent', 'Café rent'); expense(day(-16), 1890, 'Electricity', 'City Power');
     tx(day(-2), 'POS Purchase Yoco Terminal Fee', 289, 'expense', 'Bank fees'); tx(day(-3), 'Payshap Credit Dlamini & Co', 5000, 'income', null, { status: 'needs_review' });
+  } else if (key === 'motor') {
+    const buyer1 = customer('Sizwe Ndlovu', 'sizwe@example.co.za', '082 555 0142');
+    const buyer2 = customer('Annelie Pretorius', 'annelie@example.co.za', '083 555 0188');
+    const veh = (v, costs = []) => {
+      const row = { id: id('veh'), business_id: biz, make: v.make, model: v.model, year: v.year, reg: v.reg, vin: null, colour: v.colour, mileage_km: v.km, purchase_price: v.paid,
+        purchase_date: day(-v.ago), bought_from: v.from, asking_price: v.ask || null, status: v.sold ? 'sold' : (v.status || 'in_stock'), sold_price: v.sold || null, sold_date: v.sold ? day(-v.soldAgo) : null,
+        sold_to_customer_id: v.buyer ? v.buyer.id : null, sale_invoice_id: null, notes: null, created_by: DEMO_USER_ID, created_at: created() };
+      db.vehicles.push(row);
+      costs.forEach(([ago, amt, cat, what]) => expense(day(-ago), amt, cat, what, { vehicle_id: row.id }));
+      return row;
+    };
+    veh({ make: 'VW', model: 'Polo 1.4 Trendline', year: 2018, reg: 'CA 482-193', colour: 'White', km: 86000, paid: 128000, ago: 21, from: 'Trade-in', ask: 154900 },
+      [[18, 2400, 'Repairs & labour', 'Front brake pads and discs - Midas'], [15, 1650, 'Tyres', '2 new rear tyres'], [12, 850, 'Valet & detailing', 'Full valet and polish'], [9, 380, 'Licence & roadworthy', 'Roadworthy certificate']]);
+    veh({ make: 'Toyota', model: 'Hilux 2.4 GD-6', year: 2020, reg: 'CY 771-054', colour: 'Silver', km: 74000, paid: 312000, ago: 9, from: 'Auction', ask: 369900, status: 'reserved' },
+      [[7, 6200, 'Panel & paint', 'Rear bumper respray'], [5, 1900, 'Repairs & labour', 'Service and clutch adjust']]);
+    veh({ make: 'Ford', model: 'Figo 1.5', year: 2017, reg: 'CJ 330-612', colour: 'Red', km: 112000, paid: 79000, ago: 46, from: 'Private seller', ask: 104900 },
+      [[40, 3100, 'Repairs & labour', 'Gearbox mounting'], [32, 4800, 'Parts', 'Aircon compressor'], [30, 650, 'Valet & detailing', 'Valet']]);
+    veh({ make: 'Hyundai', model: 'i20 1.2', year: 2019, reg: 'CA 905-377', colour: 'Blue', km: 58000, paid: 118000, ago: 38, from: 'Trade-in', ask: 139900, sold: 136000, soldAgo: 3, buyer: buyer1 },
+      [[34, 1200, 'Repairs & labour', 'Service'], [30, 700, 'Valet & detailing', 'Valet'], [28, 1750, 'Tyres', 'Two front tyres']]);
+    veh({ make: 'Renault', model: 'Kwid 1.0', year: 2021, reg: 'CY 118-940', colour: 'Orange', km: 31000, paid: 109000, ago: 55, from: 'Auction', ask: 129900, sold: 121000, soldAgo: 20, buyer: buyer2 },
+      [[50, 5400, 'Panel & paint', 'Door and quarter panel repair'], [48, 900, 'Valet & detailing', 'Valet'], [45, 1500, 'Advertising', 'AutoTrader listing']]);
+    invoice({ cust: buyer1, issued: day(-3), due: day(11), status: 'paid', items: [['2019 Hyundai i20 1.2 - reg CA 905-377', 1, 136000]] });
+    expense(day(-6), 1850, 'Fuel', 'Engen - fuel and test drives'); expense(day(-10), 7500, 'Rent', 'Showroom rent');
+    tx(day(-2), 'POS Purchase Autozone', 640, 'expense', null, { status: 'needs_review' });
+    tx(day(-3), 'FNB App Payment From S Ndlovu', 136000, 'income', null, { status: 'needs_review' });
   } else if (key === 'appointments') {
     const cl = ['Thandi M.', 'Lerato S.', 'Busisiwe K.', 'Naledi P.', 'Zinhle D.', 'Ayanda T.', 'Palesa N.', 'Refilwe G.'].map((nm, i) => customer(nm, null, '08' + (2 + (i % 4)) + ' 555 0' + (100 + i * 11)));
     const hair = stock('Braiding hair (pack)', 'pack', 6, 10, 38, 75, 'Hair extensions'); const relaxer = stock('Relaxer kit', 'each', 5, 4, 82, 160, 'Hair products'); const shampoo = stock('Shampoo 1L', 'each', 3, 4, 95, 0, 'Hair products'); const polish = stock('Nail polish', 'each', 22, 8, 28, 55, 'Nail products'); stock('Edge control 250ml', 'each', 10, 6, 50, 95, 'Retail products');

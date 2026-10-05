@@ -17,10 +17,11 @@ import Jobs from './tabs/Jobs.jsx';
 import Time from './tabs/Time.jsx';
 import Stock from './tabs/Stock.jsx';
 import Bookings from './tabs/Bookings.jsx';
+import Vehicles from './tabs/Vehicles.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
 import { isDemo } from '../lib/demo.js';
 
-const TABS = { home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, stock: Stock, reports: Reports, team: Team };
+const TABS = { home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
 
 const TOUR_STEPS = [
   { tab: 'home', title: 'Home', body: 'Cash available, income vs expenses, and anything that needs your attention - overdue invoices, missing receipts, transactions to review.' },
@@ -30,6 +31,7 @@ const TOUR_STEPS = [
   { tab: 'jobs', title: 'Jobs', body: 'Everything for one job in one place - the quote, invoices, materials and hours - so you can see what it really made.' },
   { tab: 'time', title: 'Time', body: 'Start a timer or log hours, then turn unbilled time into an invoice.' },
   { tab: 'expenses', title: 'Expenses', body: 'Scan a receipt and OCR fills in the amount and category for you, ready for approval.' },
+  { tab: 'vehicles', title: 'Vehicles', body: 'Each car from purchase to sale: what you paid, everything you spent on it, and the profit when it sells.' },
   { tab: 'stock', title: 'Stock', body: 'What you have on the shelf, what it is worth, and what is running low.' },
   { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
   { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },

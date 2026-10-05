@@ -11,6 +11,7 @@ export const FEATURES = {
   taxSavings: { label: 'Tax set-aside', desc: 'See how much of your profit to put away for SARS each month.' },
   jobs: { label: 'Jobs', desc: 'Group quotes, invoices, costs and hours per job to see what each job really made.' },
   mileage: { label: 'Mileage log', desc: 'Record business trips for your SARS travel claim.' },
+  vehicles: { label: 'Vehicles', desc: 'Track each car from purchase to sale: what you paid, everything you spent on it, and what it made.' },
   stock: { label: 'Stock', desc: 'Know what you have, what it cost, and when to reorder.' },
   cashup: { label: 'Daily cash-up', desc: 'Close the till each day: cash, card and tips, and whether the drawer balances.' },
   bookings: { label: 'Bookings', desc: 'Appointments, deposits, no-shows and earnings per staff member.' },
@@ -38,6 +39,11 @@ export const PROFILES = [
     key: 'food', icon: '🍲', label: 'Food & hospitality',
     examples: 'Café, caterer, food truck, takeaway',
     features: ['stock', 'cashup', 'quotes', 'reminders'],
+  },
+  {
+    key: 'motor', icon: '🚗', label: 'Motor trade',
+    examples: 'Car dealer, bakkie and bike sales, vehicle importer',
+    features: ['vehicles', 'quotes', 'reminders'],
   },
   {
     key: 'appointments', icon: '✂️', label: 'Service by appointment',
