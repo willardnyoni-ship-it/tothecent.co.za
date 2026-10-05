@@ -1,6 +1,7 @@
 // Motor trade maths: what a vehicle has cost so far, and what it made.
-// A cost on a vehicle is an expense with vehicle_id set to it. Rejected
-// expenses don't count. Amounts are as entered (VAT is not separated here).
+// A cost on a vehicle is an expense, or a bank transaction (money out), with
+// vehicle_id set to it. Rejected expenses don't count, and an expense that
+// was matched to a bank line tagged to the same car is counted once. Amounts are as entered (VAT is not separated here).
 
 export const COST_CATEGORIES = ['Parts', 'Repairs & labour', 'Panel & paint', 'Tyres', 'Valet & detailing', 'Licence & roadworthy', 'Transport & towing', 'Advertising', 'Other'];
 export const STATUS_LABEL = { in_stock: 'In stock', reserved: 'Reserved', sold: 'Sold' };
@@ -12,11 +13,18 @@ const day = s => new Date(String(s).slice(0, 10) + 'T12:00:00').getTime();
 
 export const vehicleTitle = v => [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle';
 
-export const costsFor = (v, expenses) => (expenses || []).filter(e => e.vehicle_id === v.id && e.status !== 'rejected');
+export function costsFor(v, expenses, transactions = []) {
+  const bank = (transactions || []).filter(t => t.vehicle_id === v.id && t.kind === 'expense');
+  const bankIds = new Set(bank.map(t => t.id));
+  const exp = (expenses || []).filter(e => e.vehicle_id === v.id && e.status !== 'rejected' && !(e.matched_transaction_id && bankIds.has(e.matched_transaction_id)))
+    .map(e => ({ ...e, source: 'expense' }));
+  const tx = bank.map(t => ({ id: t.id, date: t.date, amount: t.amount, description: t.description, category: t.category, source: 'bank' }));
+  return [...exp, ...tx];
+}
 
 // today: 'YYYY-MM-DD' (South African date), passed in so this stays testable.
-export function vehicleFinancials(v, expenses, today) {
-  const list = costsFor(v, expenses);
+export function vehicleFinancials(v, expenses, today, transactions = []) {
+  const list = costsFor(v, expenses, transactions);
   const costs = r2(list.reduce((a, e) => a + num(e.amount), 0));
   const purchase = num(v.purchase_price);
   const totalIn = r2(purchase + costs);
@@ -35,12 +43,12 @@ export function vehicleFinancials(v, expenses, today) {
 }
 
 // Numbers for the top of the Vehicles screen.
-export function lotSummary(vehicles, expenses, today) {
+export function lotSummary(vehicles, expenses, today, transactions = []) {
   const month = today.slice(0, 7);
   const out = { inStock: 0, reserved: 0, tiedUp: 0, soldThisMonth: 0, profitThisMonth: 0, avgDays: 0 };
   let days = 0, n = 0;
   vehicles.forEach(v => {
-    const f = vehicleFinancials(v, expenses, today);
+    const f = vehicleFinancials(v, expenses, today, transactions);
     if (v.status === 'sold') {
       if (String(v.sold_date || '').startsWith(month)) { out.soldThisMonth++; out.profitThisMonth = r2(out.profitThisMonth + f.profit); }
     } else {

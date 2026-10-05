@@ -54,7 +54,7 @@ function VehicleFields({ f, setF }) {
 
 function VehicleSheet({ vehicleId }) {
   const { close } = useSheet();
-  const { vehicles, expenses, customers, addExpense, removeRow, updateRow, myRole } = useBusiness();
+  const { vehicles, expenses, transactions, customers, addExpense, removeRow, updateRow, updateTransaction, myRole } = useBusiness();
   const createInvoice = useCreateInvoice();
   const readOnly = myRole === 'accountant';
   const v = vehicles.find(x => x.id === vehicleId);
@@ -65,7 +65,7 @@ function VehicleSheet({ vehicleId }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   if (!v) return null;
-  const f = vehicleFinancials(v, expenses, iso(new Date()));
+  const f = vehicleFinancials(v, expenses, iso(new Date()), transactions);
   const customer = customers.find(c => c.id === v.sold_to_customer_id);
 
   async function run(fn, ok) {
@@ -121,10 +121,10 @@ function VehicleSheet({ vehicleId }) {
         {f.list.length === 0 && <div className="mini" style={{ marginTop: 8 }}>Nothing yet. Add parts, repairs, valet and anything else you spend before selling.</div>}
         {f.list.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(e => (
           <div key={e.id} className="row veh-cost">
-            <div><b>{e.description || e.category}</b><div className="mini">{e.date} · {e.category}</div></div>
+            <div><b>{e.description || e.category}</b><div className="mini">{e.date} · {e.category || 'Uncategorised'}{e.source === 'bank' ? ' · from your bank statement' : ''}</div></div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <span className="mono">{R2(+e.amount)}</span>
-              {!readOnly && <button className="b g sm" aria-label="Remove this cost" disabled={busy} onClick={() => run(() => removeRow('expenses', e.id))}>×</button>}
+              {!readOnly && <button className="b g sm" aria-label={e.source === 'bank' ? 'Take this payment off the car' : 'Remove this cost'} title={e.source === 'bank' ? 'Take this payment off the car' : 'Remove this cost'} disabled={busy} onClick={() => run(() => (e.source === 'bank' ? updateTransaction(e.id, { vehicle_id: null }) : removeRow('expenses', e.id)))}>×</button>}
             </div>
           </div>
         ))}
@@ -228,13 +228,13 @@ function AddVehicleSheet() {
 const FILTERS = [['lot', 'On the lot'], ['sold', 'Sold'], ['all', 'All']];
 
 export default function Vehicles() {
-  const { vehicles, expenses, myRole } = useBusiness();
+  const { vehicles, expenses, transactions, myRole } = useBusiness();
   const { open } = useSheet();
   const readOnly = myRole === 'accountant';
   const [filter, setFilter] = useState('lot');
   const [search, setSearch] = useState('');
   const today = iso(new Date());
-  const sum = useMemo(() => lotSummary(vehicles, expenses, today), [vehicles, expenses, today]);
+  const sum = useMemo(() => lotSummary(vehicles, expenses, today, transactions), [vehicles, expenses, today, transactions]);
 
   const rows = vehicles
     .filter(v => (filter === 'all' || (filter === 'sold' ? v.status === 'sold' : v.status !== 'sold'))
@@ -244,7 +244,7 @@ export default function Vehicles() {
   const exportCsv = () => downloadCsv(
     [['Vehicle', 'Reg', 'VIN', 'Status', 'Date bought', 'Bought for', 'Spent since', 'Total in', 'Asking price', 'Sold for', 'Date sold', 'Profit', 'Days']].concat(
       vehicles.map(v => {
-        const f = vehicleFinancials(v, expenses, today);
+        const f = vehicleFinancials(v, expenses, today, transactions);
         return [vehicleTitle(v), v.reg || '', v.vin || '', STATUS_LABEL[v.status], v.purchase_date || '', f.purchase.toFixed(2), f.costs.toFixed(2), f.totalIn.toFixed(2), v.asking_price ?? '', v.sold_price ?? '', v.sold_date || '', f.profit == null ? '' : f.profit.toFixed(2), f.daysIn];
       })),
     'vehicles-' + today + '.csv');
@@ -280,7 +280,7 @@ export default function Vehicles() {
 
       <div className="veh-grid">
         {rows.map(v => {
-          const f = vehicleFinancials(v, expenses, today);
+          const f = vehicleFinancials(v, expenses, today, transactions);
           const tint = paintColour(v.colour) || '#D9DEE3';
           const age = f.sold ? '' : f.daysIn > 60 ? ' old' : f.daysIn > 30 ? ' mid' : '';
           const go = () => open(() => <VehicleSheet vehicleId={v.id} />);

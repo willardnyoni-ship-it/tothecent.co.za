@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useBusiness } from '../store/BusinessStore.jsx';
 import { R2, vatOf } from '../lib/format.js';
 import { RULES } from '../lib/categorize.js';
+import { vehicleTitle } from '../lib/vehicles.js';
 
 // Business categories offered when reviewing a bank transaction: the ones
 // the statement reader already assigns, plus the usual business ones.
@@ -17,13 +18,15 @@ const round2 = n => Math.round(n * 100) / 100;
 
 // A compact editor that opens under a transaction row: category and VAT.
 export default function TransactionEditor({ tx, onDone }) {
-  const { updateTransaction } = useBusiness();
+  const { updateTransaction, vehicles, hasFeature } = useBusiness();
   const amount = +tx.amount || 0;
   const isIncome = tx.kind === 'income';
   const [category, setCategory] = useState(tx.category || '');
   // 'yes' | 'no' | '' (not decided yet)
   const [vat, setVat] = useState(tx.vat_amount == null ? '' : +tx.vat_amount > 0 ? 'yes' : 'no');
   const [vatText, setVatText] = useState(+tx.vat_amount > 0 ? String(tx.vat_amount) : '');
+  const [vehicleId, setVehicleId] = useState(tx.vehicle_id || '');
+  const showVehicles = hasFeature('vehicles') && !isIncome && vehicles.some(v => v.status !== 'sold' || v.id === tx.vehicle_id);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -42,6 +45,7 @@ export default function TransactionEditor({ tx, onDone }) {
     setBusy(true); setMsg('');
     try {
       const patch = { category: category || null, vat_amount: vatValue };
+      if (showVehicles || tx.vehicle_id) patch.vehicle_id = vehicleId || null;
       if (markReviewed) patch.status = 'reviewed';
       await updateTransaction(tx.id, patch);
       onDone();
@@ -65,6 +69,14 @@ export default function TransactionEditor({ tx, onDone }) {
           </div>
         </div>
       </div>
+      {showVehicles && (
+        <label style={{ display: 'block', marginTop: 8 }}>Vehicle <span className="mini">(optional, counts toward that car's costs)</span>
+          <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}>
+            <option value="">Not for a specific vehicle</option>
+            {vehicles.filter(v => v.status !== 'sold' || v.id === tx.vehicle_id).map(v => <option key={v.id} value={v.id}>{vehicleTitle(v)}{v.reg ? ' · ' + v.reg : ''}</option>)}
+          </select>
+        </label>
+      )}
       {vat === 'yes' && (
         <div className="txed-note">
           VAT R <input type="number" inputMode="decimal" step="0.01" value={vatText} onChange={e => setVatText(e.target.value)} aria-label="VAT amount" />

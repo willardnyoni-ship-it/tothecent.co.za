@@ -7,9 +7,10 @@ import { parseCsv } from '../../lib/parseCsv.js';
 import { flowKind } from '../../lib/categorize.js';
 import TransactionEditor from '../TransactionEditor.jsx';
 import { useYoco } from '../../lib/yoco.js';
+import { vehicleTitle } from '../../lib/vehicles.js';
 
 function TransactionsView({ filter, setFilter, readOnly }) {
-  const { transactions } = useBusiness();
+  const { transactions, vehicles } = useBusiness();
   useYoco({ poll: true }); // new card sales show up here by themselves
   const [openId, setOpenId] = useState(null);
   const shown = useMemo(() => {
@@ -39,7 +40,7 @@ function TransactionsView({ filter, setFilter, readOnly }) {
                 onClick={() => editable && setOpenId(open ? null : t.id)}>
                 <td>
                   <div style={{ fontWeight: 600 }}>{t.description || '(no description)'}</div>
-                  <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.vat_amount > 0 ? ` · VAT ${R2(t.vat_amount)}` : t.vat_amount != null && t.kind !== 'transfer' ? ' · no VAT' : ''}{t.status === 'needs_review' ? ' · needs review' : ''}</div>
+                  <div className="tag">{t.date} &middot; {t.category || 'Uncategorised'}{t.vat_amount > 0 ? ` · VAT ${R2(t.vat_amount)}` : t.vat_amount != null && t.kind !== 'transfer' ? ' · no VAT' : ''}{t.status === 'needs_review' ? ' · needs review' : ''}{t.vehicle_id && vehicles.find(v => v.id === t.vehicle_id) ? ' · ' + vehicleTitle(vehicles.find(v => v.id === t.vehicle_id)) : ''}</div>
                 </td>
                 <td className="r">
                   <span className={t.kind === 'income' ? 'ok' : t.kind === 'expense' ? 'bd' : ''}>

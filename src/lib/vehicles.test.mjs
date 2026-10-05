@@ -37,4 +37,16 @@ assert.equal(sum.inStock, 1); assert.equal(sum.reserved, 1); assert.equal(sum.so
 assert.equal(sum.tiedUp, 124700.5 + 307777); assert.equal(sum.avgDays, Math.round((15 + 4) / 2));
 assert.deepEqual(lotSummary([], [], '2026-10-05'), { inStock: 0, reserved: 0, tiedUp: 0, soldThisMonth: 0, profitThisMonth: 0, avgDays: 0 });
 assert.equal(paintColour('Pearl White'), '#F3F4F6'); assert.equal(paintColour('dark blue'), '#8FB4E3'); assert.equal(paintColour(''), null); assert.equal(paintColour('Chameleon'), null);
+// bank transactions tagged to a car count too, and a matched expense is not counted twice
+const bank = [
+  { id: 't1', vehicle_id: 'v1', kind: 'expense', amount: 2000, date: '2026-10-01', description: 'FNB Panel Beaters', category: 'Panel & paint' },
+  { id: 't2', vehicle_id: 'v1', kind: 'income', amount: 9999 },
+  { id: 't3', vehicle_id: 'v2', kind: 'expense', amount: 555 },
+];
+assert.equal(vehicleFinancials(polo, exp, '2026-10-05', bank).costs, 4700.5 + 2000);
+const matched = [...exp, { id: 'e6', vehicle_id: 'v1', amount: 2000, status: 'approved', matched_transaction_id: 't1' }];
+assert.equal(vehicleFinancials(polo, matched, '2026-10-05', bank).costs, 4700.5 + 2000, 'expense and its bank line count once');
+const matchedUntagged = [...exp, { id: 'e7', vehicle_id: 'v1', amount: 700, status: 'approved', matched_transaction_id: 't3' }];
+assert.equal(vehicleFinancials(polo, matchedUntagged, '2026-10-05', bank).costs, 4700.5 + 2000 + 700, 'matched to a bank line for another car still counts here');
+assert.deepEqual(costsFor(polo, [], bank).map(c => c.source), ['bank']);
 console.log('vehicles: all checks passed');
