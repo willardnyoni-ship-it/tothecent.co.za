@@ -229,6 +229,18 @@ const STORIES = {
     totals: [['Sales incl. VAT', 'R7 950'], ['VAT included (15%)', 'R1 037'], ['Sales excl. VAT', 'R6 913']],
     result: ['Every day', 'balanced, recorded and ready for her accountant'],
   },
+  motor: {
+    who: ['PB', 'Pieter B.', 'Car dealer · Bloemfontein'],
+    title: 'Selling a 2018 VW Polo',
+    steps: [
+      ['Bought at auction', 'Added with reg, VIN and mileage', '−R128 000'],
+      ['Reconditioning added to the car', 'Brakes, 2 tyres, valet and roadworthy · 4 slips', '−R5 280'],
+      ['Sold and invoiced', 'Invoice sent to the buyer · 24 days on the lot', 'R149 000'],
+    ],
+    tt: 'This car',
+    totals: [['Sold for', 'R149 000'], ['Bought for', '−R128 000'], ['Spent on it', '−R5 280']],
+    result: ['R15 720', 'profit on this car, worked out for him'],
+  },
   appointments: {
     who: ['NZ', 'Nomsa Z.', 'Salon owner · Pretoria'],
     title: 'Saturday braids booking',
