@@ -6,6 +6,7 @@ import { readSlip } from '../../lib/readSlip.js';
 import { uploadBusinessFile } from '../../lib/businessApi.js';
 import { findExpenseMatches } from '../../lib/businessMath.js';
 import MileageView from '../Mileage.jsx';
+import { ReceiptThumb, useReceiptViewer } from '../Receipts.jsx';
 import { COST_CATEGORIES, vehicleTitle } from '../../lib/vehicles.js';
 
 const CATEGORIES = ['Rent', 'Transport', 'Fuel', 'Telephone', 'Marketing', 'Equipment', 'Supplies', 'Materials', 'Stock purchases', 'Salaries', 'Other'];
@@ -119,6 +120,7 @@ export default function Expenses() {
   const { syncCfg } = useBudget();
   const { expenses, transactions, vehicles, updateExpense, myRole, hasFeature, monthLocked } = useBusiness();
   const hasCars = hasFeature('vehicles');
+  const viewReceipt = useReceiptViewer();
   const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('all');
   const [area, setArea] = useState('expenses');
@@ -186,6 +188,9 @@ export default function Expenses() {
           {shown.length ? shown.map(e => (
             <tr key={e.id}>
               <td>
+                <div className="rcpt-cell">
+                {e.receipt_storage_path && <ReceiptThumb expense={e} onClick={() => viewReceipt(shown.filter(x => x.receipt_storage_path).map(x => x.id), e.id)} />}
+                <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600 }}>{e.description || e.merchant || '(no description)'}</div>
                 <div className="tag">{e.date} &middot; {e.category || 'Uncategorised'}{monthLocked(e.date) ? ' · signed off' : ''}</div>
                 {hasCars && (readOnly
@@ -196,6 +201,8 @@ export default function Expenses() {
                       {vehicles.filter(v => v.status !== 'sold' || v.id === e.vehicle_id).map(v => <option key={v.id} value={v.id}>{carLabel(v)}</option>)}
                     </select>
                   ))}
+                </div>
+                </div>
               </td>
               <td className="r">
                 {R2(e.amount)}

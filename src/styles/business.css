@@ -280,3 +280,13 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 
 .lock-banner{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#F6D5CF;color:#7A2417;border:1px solid #E7B1A6;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:15px}
 .lock-banner button{flex:none;background:#fff;border:1px solid #E7B1A6;border-radius:99px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer;color:#7A2417}
+
+/* Receipt pictures */
+.rcpt-cell{display:flex;gap:12px;align-items:flex-start}
+.rcpt-thumb{flex:none;width:54px;height:70px;border:1px solid #D6D9DD;border-radius:8px;background:#F4F5F7 center/cover no-repeat;cursor:pointer;padding:0;display:grid;place-items:center;color:#6B7570;font-size:11px}
+.rcpt-thumb:hover,.rcpt-thumb:focus-visible{border-color:var(--acc);outline:0}
+.rcpt-stage{margin:10px 0 0;background:#EEF0F3;border-radius:14px;max-height:62vh;overflow:auto;display:grid;place-items:center;min-height:200px}
+.rcpt-stage img{display:block;max-width:100%;max-height:60vh;object-fit:contain;cursor:zoom-in}
+.rcpt-stage.zoom{place-items:start}
+.rcpt-stage.zoom img{max-width:none;max-height:none;width:180%;cursor:zoom-out}
+.rcpt-facts .row{padding:3px 0}

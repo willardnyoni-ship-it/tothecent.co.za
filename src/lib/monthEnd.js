@@ -41,7 +41,7 @@ export function monthEndReport({ month, today, features = [], transactions = [],
 
   const nameOf = id => (customers.find(c => c.id === id) || {}).name || '';
   const txItem = t => ({ date: t.date, text: t.description || '(no description)', amount: +t.amount });
-  const exItem = e => ({ date: e.date, text: e.description || e.merchant || '(no description)', amount: +e.amount });
+  const exItem = e => ({ date: e.date, text: e.description || e.merchant || '(no description)', amount: +e.amount, expenseId: e.id, receipt: !!e.receipt_storage_path });
   const check = (key, label, status, items, extra = {}) => ({ key, label, status: items.length || extra.force ? status : 'ok', count: items.length, items: items.slice(0, LIMIT), ...extra });
   const checks = [];
 

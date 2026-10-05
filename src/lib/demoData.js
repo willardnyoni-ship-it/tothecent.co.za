@@ -110,9 +110,10 @@ export function buildDemoDb(profile, { vat = false, payroll = false, viewer = ''
     db.quotes.push(q); db.businesses[0].next_quote_number = quoNo + 1;
     return q;
   };
+  let slipN = 0;
   const expense = (date, amount, category, merchant, extra = {}) => {
     db.expenses.push({ id: id('exp'), business_id: biz, amount, date, category, description: merchant, merchant, vat: vat ? r2(amount * 0.15 / 1.15) : 0, items: null,
-      receipt_storage_path: null, submitted_by: DEMO_USER_ID, status: 'approved', matched_transaction_id: null, created_at: created(), job_id: null, ...extra });
+      receipt_storage_path: ++slipN % 3 === 0 ? null : 'demo/receipt-' + slipN + '.jpg', submitted_by: DEMO_USER_ID, status: 'approved', matched_transaction_id: null, created_at: created(), job_id: null, ...extra });
   };
   const tx = (date, description, amount, kind, category, extra = {}) => {
     db.business_transactions.push({ id: id('tx'), business_id: biz, bank_account_id: null, date, description, amount, kind, category, status: 'reviewed', source: 'statement', linked_invoice_id: null, job_id: null, vat_amount: null, external_id: null, created_at: created(), ...extra });

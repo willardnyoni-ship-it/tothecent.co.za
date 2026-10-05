@@ -6,6 +6,7 @@ import { monthEndCsv, monthEndReport, monthKey, monthLabel, shiftMonth } from '.
 import { vatPeriods } from '../../lib/saTax.js';
 import { R, R2, iso } from '../../lib/format.js';
 import { vatReturn } from './Reports.jsx';
+import { useReceiptViewer } from '../Receipts.jsx';
 
 const ICON = { ok: '✓', warn: '!', todo: '✕' };
 const TAB_LABEL = { money: 'Money', expenses: 'Expenses', invoices: 'Invoices', team: 'Team' };
@@ -15,6 +16,7 @@ export default function MonthEnd({ go }) {
   const { syncCfg, ensureToken } = useBudget();
   const { business, transactions, expenses, invoices, customers, employees, payRuns, features, refreshAll } = useBusiness();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const viewReceipt = useReceiptViewer();
   const today = iso(new Date());
   const thisMonth = monthKey(today);
   const [month, setMonth] = useState(shiftMonth(thisMonth, -1));
@@ -105,7 +107,7 @@ export default function MonthEnd({ go }) {
               {c.items.length > 0 && (
                 <details>
                   <summary>Show {c.count > c.items.length ? `first ${c.items.length} of ${c.count}` : c.count}</summary>
-                  <ul>{c.items.map((i, k) => <li key={k}><span>{i.date}</span><span>{i.text}</span><b>{R2(i.amount)}</b></li>)}</ul>
+                  <ul>{c.items.map((i, k) => <li key={k}><span>{i.date}</span><span>{i.text}{i.receipt && <> <a href="#" onClick={ev => { ev.preventDefault(); viewReceipt(c.items.filter(x => x.receipt).map(x => x.expenseId), i.expenseId); }}>View receipt</a></>}</span><b>{R2(i.amount)}</b></li>)}</ul>
                 </details>
               )}
             </div>
