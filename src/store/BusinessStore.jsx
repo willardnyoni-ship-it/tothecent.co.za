@@ -45,19 +45,27 @@ const MAX_CATCHUP_RUNS = 12;
 export function BusinessProvider({ children }) {
   const { syncCfg, ensureToken } = useBudget();
   const [business, setBusiness] = useState(null);
+  const [businesses, setBusinesses] = useState([]);
+  // Which business is open right now, so a slow load for the one just left can't land on the new one.
+  const openIdRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState(false);
   const [data, setData] = useState(EMPTY);
   const [justGenerated, setJustGenerated] = useState(0);
   const generatingRef = useRef(false);
+  openIdRef.current = business ? business.id : null;
 
   const loadBusiness = useCallback(async () => {
     if (!syncCfg.token) { setBusiness(null); setLoading(false); setChecked(true); return; }
     setLoading(true);
     try {
       const token = await ensureToken();
-      const rows = await businessApi.select(syncCfg, token, 'businesses', 'select=*&order=created_at.asc&limit=1');
-      setBusiness(rows && rows[0] ? rows[0] : null);
+      const rows = await businessApi.select(syncCfg, token, 'businesses', 'select=*&order=created_at.asc');
+      setBusinesses(rows || []);
+      // An accountant belongs to many businesses: reopen the one they last used, else the first.
+      let saved = null;
+      try { saved = localStorage.getItem('wnActiveBiz_' + (syncCfg.userId || '')); } catch { /* storage unavailable */ }
+      setBusiness((rows && (rows.find(r => r.id === saved) || rows[0])) || null);
     } catch (e) {
       console.warn('load business failed', e);
       setBusiness(null);
@@ -72,8 +80,19 @@ export function BusinessProvider({ children }) {
   // it was resetting the signup form's typed name a few seconds in).
   useEffect(() => { loadBusiness(); }, [syncCfg.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Open another business. The previous one's data is cleared first so nothing from one
+  // client can show up on another's screen while the new one loads.
+  const switchBusiness = useCallback((id) => {
+    const next = businesses.find(b => b.id === id);
+    if (!next || (business && next.id === business.id)) return;
+    setData(EMPTY);
+    setBusiness(next);
+    try { localStorage.setItem('wnActiveBiz_' + (syncCfg.userId || ''), id); } catch { /* storage unavailable */ }
+  }, [businesses, business, syncCfg.userId]);
+
   const refreshAll = useCallback(async () => {
     if (!business) { setData(EMPTY); return; }
+    const loadingFor = business.id;
     const token = await ensureToken();
     const biz = `business_id=eq.${business.id}`;
     const [customers, invoices, items, transactions, expenses, members, bankAccounts, categories, recurringInvoices] = await Promise.all([
@@ -93,6 +112,7 @@ export function BusinessProvider({ children }) {
     TOOL_TABLES.forEach(([key], i) => { tools[key] = toolRows[i] || []; });
     const itemsByInvoice = {};
     (items || []).forEach(it => { (itemsByInvoice[it.invoice_id] = itemsByInvoice[it.invoice_id] || []).push(it); });
+    if (openIdRef.current !== loadingFor) return; // the person has moved to another business meanwhile
     setData({
       customers: customers || [], expenses: expenses || [], members: members || [],
       bankAccounts: bankAccounts || [], categories: categories || [],
@@ -389,7 +409,7 @@ export function BusinessProvider({ children }) {
   }, [syncCfg, ensureToken, business, refreshAll]);
 
   const value = {
-    business, loading, checked, hasBusiness: !!business, ...data,
+    business, businesses, switchBusiness, loading, checked, hasBusiness: !!business, ...data,
     createBusiness, updateBusiness, refreshAll,
     addCustomer, updateCustomer, addTransaction, addTransactions, updateTransaction,
     createInvoice, updateInvoice, makeInvoiceRecurring, updateRecurringInvoice, addExpense, updateExpense,

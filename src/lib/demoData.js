@@ -20,10 +20,37 @@ const PEOPLE = {
   food: { owner: 'Ayesha Khan', biz: 'The Corner Café', type: 'Private Company' },
   motor: { owner: 'Pieter Botha', biz: 'Botha Motors', type: 'Private Company' },
   appointments: { owner: 'Nomsa Zulu', biz: 'Nomsa\'s Hair Studio', type: 'Sole Proprietor' },
+  accountant: { owner: 'Thandi Ndaba', biz: 'Ndaba & Co Accountants', type: 'Sole Proprietor' },
   general: { owner: 'Thabo Nkosi', biz: 'Nkosi Trading', type: 'Private Company' },
 };
 
+// ?demo=accountant: one accountant who looks after four businesses. Each is built on its own and then
+// given a private set of ids (a prefix on every id and every reference to one), so the rows can sit
+// side by side without colliding.
+function buildAccountantDb(opts) {
+  const clients = ['trades', 'food', 'appointments', 'freelancer'];
+  const out = {};
+  clients.forEach((kind, idx) => {
+    const d = buildDemoDb(kind, { vat: idx === 1 || opts.vat, payroll: false });
+    const prefix = `c${idx + 1}-`;
+    const ids = new Set();
+    Object.values(d).forEach(rows => rows.forEach(r => { if (r && typeof r.id === 'string') ids.add(r.id); }));
+    const remap = v => (Array.isArray(v) ? v.map(remap)
+      : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, remap(x)]))
+      : typeof v === 'string' && ids.has(v) ? prefix + v : v);
+    Object.entries(d).forEach(([table, rows]) => {
+      (out[table] = out[table] || []).push(...remap(rows).map(r => {
+        if (table === 'businesses') return { ...r, owner_id: 'demo-owner-' + (idx + 1) };
+        if (table === 'business_members' && r.user_id === DEMO_USER_ID) return { ...r, role: 'accountant' };
+        return r;
+      }));
+    });
+  });
+  return out;
+}
+
 export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
+  if (profile === 'accountant') return buildAccountantDb({ vat });
   const key = PEOPLE[profile] ? profile : 'general';
   const who = PEOPLE[key];
   let n = 0;

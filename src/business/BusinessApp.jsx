@@ -18,12 +18,14 @@ import Time from './tabs/Time.jsx';
 import Stock from './tabs/Stock.jsx';
 import Bookings from './tabs/Bookings.jsx';
 import Vehicles from './tabs/Vehicles.jsx';
+import Clients from './tabs/Clients.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
 import { isDemo } from '../lib/demo.js';
 
-const TABS = { home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
+const TABS = { clients: Clients, home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
 
 const TOUR_STEPS = [
+  { tab: 'clients', title: 'Clients', body: 'Every business you look after, with what is overdue, unreviewed or missing a receipt. Open one to work in its books.' },
   { tab: 'home', title: 'Home', body: 'Cash available, income vs expenses, and anything that needs your attention - overdue invoices, missing receipts, transactions to review.' },
   { tab: 'bookings', title: 'Bookings', body: 'Your appointments by day, deposits, no-shows, and what each staff member brought in.' },
   { tab: 'money', title: 'Money', body: 'Every transaction, income logged separately, manual entry, and importing your bank statement.' },
@@ -39,13 +41,13 @@ const TOUR_STEPS = [
 
 export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
   const { syncCfg } = useBudget();
-  const { loading, checked, hasBusiness, claimInvites, refreshAll, features } = useBusiness();
+  const { loading, checked, hasBusiness, claimInvites, refreshAll, features, businesses, business } = useBusiness();
   const { open, close } = useSheet();
   const [tab, goHash] = useHashTab(Object.keys(TABS), 'home');
   // Which section Money should open on - set when sign-up's "Upload Bank
   // Statement" button sends someone straight there.
   const [moneyStart, setMoneyStart] = useState(null);
-  const tabs = visibleTabs(features).map(x => x.t);
+  const tabs = visibleTabs(features, businesses.length > 1).map(x => x.t);
 
   useEffect(() => { if (syncCfg.token) claimInvites(); }, [syncCfg.token, claimInvites]);
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
       <BusinessNav tab={tab} go={go} onSwitchMode={onSwitchMode} onOpenSettings={openSettings} onOpenAdmin={onOpenAdmin} />
       <div className="wrap">
         {isDemo() && <div className="demo-bar"><b>Preview</b> Example data only - try anything, nothing is saved and nobody is notified.</div>}
-        <Active go={go} onOpenSettings={openSettings} startSeg={tab === 'money' ? moneyStart : undefined} />
+        <Active key={business ? business.id : 'none'} go={go} onOpenSettings={openSettings} startSeg={tab === 'money' ? moneyStart : undefined} />
       </div>
       <GuidedTour
         storageKey="wnTourDone_business"
