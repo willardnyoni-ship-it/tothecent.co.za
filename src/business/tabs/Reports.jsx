@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useBusiness } from '../../store/BusinessStore.jsx';
 import { R, R2, iso, vatOf } from '../../lib/format.js';
-import { vatPeriods, currentVatPeriod } from '../../lib/saTax.js';
+import { vatPeriods, currentVatPeriod, PAYE_TABLE_LABEL } from '../../lib/saTax.js';
+import { provisionalPlan } from '../../lib/provisionalTax.js';
 import { saTaxYear, taxYearLabel } from '../../lib/tax.js';
 
 function dl(blob, name) {
@@ -80,41 +81,86 @@ function VatView() {
 function p_due(p) { return new Date(p.due + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }); }
 
 // For sole traders and freelancers nobody withholds tax, so the profit is
-// all "gross" until SARS takes its share via provisional tax. This shows
-// the tax year so far and a suggested amount to put aside.
+// all "gross" until SARS takes its share through provisional tax (paid by 31
+// August and by the end of February). This estimates what the year's tax will
+// be, what is due next, and what to put away each month to be ready for it.
+const longDate = d => new Date(d + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
+
 function TaxSetAsideView() {
   const { business, transactions, expenses, updateBusiness, myRole } = useBusiness();
   const [pct, setPct] = useState(business.tax_set_aside_pct ?? 25);
+  const [expected, setExpected] = useState(business.tax_expected_profit ?? '');
+  const [paid, setPaid] = useState(business.provisional_paid ?? '');
+  const [msg, setMsg] = useState('');
+  const today = iso(new Date());
   const ty = saTaxYear();
   const from = ty.split('-')[0] + '-03-01';
   const income = transactions.filter(t => t.kind === 'income' && t.date >= from).reduce((a, t) => a + +t.amount, 0);
   const costs = transactions.filter(t => t.kind === 'expense' && t.date >= from).reduce((a, t) => a + +t.amount, 0)
     + expenses.filter(e => e.date >= from && e.status !== 'rejected' && !e.matched_transaction_id).reduce((a, e) => a + +e.amount, 0);
   const profit = income - costs;
+  const company = business.business_type === 'Private Company';
+  const plan = provisionalPlan({ ytd: profit, expected, paid, company, today });
   const setAside = Math.max(0, profit) * (+pct || 0) / 100;
-  const monthKey = iso(new Date()).slice(0, 7);
-  const mIncome = transactions.filter(t => t.kind === 'income' && t.date.slice(0, 7) === monthKey).reduce((a, t) => a + +t.amount, 0);
-  const mCosts = transactions.filter(t => t.kind === 'expense' && t.date.slice(0, 7) === monthKey).reduce((a, t) => a + +t.amount, 0)
-    + expenses.filter(e => e.date.slice(0, 7) === monthKey && e.status !== 'rejected' && !e.matched_transaction_id).reduce((a, e) => a + +e.amount, 0);
-  const mSetAside = Math.max(0, mIncome - mCosts) * (+pct || 0) / 100;
+  const changed = String(expected) !== String(business.tax_expected_profit ?? '') || String(paid) !== String(business.provisional_paid ?? '');
+
+  async function remember() {
+    try {
+      await updateBusiness({ tax_expected_profit: expected === '' ? null : Math.max(0, +expected || 0), provisional_paid: paid === '' ? null : Math.max(0, +paid || 0) });
+      setMsg('Saved.');
+    } catch (e) { setMsg(e.message); }
+  }
 
   return (
-    <div className="card">
-      <h2 style={{ marginTop: 0 }}>Tax set-aside</h2>
-      <div className="sub">Tax year {taxYearLabel(ty)}</div>
-      <div className="biz-totals">
-        <div className="row"><span>Profit so far</span><span className="mono">{R2(profit)}</span></div>
-        <div className="row grand"><span>Put aside for SARS ({+pct}%)</span><span className="mono">{R2(setAside)}</span></div>
-        <div className="row"><span>From this month's profit</span><span className="mono">{R2(mSetAside)}</span></div>
+    <>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Provisional tax estimate</h2>
+        <div className="sub">Tax year {taxYearLabel(ty)}</div>
+        <div className="biz-totals">
+          <div className="row"><span>Profit so far this tax year</span><span className="mono">{R2(profit)}</span></div>
+          <div className="row"><span>Projected for the whole year</span><span className="mono">{R2(plan.projected)}</span></div>
+          <div className="row grand"><span>Estimated tax for the year</span><span className="mono">{R2(plan.tax)}</span></div>
+        </div>
+        <div className="mini" style={{ marginTop: 4 }}>
+          {company ? 'A company pays a flat 27% of its profit.' : `Worked out on your profit with the ${PAYE_TABLE_LABEL} and the primary rebate.`}
+          {plan.usedExpected ? ' Using your own figure below.' : ' The projection stretches your profit so far across the full year. If you only started using To The Cent part-way through the year, enter your own figure below.'}
+        </div>
+
+        <label>Expect a different profit for the year? <span className="mini">(optional, in rand)</span></label>
+        <input type="number" inputMode="decimal" min="0" placeholder={String(Math.round(plan.projected))} value={expected} onChange={e => setExpected(e.target.value)} />
+        <label>Provisional tax already paid this tax year (R)</label>
+        <input type="number" inputMode="decimal" min="0" placeholder="0" value={paid} onChange={e => setPaid(e.target.value)} />
+        {myRole === 'owner' && changed && <><div style={{ height: 8 }} /><button className="b g" onClick={remember}>Remember these figures</button></>}
+        {msg && <div className="msg s">{msg}</div>}
       </div>
-      <label>Percentage to put aside</label>
-      <input type="number" min="0" max="60" value={pct} onChange={e => setPct(e.target.value)} />
-      {myRole === 'owner' && +pct !== +business.tax_set_aside_pct && <><div style={{ height: 8 }} /><button className="b g" onClick={() => updateBusiness({ tax_set_aside_pct: +pct || 0 })}>Remember this percentage</button></>}
-      <div className="mini" style={{ marginTop: 8 }}>
-        Move this into a separate savings account so it's there when provisional tax is due (end of August and end of February).
-        25% is a reasonable starting point for most freelancers; your accountant can give you a closer number.
+
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>What to do next</h2>
+        {plan.dueAmount > 0 ? (
+          <div className="biz-totals">
+            <div className="row grand"><span>{plan.dueWhich === 'first' ? '1st' : '2nd'} provisional payment, due {longDate(plan.dueDate)}</span><span className="mono">{R2(plan.dueAmount)}</span></div>
+            <div className="row"><span>Put aside each month until then ({plan.monthsLeft} month{plan.monthsLeft === 1 ? '' : 's'})</span><span className="mono">{R2(plan.perMonth)}</span></div>
+            <div className="row"><span>Should be in your tax savings by today</span><span className="mono">{R2(plan.shouldHaveSaved)}</span></div>
+          </div>
+        ) : (
+          <div className="mini">{plan.tax > 0 ? `Nothing more to pay by ${longDate(plan.dueDate)} on these figures.` : 'No tax is due on these figures yet.'}</div>
+        )}
+        <div className="mini" style={{ marginTop: 8 }}>
+          Move the monthly amount into a separate savings account. The 1st payment is due by 31 August and covers half of the year's tax; the 2nd, by the end of February, brings it up to the full estimate.
+          Start a new tax year by clearing the amount already paid each March. This is an estimate: it leaves out medical credits, retirement contributions and other deductions, so check the figures with your accountant or on SARS eFiling.
+        </div>
       </div>
-    </div>
+
+      <details className="card">
+        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Prefer a simple percentage?</summary>
+        <div className="biz-totals" style={{ marginTop: 10 }}>
+          <div className="row grand"><span>Put aside for SARS ({+pct}% of profit so far)</span><span className="mono">{R2(setAside)}</span></div>
+        </div>
+        <label>Percentage to put aside</label>
+        <input type="number" min="0" max="60" value={pct} onChange={e => setPct(e.target.value)} />
+        {myRole === 'owner' && +pct !== +business.tax_set_aside_pct && <><div style={{ height: 8 }} /><button className="b g" onClick={() => updateBusiness({ tax_set_aside_pct: +pct || 0 })}>Remember this percentage</button></>}
+      </details>
+    </>
   );
 }
 

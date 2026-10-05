@@ -118,6 +118,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
     const karabo = customer('Karabo Media', 'accounts@karabomedia.example', '083 555 0144');
     const ubuntu = customer('Ubuntu Foods', 'finance@ubuntufoods.example', '084 555 0198');
     const nine = customer('Studio Nine', 'pay@studionine.example', '071 555 0123');
+    bright.hourly_rate = 650; karabo.hourly_rate = 650; ubuntu.hourly_rate = 750; nine.hourly_rate = 650;
     invoice({ cust: nine, issued: day(-62), due: day(-48), status: 'paid', items: [['Brand identity - logo & palette', 1, 9500]] });
     invoice({ cust: karabo, issued: day(-40), due: day(-26), status: 'paid', items: [['Website design - 5 pages', 1, 14500], ['Stock photography licence', 1, 850]] });
     invoice({ cust: ubuntu, issued: day(-24), due: day(-10), status: 'sent', items: [['Packaging artwork - 3 labels', 3, 2400]], notes: 'Second reminder due.' });

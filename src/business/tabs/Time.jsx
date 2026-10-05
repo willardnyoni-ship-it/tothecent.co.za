@@ -26,7 +26,7 @@ function startOfWeek(d = new Date()) {
 }
 
 export default function Time() {
-  const { business, timeEntries, customers, jobs, addRow, removeRow, updateRows, hasFeature, myRole } = useBusiness();
+  const { business, timeEntries, customers, jobs, addRow, removeRow, updateRow, updateRows, updateCustomer, hasFeature, myRole } = useBusiness();
   const readOnly = myRole === 'accountant';
   const createInvoice = useCreateInvoice();
   const [timer, setTimer] = useState(() => readTimer(business.id));
@@ -37,6 +37,23 @@ export default function Time() {
   const [msg, setMsg] = useState(null);
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const showJobs = hasFeature('jobs') && jobs.length > 0;
+  const [editId, setEditId] = useState('');
+  const [ef, setEf] = useState(null);
+  const rateFor = id => { const c = customers.find(x => x.id === id); return c && +c.hourly_rate > 0 ? +c.hourly_rate : 0; };
+  // Choosing a customer fills in their saved rate (the last rate used stays if they have none).
+  const pickCustomer = id => setF(x => ({ ...x, customer_id: id, rate: rateFor(id) || x.rate }));
+  const chosen = customers.find(c => c.id === f.customer_id);
+  const canSaveRate = !readOnly && chosen && +f.rate > 0 && +f.rate !== rateFor(chosen.id);
+  async function saveRate() {
+    try { await updateCustomer(chosen.id, { hourly_rate: +f.rate }); setMsg({ t: `Saved ${R(+f.rate)} an hour for ${chosen.name}.` }); } catch (e) { setMsg({ e: true, t: e.message }); }
+  }
+  async function saveEdit() {
+    if (!(+ef.hours > 0)) { setMsg({ e: true, t: 'Enter how many hours.' }); return; }
+    try {
+      await updateRow('time_entries', editId, { date: ef.date, hours: +ef.hours, rate: +ef.rate || 0, customer_id: ef.customer_id || null, description: ef.description });
+      setEditId(''); setMsg({ t: 'Time entry updated.' });
+    } catch (e) { setMsg({ e: true, t: e.message }); }
+  }
 
   useEffect(() => {
     if (!timer) return;
@@ -50,7 +67,7 @@ export default function Time() {
   }
   function stop() {
     const hours = toQuarterHours(Date.now() - timer.start);
-    setF(x => ({ ...x, hours: String(hours), description: x.description || timer.description, customer_id: x.customer_id || timer.customer_id || '', job_id: x.job_id || timer.job_id || '', date: iso(new Date(timer.start)) }));
+    setF(x => { const cid = x.customer_id || timer.customer_id || ''; return { ...x, hours: String(hours), description: x.description || timer.description, customer_id: cid, rate: rateFor(cid) || x.rate, job_id: x.job_id || timer.job_id || '', date: iso(new Date(timer.start)) }; });
     writeTimer(business.id, null); setTimer(null);
     setMsg({ t: `Timer stopped at ${hours} h - check the details and press Log Time.` });
   }
@@ -124,7 +141,7 @@ export default function Time() {
           <label>What are you working on?</label>
           <input value={f.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Logo concepts, round 2" />
           <label>Customer</label>
-          <select value={f.customer_id} onChange={e => set('customer_id', e.target.value)}>
+          <select value={f.customer_id} onChange={e => pickCustomer(e.target.value)}>
             <option value="">No customer</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -142,6 +159,8 @@ export default function Time() {
             <input type="number" inputMode="decimal" step="0.25" placeholder="Hours" value={f.hours} onChange={e => set('hours', e.target.value)} />
             <input type="number" inputMode="decimal" placeholder="Rate R/h" value={f.rate} onChange={e => set('rate', e.target.value)} />
           </div>
+          {chosen && rateFor(chosen.id) > 0 && +f.rate === rateFor(chosen.id) && <div className="mini">Saved rate for {chosen.name}: {R(rateFor(chosen.id))} an hour.</div>}
+          {canSaveRate && <div className="mini">{rateFor(chosen.id) ? 'This differs from the saved rate.' : 'No rate saved for them yet.'} <a href="#" style={{ color: 'var(--acc)' }} onClick={e => { e.preventDefault(); saveRate(); }}>Save {R(+f.rate)} an hour for {chosen.name}</a></div>}
           {msg && <div className={'msg ' + (msg.e ? 'e' : 's')}>{msg.t}</div>}
           <div style={{ height: 8 }} />
           <button className="b" disabled={busy} onClick={save}>Log Time</button>
@@ -166,7 +185,7 @@ export default function Time() {
       <h2>Logged time</h2>
       <div className="card">
         <table><tbody>
-          {timeEntries.length ? timeEntries.slice(0, 100).map(t => (
+          {timeEntries.length ? timeEntries.slice(0, 100).map(t => [
             <tr key={t.id}>
               <td>
                 <div style={{ fontWeight: 600 }}>{t.description || 'Work'}</div>
@@ -174,11 +193,38 @@ export default function Time() {
               </td>
               <td className="r">
                 {+t.hours} h
-                {+t.rate > 0 && <div className="mini">{R2(+t.hours * +t.rate)}</div>}
-                {!readOnly && !t.invoice_id && <div><a href="#" style={{ color: 'var(--bad)' }} onClick={e => { e.preventDefault(); removeRow('time_entries', t.id); }}>Delete</a></div>}
+                {+t.rate > 0 ? <div className="mini">{R2(+t.hours * +t.rate)}</div> : <div className="mini" style={{ color: 'var(--bad)' }}>No rate, so it won't be invoiced</div>}
+                {!readOnly && !t.invoice_id && (
+                  <div>
+                    <a href="#" style={{ color: 'var(--acc)', marginRight: 10 }} onClick={e => { e.preventDefault(); setEf({ date: t.date, hours: String(+t.hours), rate: t.rate == null ? '' : String(+t.rate), customer_id: t.customer_id || '', description: t.description || '' }); setEditId(editId === t.id ? '' : t.id); }}>Edit</a>
+                    <a href="#" style={{ color: 'var(--bad)' }} onClick={e => { e.preventDefault(); removeRow('time_entries', t.id); }}>Delete</a>
+                  </div>
+                )}
               </td>
-            </tr>
-          )) : <tr><td className="mini" colSpan={2}>No time logged yet.</td></tr>}
+            </tr>,
+            editId === t.id && ef && (
+              <tr key={t.id + '-ed'}><td colSpan={2} style={{ paddingTop: 0 }}>
+                <div className="card" style={{ margin: '4px 0 10px' }}>
+                  <label style={{ marginTop: 0 }}>What was it?</label>
+                  <input value={ef.description} onChange={e => setEf({ ...ef, description: e.target.value })} />
+                  <label>Customer</label>
+                  <select value={ef.customer_id} onChange={e => setEf({ ...ef, customer_id: e.target.value, rate: ef.rate === '' || +ef.rate === rateFor(ef.customer_id) ? (rateFor(e.target.value) || ef.rate) : ef.rate })}>
+                    <option value="">No customer</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <div className="biz-grid" style={{ marginTop: 10 }}>
+                    <div><label style={{ marginTop: 0 }}>Date</label><input type="date" value={ef.date} onChange={e => setEf({ ...ef, date: e.target.value })} /></div>
+                    <div><label style={{ marginTop: 0 }}>Hours</label><input type="number" inputMode="decimal" step="0.25" value={ef.hours} onChange={e => setEf({ ...ef, hours: e.target.value })} /></div>
+                    <div><label style={{ marginTop: 0 }}>Rate R/h</label><input type="number" inputMode="decimal" value={ef.rate} onChange={e => setEf({ ...ef, rate: e.target.value })} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button className="b" onClick={saveEdit}>Save</button>
+                    <button className="b g" onClick={() => setEditId('')}>Cancel</button>
+                  </div>
+                </div>
+              </td></tr>
+            ),
+          ]) : <tr><td className="mini" colSpan={2}>No time logged yet.</td></tr>}
         </tbody></table>
       </div>
       <div style={{ height: 20 }} />
