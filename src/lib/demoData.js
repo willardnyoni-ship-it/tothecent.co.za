@@ -31,7 +31,7 @@ function buildAccountantDb(opts) {
   const clients = ['trades', 'food', 'appointments', 'freelancer'];
   const out = {};
   clients.forEach((kind, idx) => {
-    const d = buildDemoDb(kind, { vat: idx === 1 || opts.vat, payroll: false });
+    const d = buildDemoDb(kind, { vat: idx === 1 || opts.vat, payroll: false, viewer: 'accountant' });
     const prefix = `c${idx + 1}-`;
     const ids = new Set();
     Object.values(d).forEach(rows => rows.forEach(r => { if (r && typeof r.id === 'string') ids.add(r.id); }));
@@ -49,7 +49,7 @@ function buildAccountantDb(opts) {
   return out;
 }
 
-export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
+export function buildDemoDb(profile, { vat = false, payroll = false, viewer = '' } = {}) {
   if (profile === 'accountant') return buildAccountantDb({ vat });
   const key = PEOPLE[profile] ? profile : 'general';
   const who = PEOPLE[key];
@@ -58,7 +58,7 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
   const db = {
     businesses: [], customers: [], invoices: [], invoice_items: [], business_transactions: [], expenses: [], business_members: [],
     bank_accounts: [], business_categories: [], recurring_invoices: [],
-    jobs: [], vehicles: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
+    audit_log: [], jobs: [], vehicles: [], quotes: [], time_entries: [], mileage_trips: [], stock_items: [], stock_movements: [], cash_ups: [], bookings: [], employees: [], pay_runs: [], recipes: [], recipe_lines: [], yoco_order_lines: [], yoco_item_map: [], booking_settings: [], booking_services: [],
   };
   const created = () => new Date().toISOString();
 
@@ -312,5 +312,24 @@ export function buildDemoDb(profile, { vat = false, payroll = false } = {}) {
       db.pay_runs.push({ id: id('pay'), business_id: biz, employee_id: e.id, period: month(-1), hours: null, gross: pay, paye, uif_employee: uif, uif_employer: uif, other_deductions: 0, net: r2(pay - paye - uif), paid_on: day(-5), created_at: created() });
     });
   }
+
+  // ---- the activity trail: what the owner and the accountant changed lately ----
+  const ownerMail = demoOwnerEmail(key), acctMail = 'accountant@example.co.za';
+  const youMail = viewer === 'accountant' ? acctMail : ownerMail, otherMail = viewer === 'accountant' ? ownerMail : acctMail;
+  let auditN = 0;
+  const aud = (ago, hour, you, action, table, label, changes) => db.audit_log.push({
+    id: ++auditN, business_id: biz, changed_at: new Date(day(-ago) + 'T' + hour + ':00:00').toISOString(), actor_id: you ? DEMO_USER_ID : 'demo-other',
+    actor_email: you ? youMail : otherMail, action, table_name: table, record_id: null, label, changes,
+  });
+  const invRef = i => (db.invoices[i] ? db.invoices[i].invoice_number : 'INV-000' + (i + 1));
+  aud(0, '09', true, 'update', 'invoices', invRef(2), { status: ['draft', 'sent'] });
+  aud(0, '08', false, 'update', 'business_transactions', 'Payshap Credit', { category: [null, 'Sales'], vat_amount: [null, 0], status: ['needs_review', 'reviewed'] });
+  aud(1, '16', true, 'insert', 'expenses', 'Engen fuel', { amount: 640, category: 'Fuel', date: day(-1), status: 'needs_review' });
+  aud(2, '11', false, 'update', 'business_transactions', 'POS Purchase Takealot', { category: ['Uncategorised', 'Supplies'], vat_amount: [null, 247.04] });
+  aud(3, '14', true, 'update', 'invoices', invRef(1), { paid_amount: [0, 1850], status: ['sent', 'paid'] });
+  aud(5, '10', true, 'delete', 'customers', 'Duplicate - Test Customer', { name: 'Duplicate - Test Customer', email: null });
+  aud(6, '09', true, 'update', 'business_members', acctMail, { role: ['employee', 'accountant'], status: ['invited', 'active'] });
+  aud(9, '15', true, 'update', 'businesses', who.biz, { tax_number: [null, '4123456789'] });
+  aud(12, '10', false, 'update', 'invoices', invRef(0), { due_date: [day(-20), day(-6)] });
   return db;
 }

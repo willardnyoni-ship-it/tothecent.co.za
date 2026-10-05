@@ -19,10 +19,11 @@ import Stock from './tabs/Stock.jsx';
 import Bookings from './tabs/Bookings.jsx';
 import Vehicles from './tabs/Vehicles.jsx';
 import Clients from './tabs/Clients.jsx';
+import Activity from './tabs/Activity.jsx';
 import GuidedTour from '../components/GuidedTour.jsx';
 import { isDemo } from '../lib/demo.js';
 
-const TABS = { clients: Clients, home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
+const TABS = { activity: Activity, clients: Clients, home: BizHome, bookings: Bookings, money: Money, invoices: Invoices, jobs: Jobs, time: Time, expenses: Expenses, vehicles: Vehicles, stock: Stock, reports: Reports, team: Team };
 
 const TOUR_STEPS = [
   { tab: 'clients', title: 'Clients', body: 'Every business you look after, with what is overdue, unreviewed or missing a receipt. Open one to work in its books.' },
@@ -36,18 +37,19 @@ const TOUR_STEPS = [
   { tab: 'vehicles', title: 'Vehicles', body: 'Each car from purchase to sale: what you paid, everything you spent on it, and the profit when it sells.' },
   { tab: 'stock', title: 'Stock', body: 'What you have on the shelf, what it is worth, and what is running low.' },
   { tab: 'reports', title: 'Reports', body: 'Profit & loss, income and expense breakdowns, and your tax records export.' },
+  { tab: 'activity', title: 'Activity', body: 'A record of who added, changed or deleted what, and when. It cannot be edited from the app.' },
   { tab: 'team', title: 'Team', body: 'Invite your accountant or staff, and set what each of them can see and do.' },
 ];
 
 export default function BusinessApp({ onSwitchMode, onOpenAdmin }) {
   const { syncCfg } = useBudget();
-  const { loading, checked, hasBusiness, claimInvites, refreshAll, features, businesses, business } = useBusiness();
+  const { loading, checked, hasBusiness, claimInvites, refreshAll, features, businesses, business, myRole } = useBusiness();
   const { open, close } = useSheet();
   const [tab, goHash] = useHashTab(Object.keys(TABS), 'home');
   // Which section Money should open on - set when sign-up's "Upload Bank
   // Statement" button sends someone straight there.
   const [moneyStart, setMoneyStart] = useState(null);
-  const tabs = visibleTabs(features, businesses.length > 1).map(x => x.t);
+  const tabs = visibleTabs(features, businesses.length > 1, myRole).map(x => x.t);
 
   useEffect(() => { if (syncCfg.token) claimInvites(); }, [syncCfg.token, claimInvites]);
   useEffect(() => {

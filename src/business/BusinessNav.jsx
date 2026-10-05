@@ -18,20 +18,22 @@ export const BIZ_TABS = [
   { t: 'vehicles', label: 'Vehicles', feature: 'vehicles' },
   { t: 'stock', label: 'Stock', feature: 'stock' },
   { t: 'reports', label: 'Reports' },
+  { t: 'activity', label: 'Activity', roles: ['owner', 'admin', 'accountant'] },
   { t: 'team', label: 'Team' },
 ];
 
 // `multi` is true for someone who belongs to more than one business (an accountant with clients):
 // they also get the Clients overview.
-export function visibleTabs(features, multi = false) {
-  return BIZ_TABS.filter(x => (!x.feature || features.includes(x.feature)) && (!x.multi || multi));
+// `role` limits some tabs to the people who may see them (the Activity trail: owners, admins, accountants).
+export function visibleTabs(features, multi = false, role = null) {
+  return BIZ_TABS.filter(x => (!x.feature || features.includes(x.feature)) && (!x.multi || multi) && (!x.roles || x.roles.includes(role)));
 }
 
 export default function BusinessNav({ tab, go, onSwitchMode, onOpenSettings, onOpenAdmin }) {
   const { syncCfg, doSignOut } = useBudget();
   const { business, businesses, switchBusiness, features, myRole } = useBusiness();
   const multi = businesses.length > 1;
-  const tabs = visibleTabs(features, multi);
+  const tabs = visibleTabs(features, multi, myRole);
   const [swOpen, setSwOpen] = useState(false);
   const swRef = useRef(null);
   const [navOpen, setNavOpen] = useState(false);

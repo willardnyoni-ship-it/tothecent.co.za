@@ -239,3 +239,19 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .cl-split b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
 .cl-split .bad b{color:var(--bad)}.cl-split .warn b{color:#8A5300}
 .cl-foot{margin-top:10px}
+
+/* Activity (audit trail) */
+.act-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:6px}
+.act-day{padding:4px 14px}
+.act-row{display:flex;gap:12px;padding:12px 0;border-top:1px solid #EEF0EF}
+.act-row:first-child{border-top:0}
+.act-time{flex:none;width:44px;font-size:13px;color:#6B7570;font-variant-numeric:tabular-nums;padding-top:2px}
+.act-main{min-width:0;flex:1}
+.act-title{font-weight:600;overflow-wrap:anywhere}
+.act-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;margin-right:4px;vertical-align:1px;background:#E5E7EB;color:#4B5563}
+.act-tag.insert{background:#DDEBCF;color:#33421F}.act-tag.update{background:#E8EEFD;color:#1B3FA8}.act-tag.delete{background:#F6D5CF;color:#9C3626}
+.act-lines{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:14px}
+.act-lines li{display:flex;gap:8px;flex-wrap:wrap}
+.act-lines li span{color:#56635C;min-width:110px}
+.act-lines li b{font-weight:600;overflow-wrap:anywhere}
+.act-lines s{color:#8A5300;font-weight:400}

@@ -79,6 +79,7 @@ function matcher(table, qs) {
     else if (op === 'is') checks.push(row => (val === 'null' ? get(row) == null : get(row) != null));
     else if (op === 'gte') checks.push(row => get(row) >= val);
     else if (op === 'lte') checks.push(row => get(row) <= val);
+    else if (op === 'ilike') { const re = new RegExp('^' + decodeURIComponent(val).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$', 'i'); checks.push(row => re.test(String(get(row) ?? ''))); }
   }
   return row => checks.every(c => c(row));
 }
@@ -113,6 +114,7 @@ export async function demoRequest(path, opts = {}) {
 
   if (method === 'GET') {
     let out = sortRows(rows.filter(where), qs.get('order'));
+    if (qs.get('offset')) out = out.slice(+qs.get('offset'));
     if (qs.get('limit')) out = out.slice(0, +qs.get('limit'));
     out = clone(out);
     if (table === 'invoice_items' && /invoices!inner/.test(qs.get('select') || '')) {
