@@ -169,7 +169,7 @@ export default function Reports() {
             <div className="row" key={k} style={{ padding: '3px 0' }}><span className="mini">{k}</span><span className="mono">{R(v)}</span></div>
           ))}
           <div className="row" style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 8, fontWeight: 700 }}><span>Total Expenses</span><span className="mono">{R(expenseTotal)}</span></div>
-          <div className="row" style={{ marginTop: 10, fontSize: 20, fontWeight: 800 }}><span>NET PROFIT</span><span className={'mono' + (net < 0 ? ' bd' : ' ok')}>{net < 0 ? '-' : ''}{R(Math.abs(net))}</span></div>
+          <div className="row" style={{ marginTop: 10, fontSize: 20, fontWeight: 600 }}><span>NET PROFIT</span><span className={'mono' + (net < 0 ? ' bd' : ' ok')}>{net < 0 ? '-' : ''}{R(Math.abs(net))}</span></div>
           <div style={{ height: 12 }} />
           <button className="b g" onClick={exportCsv}>Download CSV</button>
         </div>

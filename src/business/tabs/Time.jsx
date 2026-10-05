@@ -112,7 +112,7 @@ export default function Time() {
         <div className="card">
           {timer ? (
             <div className="row">
-              <div><div className="mini">Timer running{timer.description ? ' · ' + timer.description : ''}</div><div className="mono" style={{ fontSize: 30, fontWeight: 800 }}>{fmtElapsed(now - timer.start)}</div></div>
+              <div><div className="mini">Timer running{timer.description ? ' · ' + timer.description : ''}</div><div className="mono" style={{ fontSize: 30, fontWeight: 600 }}>{fmtElapsed(now - timer.start)}</div></div>
               <button className="b d" style={{ width: 'auto' }} onClick={stop}>Stop</button>
             </div>
           ) : (

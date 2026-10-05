@@ -8,7 +8,7 @@
 @media (min-width:760px){ .biz-cards{grid-template-columns:repeat(4,1fr)} }
 .biz-card{background:var(--card);border:.5px solid var(--line);border-radius:18px;padding:16px}
 .biz-card .lbl{font-size:18px;color:var(--dim);font-weight:700}
-.biz-card .val{font-size:26px;font-weight:800;margin-top:4px}
+.biz-card .val{font-size:26px;font-weight:600;margin-top:4px}
 .biz-card .val.bd{color:var(--bad)}
 
 .biz-attn{background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:4px 14px;margin-bottom:12px}
@@ -31,7 +31,7 @@
 
 .biz-totals{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .biz-totals .row{padding:2px 0}
-.biz-totals .row.grand{font-size:22px;font-weight:800;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+.biz-totals .row.grand{font-size:22px;font-weight:600;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
 
 .biz-switch-banner{background:var(--accC);color:var(--acc);border-radius:12px;padding:10px 14px;font-size:18px;font-weight:700;margin-bottom:12px;text-align:center}
 
@@ -123,7 +123,7 @@
 .stk-cats .bar i{display:block;height:100%;background:#33421F;border-radius:9px}
 .stk-cats .v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .stk-chips button{white-space:nowrap}
-tr.stk-head td{background:#F1F2F4;font-weight:800;font-size:13px;padding:8px 10px;border-radius:8px;border-bottom:0}
+tr.stk-head td{background:#F1F2F4;font-weight:600;font-size:13px;padding:8px 10px;border-radius:8px;border-bottom:0}
 tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .stk-lvl{display:block;width:64px;height:5px;background:#E5E7EB;border-radius:9px;overflow:hidden;margin:5px 0 0 auto}
 .stk-lvl i{display:block;height:100%;background:#94AF66}
@@ -136,7 +136,7 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .stk-profit-grid span{display:block;font-size:12px;font-weight:700;opacity:.7}
 .stk-profit-grid b{display:block;font-size:18px;margin-top:2px;font-variant-numeric:tabular-nums}
 .stk-profit-grid em{font-style:normal;font-size:12px;font-weight:700;opacity:.7}
-.rc-pill{display:inline-block;font-size:12px;font-weight:800;border-radius:99px;padding:2px 9px;margin-top:4px}
+.rc-pill{display:inline-block;font-size:12px;font-weight:600;border-radius:99px;padding:2px 9px;margin-top:4px}
 .rc-pill.good{background:#DDEBCF;color:#33421F}
 .rc-pill.warn{background:#FBE9C0;color:#5E3F0C}
 .rc-pill.bad{background:#F6D5CF;color:#9C3626}

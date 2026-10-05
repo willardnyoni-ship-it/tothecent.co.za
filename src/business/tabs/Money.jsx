@@ -72,7 +72,7 @@ function IncomeView() {
   const sorted = Object.entries(bySource).sort((a, b) => b[1] - a[1]);
   return (
     <>
-      <div className="card"><div className="mini">Total income this month</div><div className="mono" style={{ fontSize: 28, fontWeight: 800 }}>{R(total)}</div></div>
+      <div className="card"><div className="mini">Total income this month</div><div className="mono" style={{ fontSize: 28, fontWeight: 600 }}>{R(total)}</div></div>
       <h2>Income sources</h2>
       <div className="card">
         {sorted.length ? sorted.map(([k, v]) => (

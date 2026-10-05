@@ -148,7 +148,7 @@ export default function Expenses() {
         </div>
       )}
       {area === 'mileage' ? <MileageView readOnly={readOnly} /> : <>
-      <div className="card"><div className="mini">Total Expenses</div><div className="mono" style={{ fontSize: 28, fontWeight: 800 }}>{R2(total)}</div></div>
+      <div className="card"><div className="mini">Total Expenses</div><div className="mono" style={{ fontSize: 28, fontWeight: 600 }}>{R2(total)}</div></div>
 
       {readOnly && <div className="infobox">You have accountant (view-only) access - review and export here, but logging or approving expenses needs an owner or admin.</div>}
 

@@ -1,6 +1,6 @@
 /* ============================================================
    To The Cent - public landing page.
-   Follows the To The Cent brand book: AR One Sans (Google Fonts, loaded
+   Follows the To The Cent brand: Fira Sans (Google Fonts, loaded
    in index.html), Sea Green #238B57 on white and soft grey, black type,
    card-based and restrained. Product previews are built in HTML (no
    screenshots to go stale), with line icons rather than emoji.
@@ -15,7 +15,7 @@
   --radius:18px;
   --ease:cubic-bezier(.22,1,.36,1);
   --pop:cubic-bezier(.34,1.56,.64,1);
-  --font:'AR One Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --font:'Fira Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 }
 /* Keeps decorative glows from widening the page on phones (mobile
    browsers size the page to its widest box). */
@@ -52,7 +52,7 @@ section{padding:96px 0;position:relative}
   text-transform:uppercase;color:var(--green)}
 .eyebrow::before{content:'';width:18px;height:2px;background:currentColor;border-radius:2px}
 h1,h2,h3{letter-spacing:-.02em;line-height:1.12}
-h2.sec{font-size:clamp(28px,4vw,42px);font-weight:700;margin:12px 0 14px}
+h2.sec{font-size:clamp(28px,4vw,42px);font-weight:800;margin:12px 0 14px}
 p.sub{font-size:18px;color:var(--ink2);max-width:640px}
 .center{text-align:center}.center p.sub{margin-left:auto;margin-right:auto}
 
@@ -90,7 +90,7 @@ p.sub{font-size:18px;color:var(--ink2);max-width:640px}
 .hero{background:radial-gradient(900px 520px at 88% 0%,rgba(35,139,87,.10),transparent 62%),
   linear-gradient(180deg,#F2F7F4,#F7F8F9);
   color:var(--ink);margin-top:-68px;padding:136px 0 72px;overflow:hidden}
-.hero h1{font-size:clamp(38px,5.6vw,64px);font-weight:700;margin:22px 0 18px;letter-spacing:-.025em}
+.hero h1{font-size:clamp(38px,5.6vw,64px);font-weight:800;margin:22px 0 18px;letter-spacing:-.025em}
 .hero h1 em{font-style:normal;color:var(--green)}
 .hero-top{text-align:center;max-width:860px;margin:0 auto}
 /* wide screens: text on the left, the app picture on the right */
@@ -233,7 +233,7 @@ p.sub{font-size:18px;color:var(--ink2);max-width:640px}
 .final{padding:0 0 96px}
 .final .box{background:radial-gradient(700px 300px at 90% 0%,rgba(35,139,87,.14),transparent 60%),linear-gradient(135deg,#E4F1EA,#F3F4F6);color:var(--ink);border:1px solid var(--line);
   border-radius:32px;padding:64px 40px;text-align:center}
-.final h2{font-size:clamp(28px,4vw,44px);font-weight:700;margin-bottom:12px}
+.final h2{font-size:clamp(28px,4vw,44px);font-weight:800;margin-bottom:12px}
 .final p{color:var(--ink2);font-size:18px;margin-bottom:28px}
 
 /* ---------- footer ---------- */

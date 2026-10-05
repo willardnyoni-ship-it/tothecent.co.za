@@ -6,20 +6,7 @@
    whole app picks Matt up with no further changes. Until then the
    src below fails silently and the stack falls through to Helvetica.
    ============================================================ */
-/* Uncomment this block once the licensed Matt .woff2 files are in fonts/.
-   Left commented because a missing file makes the browser re-request it
-   for every element that needs the face - ~70 failed requests per load.
-@font-face{font-family:'Matt';src:url('fonts/Matt-Regular.woff2') format('woff2');
-  font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Matt';src:url('fonts/Matt-Medium.woff2') format('woff2');
-  font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Matt';src:url('fonts/Matt-SemiBold.woff2') format('woff2');
-  font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:'Matt';src:url('fonts/Matt-Bold.woff2') format('woff2');
-  font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:'Matt';src:url('fonts/Matt-ExtraBold.woff2') format('woff2');
-  font-weight:800;font-style:normal;font-display:swap}
-*/
+/* Font: Fira Sans, loaded from Google Fonts in app/index.html. */
 
 :root{
   /* Apple Wallet style - near-black surfaces, hairline dividers, restrained green accent */
@@ -31,7 +18,7 @@
   --pop:cubic-bezier(.34,1.56,.64,1);    /* slight overshoot, feels alive */
 }
 html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
-  font-family:'Matt','Matt Trial','Helvetica Neue',Helvetica,Arial,sans-serif;
+  font-family:'Fira Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
   font-size:18px;line-height:1.45;overscroll-behavior-y:none;
   font-variant-numeric:tabular-nums}      /* money never jitters as digits change */
 
@@ -91,12 +78,12 @@ body{padding-top:calc(54px + var(--safeTop));padding-bottom:calc(84px + var(--sa
 @media (min-width:640px){ .wrap{max-width:640px} }
 @media (min-width:1024px){ .wrap{max-width:760px} }
 h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.3px}
-h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;letter-spacing:.9px;font-weight:800}
+h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
 .sub{color:var(--dim);font-size:18px;margin-top:2px}
 .card{background:var(--card);border:.5px solid var(--line);border-radius:20px;padding:17px;margin-bottom:12px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .hero{text-align:center;padding:26px 16px;border-radius:28px;background:linear-gradient(160deg,#FFFFFF,#F3F4F7);border:.5px solid var(--line)}
-.hero .big{font-size:46px;font-weight:800;letter-spacing:-1.8px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--tx)}
+.hero .big{font-size:46px;font-weight:600;letter-spacing:-1.8px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--tx)}
 .hero .lbl{color:var(--dim);font-size:18px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .hero .note{color:var(--acc);font-size:18px;margin-top:8px}
 .ok{color:var(--acc)} .wn{color:var(--warn)} .bd{color:var(--bad)} .bl{color:var(--blue)}
@@ -141,7 +128,7 @@ h2{font-size:18px;margin:22px 0 9px;color:var(--tx);text-transform:uppercase;let
   transform-origin:top right;animation:acctIn .16s var(--ease) both}
 @keyframes acctIn{from{opacity:0;transform:scale(.96) translateY(-6px)}to{opacity:1;transform:none}}
 .acctMenu .who{padding:11px 12px 9px}
-.acctMenu .who b{display:block;font-size:18px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.acctMenu .who b{display:block;font-size:18px;font-weight:600;letter-spacing:.6px;text-transform:uppercase}
 .acctMenu .who span{display:block;font-size:18px;color:var(--dim);font-weight:600;
   margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:214px}
 .acctMenu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
@@ -187,7 +174,7 @@ td.thumbCell{width:56px;padding-right:0;vertical-align:top}
   border-radius:10px;padding:13px 12px;font-family:inherit;font-size:18px;font-weight:600;
   color:var(--tx);cursor:pointer;text-align:left;transition:background .13s var(--ease)}
 .navMenu button:hover,.navMenu button:focus-visible{background:rgba(19,41,75,.08);outline:none}
-.navMenu button.on{font-weight:800}
+.navMenu button.on{font-weight:600}
 .navMenu button.on::before{content:'';width:4px;align-self:stretch;border-radius:3px;
   background:#3ECF74;margin:-2px 2px -2px -4px}
 .navMenu button:not(.on)::before{content:'';width:4px;flex:none;margin:0 2px 0 -4px}
@@ -284,7 +271,7 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .khHead{display:flex;align-items:center;gap:10px;padding:14px 14px calc(12px);
   border-bottom:1px solid var(--line);flex:0 0 auto}
 .khHead .khAvatar{width:34px;height:34px;border-radius:50%;background:var(--accC);color:var(--acc);
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex:0 0 auto}
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;flex:0 0 auto}
 .khHead .khTitle{font-weight:700;font-size:18px}
 .khHead .khSub{font-size:18px;color:var(--dim)}
 .khClose{margin-left:auto;background:var(--card2);border:none;color:var(--tx);
@@ -325,7 +312,7 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
   color:var(--zink);
 }
 .light-tab h1,.light-tab h2{color:var(--zink)}
-.light-tab h2{color:var(--zink);font-weight:800}
+.light-tab h2{color:var(--zink);font-weight:600}
 .light-tab .sub,.light-tab .mini{color:var(--zdim);font-weight:600}
 /* Chart furniture: ticks, day names and the budget caption are all black now,
    with enough weight to hold their own against the bars. */
@@ -354,11 +341,11 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .zh-stat.lav{background:var(--zlav);grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-start}
 .zh-stat.lav .zh-sub{max-width:38ch}
 .zh-top{display:flex;justify-content:space-between;align-items:center}
-.zh-ic{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800}
+.zh-ic{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600}
 .zh-stat.sage .zh-ic{color:var(--zsageDeep)} .zh-stat.mustard .zh-ic{color:var(--zmustardDeep)} .zh-stat.lav .zh-ic{color:var(--zlavDeep)}
 .zh-badge{background:rgba(255,255,255,.55);border-radius:99px;padding:3px 8px;font-size:18px;font-weight:700}
 .zh-lbl{font-size:18px;color:rgba(24,20,10,.72);margin-top:11px;font-weight:700}
-.zh-val{font-size:25px;font-weight:800;letter-spacing:-.3px;margin-top:2px;color:var(--zink)}
+.zh-val{font-size:25px;font-weight:600;letter-spacing:-.3px;margin-top:2px;color:var(--zink)}
 .zh-val span{color:var(--zink);font-size:inherit;font-weight:inherit;letter-spacing:inherit}
 .zh-val span.bd{color:var(--zbad)}
 .zh-sub{font-size:18px;color:rgba(24,20,10,.72);margin-top:5px;line-height:1.4}
@@ -420,7 +407,7 @@ pre{white-space:pre-wrap;font-size:18px;color:var(--dim);background:var(--card2)
 .zh-donut{position:relative;width:150px;height:150px;flex:none}
 .zh-ring{position:absolute;inset:0;border-radius:50%}
 .zh-hole{position:absolute;inset:22px;border-radius:50%;background:var(--zcard);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.2}
-.zh-hole b{font-size:22px;font-weight:800} .zh-hole span{font-size:18px;color:var(--zdim);margin-top:2px}
+.zh-hole b{font-size:22px;font-weight:600} .zh-hole span{font-size:18px;color:var(--zdim);margin-top:2px}
 .zh-legend{flex:1;display:flex;flex-direction:column;gap:8px}
 .zh-legrow{display:flex;align-items:center;gap:8px}
 .zh-legrow i{width:8px;height:8px;border-radius:50%;flex:none}

@@ -29,7 +29,7 @@ export default function Spending() {
   return (
     <section className="tab on light-tab" id="t-spending">
       <h1>{title}</h1>
-      <div className="mono" style={{ fontSize: 34, fontWeight: 800 }}>{R(total)}</div>
+      <div className="mono" style={{ fontSize: 34, fontWeight: 600 }}>{R(total)}</div>
 
       <div className="seg" style={{ marginTop: 14 }}>
         <button className={period === 'this' ? 'on' : ''} onClick={() => setPeriod('this')}>This month</button>
