@@ -199,3 +199,5 @@ tr.stk-head td span{float:right;font-weight:600;opacity:.7}
 .veh-nums b.bd,.veh-nums em.bd{color:var(--bad,#9C3626)}.veh-nums b.gd{color:#1E7A48}
 .veh-nums em{font-style:normal;font-size:12.5px;font-weight:700}
 .veh-cost{padding:8px 0;border-top:1px solid #EEF0EF;align-items:center}
+
+.exp-veh{margin-top:6px;padding:5px 8px;font-size:13px;border-radius:8px;max-width:100%;width:auto}

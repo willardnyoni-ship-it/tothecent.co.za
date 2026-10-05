@@ -6,12 +6,20 @@ import { readSlip } from '../../lib/readSlip.js';
 import { uploadBusinessFile } from '../../lib/businessApi.js';
 import { findExpenseMatches } from '../../lib/businessMath.js';
 import MileageView from '../Mileage.jsx';
+import { COST_CATEGORIES, vehicleTitle } from '../../lib/vehicles.js';
 
 const CATEGORIES = ['Rent', 'Transport', 'Fuel', 'Telephone', 'Marketing', 'Equipment', 'Supplies', 'Materials', 'Stock purchases', 'Salaries', 'Other'];
 
+// Vehicles a cost can still go on (cars already sold are left out).
+const lotCars = vehicles => vehicles.filter(v => v.status !== 'sold');
+const carLabel = v => vehicleTitle(v) + (v.reg ? ' · ' + v.reg : '');
+
 function AddExpenseForm({ prefill, onSaved }) {
-  const { addExpense, jobs, hasFeature } = useBusiness();
+  const { addExpense, jobs, vehicles, hasFeature } = useBusiness();
   const [jobId, setJobId] = useState('');
+  const [vehicleId, setVehicleId] = useState('');
+  const showVehicles = hasFeature('vehicles') && lotCars(vehicles).length > 0;
+  const categories = hasFeature('vehicles') ? [...CATEGORIES, ...COST_CATEGORIES.filter(c => !CATEGORIES.includes(c))] : CATEGORIES;
   const showJobs = hasFeature('jobs') && jobs.some(j => j.status !== 'cancelled' && j.status !== 'done');
   const [amt, setAmt] = useState(prefill?.total || '');
   const [cat, setCat] = useState(prefill?.cat || 'Other');
@@ -25,7 +33,7 @@ function AddExpenseForm({ prefill, onSaved }) {
     await addExpense({
       amount: a, category: cat, description: desc, merchant: desc, date,
       status: 'needs_review', receipt_storage_path: prefill?.receiptPath || null,
-      items: prefill?.items || null, vat: prefill?.vat || 0, job_id: jobId || null,
+      items: prefill?.items || null, vat: prefill?.vat || 0, job_id: jobId || null, vehicle_id: vehicleId || null,
     });
     setMsg('Logged.');
     onSaved?.();
@@ -36,7 +44,7 @@ function AddExpenseForm({ prefill, onSaved }) {
       <label style={{ marginTop: 0 }}>Amount (R)</label>
       <input type="number" inputMode="decimal" value={amt} onChange={e => setAmt(e.target.value)} />
       <label>Category</label>
-      <select value={cat} onChange={e => setCat(e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select>
+      <select value={cat} onChange={e => setCat(e.target.value)}>{categories.map(c => <option key={c}>{c}</option>)}</select>
       <label>Description</label>
       <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="e.g. Woolworths" />
       <label>Date</label>
@@ -47,6 +55,15 @@ function AddExpenseForm({ prefill, onSaved }) {
           <select value={jobId} onChange={e => setJobId(e.target.value)}>
             <option value="">Not for a specific job</option>
             {jobs.filter(j => j.status !== 'cancelled' && j.status !== 'done').map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
+          </select>
+        </>
+      )}
+      {showVehicles && (
+        <>
+          <label>Vehicle <span className="mini">(optional)</span></label>
+          <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}>
+            <option value="">Not for a specific vehicle</option>
+            {lotCars(vehicles).map(v => <option key={v.id} value={v.id}>{carLabel(v)}</option>)}
           </select>
         </>
       )}
@@ -100,7 +117,8 @@ function ScanReceipt({ onDone }) {
 
 export default function Expenses() {
   const { syncCfg } = useBudget();
-  const { expenses, transactions, updateExpense, myRole, hasFeature } = useBusiness();
+  const { expenses, transactions, vehicles, updateExpense, myRole, hasFeature } = useBusiness();
+  const hasCars = hasFeature('vehicles');
   const readOnly = myRole === 'accountant';
   const [seg, setSeg] = useState('all');
   const [area, setArea] = useState('expenses');
@@ -113,6 +131,7 @@ export default function Expenses() {
     if (seg === 'receipts') return expenses.filter(e => e.receipt_storage_path);
     if (seg === 'mine') return expenses.filter(e => e.submitted_by === syncCfg.userId);
     if (seg === 'review') return expenses.filter(e => e.status === 'needs_review' || e.status === 'pending_approval');
+    if (seg === 'cars') return expenses.filter(e => e.vehicle_id);
     return expenses;
   }, [expenses, seg, syncCfg.userId]);
 
@@ -156,9 +175,9 @@ export default function Expenses() {
       )}
 
       <div className="seg" style={{ marginTop: 16 }}>
-        {['all', 'receipts', 'mine', 'review'].map(s => (
+        {['all', 'receipts', 'mine', 'review', ...(hasCars ? ['cars'] : [])].map(s => (
           <button key={s} className={seg === s ? 'on' : ''} onClick={() => setSeg(s)}>
-            {{ all: 'All Expenses', receipts: 'Receipts', mine: 'My Expenses', review: 'Needs Review' }[s]}
+            {{ all: 'All Expenses', receipts: 'Receipts', mine: 'My Expenses', review: 'Needs Review', cars: 'Vehicle costs' }[s]}
           </button>
         ))}
       </div>
@@ -169,6 +188,14 @@ export default function Expenses() {
               <td>
                 <div style={{ fontWeight: 600 }}>{e.description || e.merchant || '(no description)'}</div>
                 <div className="tag">{e.date} &middot; {e.category || 'Uncategorised'}</div>
+                {hasCars && (readOnly
+                  ? (e.vehicle_id && vehicles.find(v => v.id === e.vehicle_id) && <div className="mini">{carLabel(vehicles.find(v => v.id === e.vehicle_id))}</div>)
+                  : (
+                    <select className="exp-veh" aria-label="Vehicle this cost belongs to" value={e.vehicle_id || ''} onChange={ev => updateExpense(e.id, { vehicle_id: ev.target.value || null })}>
+                      <option value="">No vehicle</option>
+                      {vehicles.filter(v => v.status !== 'sold' || v.id === e.vehicle_id).map(v => <option key={v.id} value={v.id}>{carLabel(v)}</option>)}
+                    </select>
+                  ))}
               </td>
               <td className="r">
                 {R2(e.amount)}
