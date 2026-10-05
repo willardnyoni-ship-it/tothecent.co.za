@@ -29,9 +29,9 @@ export default function Paywall() {
 export function TrialBar({ daysLeft }) {
   const { open } = useSheet();
   return (
-    <div style={{ background: 'var(--acc, #238B57)', color: '#fff', padding: '8px 14px', fontSize: 14, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+    <div style={{ background: 'var(--acc, #2150D8)', color: '#fff', padding: '8px 14px', fontSize: 14, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
       <span>Your free month ends in {daysLeft} day{daysLeft === 1 ? '' : 's'}.</span>
-      <button className="b sm" style={{ background: '#fff', color: '#16603C' }} onClick={() => open(() => <SubscriptionSheetContent />)}>Subscribe</button>
+      <button className="b sm" style={{ background: '#fff', color: '#14285A' }} onClick={() => open(() => <SubscriptionSheetContent />)}>Subscribe</button>
     </div>
   );
 }
