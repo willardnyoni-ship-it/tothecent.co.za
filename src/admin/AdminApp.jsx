@@ -194,6 +194,7 @@ function useSendReset() {
       if (/rate limit|too many|only request this after|seconds/i.test(m)) {
         throw new Error(/seconds/i.test(m) ? 'An email was sent to them a moment ago - wait a minute before sending another.' : "Supabase's email limit has been reached for now. Try again in a while, or use \"Create sign-in link\" and send it yourself.");
       }
+      if (r.status >= 500) throw new Error("The email service didn't respond (error " + r.status + "). Supabase's built-in email is unreliable. Use \"Create sign-in link\" and send it on WhatsApp, and connect your own email service in Supabase (Authentication, Emails, SMTP).");
       throw new Error(m || `Could not send (${r.status}).`);
     }
     // Best effort: the email is already on its way, so a failed log write isn't an error.
