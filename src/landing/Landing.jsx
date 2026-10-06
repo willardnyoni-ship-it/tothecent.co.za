@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { classifySignupError, reportSignupAttempt } from '../lib/signupAttempts.js';
+import { signupOutcome, waitSeconds } from '../lib/signupResult.js';
 import { Ic, I, BIZ_TYPES, ESSENTIALS, SECURITY, FAQ, BizStory, HeroScene, PROBLEMS, PLANS } from './content.jsx';
 
 const HOSTED_SUPA_URL = 'https://pkbpmnpevxjrqjnepsjd.supabase.co';
@@ -105,6 +106,7 @@ export default function Landing() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [msg, setMsg] = useState('');
+  const [resendable, setResendable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [alreadySignedIn, setAlreadySignedIn] = useState(false);
   const [providers, setProviders] = useState([]); // OAuth providers switched on in Supabase
@@ -266,6 +268,17 @@ export default function Landing() {
     } catch (err) { setMsg(err.message); }
   }
 
+  async function resendConfirmation() {
+    setMsg('Sending…');
+    try {
+      await authFetch('/auth/v1/resend', { type: 'signup', email: email.trim() });
+      setMsg(`Sent again to ${email.trim()}. Check your inbox and spam folder.`);
+    } catch (err) {
+      const wait = waitSeconds(err.message);
+      setMsg(wait ? `Please wait about ${wait} seconds before asking for another email.` : err.message);
+    }
+  }
+
   async function submitAuth() {
     if (authMode === 'recover') {
       if (!pass || pass.length < 6) { setMsg('Password must be at least 6 characters.'); return; }
@@ -290,7 +303,8 @@ export default function Landing() {
     const report = (outcome, stage, reason, message) => {
       if (authMode === 'signup') reportSignupAttempt(HOSTED_SUPA_URL, HOSTED_SUPA_KEY, { email, outcome, stage, reason, message, segment });
     };
-    if (authMode === 'signup' && !segment) { setMsg('Choose Individual or Business to continue.'); if (email.trim()) report('failed', 'form', 'no_plan'); return; }
+    setResendable(false);
+    if (authMode === 'signup' && !segment) { setMsg('Please choose "I run a business" or "It\'s for me" above first.'); if (email.trim()) report('failed', 'form', 'no_plan'); return; }
     if (!email.trim() || !pass) { setMsg('Email and password are both needed.'); if (email.trim()) report('failed', 'form', 'missing_fields'); return; }
     if (authMode === 'signup' && pass.length < 6) { setMsg('Password must be at least 6 characters.'); report('failed', 'form', 'password_short'); return; }
     setMsg('Working…'); setBusy(true);
@@ -304,24 +318,27 @@ export default function Landing() {
         // Supabase doesn't reveal an existing account as an error: it returns
         // a placeholder user with no identities and sends no email. Without
         // this check the person waits for a confirmation that never comes.
-        if (d && d.user && Array.isArray(d.user.identities) && d.user.identities.length === 0 && !d.access_token) {
+        const outcome = signupOutcome(d);
+        if (outcome === 'exists') {
           report('failed', 'server', 'already_registered', 'Email already has an account');
-          setMsg('There is already an account with this email. Log in instead, or use "Forgot password?" below.');
+          setMsg('You already have an account with this email, so we have not sent a new confirmation. Log in instead, or choose "Forgot password?" below to set a new password.');
           setAuthModeState('signin');
           return;
         }
-        report('succeeded', 'server', d.access_token ? 'signed_in' : 'confirm_email');
-        if (d.access_token) {
+        report('succeeded', 'server', outcome === 'signed_in' ? 'signed_in' : 'confirm_email');
+        if (outcome === 'signed_in') {
           saveSession(d);
           location.href = segment === 'business' ? '/app/?mode=business' : '/app/?onboard=1';
         }
-        else setMsg('Check your email to confirm the account, then log in.');
+        else { setMsg(`We sent a confirmation link to ${email.trim()}. It can take a minute to arrive - check your spam folder too. Open the link, then log in.`); setResendable(true); }
       }
     } catch (err) {
       if (authMode === 'signup') {
         const reason = classifySignupError(err.message);
         report('failed', reason === 'network' ? 'network' : 'server', reason, err.message);
         if (reason === 'already_registered') { setMsg('There is already an account with this email. Log in instead, or use "Forgot password?" below.'); setAuthModeState('signin'); return; }
+        const wait = waitSeconds(err.message);
+        if (wait) { setMsg(`We have just sent you an email. Please wait about ${wait} seconds before asking for another, and check your spam folder.`); setResendable(true); return; }
         if (reason === 'rate_limited') { setMsg("We're getting a lot of sign-ups right now and couldn't send your confirmation email. Please try again in a few minutes."); return; }
       }
       setMsg(err.message);
@@ -397,7 +414,8 @@ export default function Landing() {
                 <a href="#" onClick={e => { e.preventDefault(); forgotPassword(); }} style={{ color: 'var(--blue)' }}>Forgot password?</a>
               </p>
             )}
-            <div className="mini" style={{ marginTop: 12, minHeight: 18 }}>{msg}</div>
+            <div className="mini" style={{ marginTop: 12, minHeight: 18 }} role="status">{msg}</div>
+            {resendable && <p className="mini" style={{ margin: '6px 0 0' }}><a href="#" onClick={e => { e.preventDefault(); resendConfirmation(); }} style={{ color: 'var(--blue)' }}>Send the confirmation email again</a></p>}
           </div>
         </div>
       )}

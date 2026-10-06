@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import SubscriptionPanel from './SubscriptionPanel.jsx';
+import { signupOutcome } from '../lib/signupResult.js';
 import { useBudget } from '../store/BudgetStore.jsx';
 import { useSheet } from './Sheet.jsx';
 import { R, R2, iso, uid } from '../lib/format.js';
@@ -27,7 +28,7 @@ export function AccountSheetContent() {
   }
   async function handleSignUp() {
     setMsg('Working…');
-    try { const d = await doSignUp(email, pass); setMsg(d.access_token ? 'Account created.' : 'Check your email to confirm the account, then sign in.'); } catch (e) { setMsg(e.message); }
+    try { const d = await doSignUp(email, pass); const o = signupOutcome(d); setMsg(o === 'signed_in' ? 'Account created.' : o === 'exists' ? 'You already have an account with this email. Sign in instead, or use "Forgot password?".' : 'Check your email (and spam) to confirm the account, then sign in.'); } catch (e) { setMsg(e.message); }
   }
   async function handleForgot() {
     if (!email.trim()) { setMsg('Enter your email above first.'); return; }
