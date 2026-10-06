@@ -202,7 +202,7 @@ function useSendReset() {
   }, [syncCfg, ensureToken]);
 }
 
-const ACTION_LABEL = { reset_email_sent: 'Password reset email sent', billing_updated: 'Plan / subscription updated', sent_signin_link: 'Sign-in link created', team_added: 'Portal team member added', team_removed: 'Portal team member removed', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
+const ACTION_LABEL = { reset_email_sent: 'Password reset email sent', login_sent: 'Login details sent', billing_updated: 'Plan / subscription updated', sent_signin_link: 'Sign-in link created', team_added: 'Portal team member added', team_removed: 'Portal team member removed', suspended: 'Suspended', unsuspended: 'Re-enabled', deleted: 'Account deleted' };
 
 // The "Account actions" block in a person's detail panel.
 function AccountActions({ person, me, onChanged, onDeleted }) {
@@ -831,7 +831,25 @@ function Invites({ invites, waitlist, users, onCreate, onDelete }) {
   );
 }
 
-function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
+function LoginMessage({ done }) {
+  const first = (done.name || '').trim().split(/\s+/)[0];
+  const msg = `${first ? 'Hi ' + first + ',' : 'Hi,'}\n\nYour To The Cent account is ready.\n\nLog in here: ${SITE}\nEmail: ${done.email}\nPassword: ${done.password}\n\nThe first time you log in you will be asked to choose a password of your own, and whether you are setting up for yourself or for a business.`;
+  const [copied, setCopied] = useState(false);
+  return (
+    <>
+      <div className="op-linkbox" style={{ marginTop: 8 }}>
+        <textarea readOnly rows="7" value={msg} onFocus={e => e.target.select()} style={{ width: '100%' }} />
+      </div>
+      <div className="op-actions" style={{ marginTop: 8 }}>
+        <button className="op-btn" onClick={() => { navigator.clipboard?.writeText(msg); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied' : 'Copy message'}</button>
+        <button className="op-btn primary" onClick={() => openWhatsApp('', msg)}>Send by WhatsApp</button>
+        <button className="op-btn" onClick={() => openEmail(done.email, 'Your To The Cent login', msg)}>Send by email</button>
+      </div>
+    </>
+  );
+}
+
+function SignUp({ onCreated, initialKind = 'login', initialEmail = '' }) {
   const { syncCfg, ensureToken } = useBudget();
   const [kind, setKind] = useState(initialKind);
   const [f, setF] = useState({ email: initialEmail, name: '', bizName: '', businessType: 'Sole Proprietor', profile: '', industry: '', hasStaff: false, vat: false });
@@ -841,7 +859,29 @@ function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const features = kind === 'business' && f.profile ? featuresFor(f.profile, { hasStaff: f.hasStaff, vatRegistered: f.vat }) : [];
 
+  // Make the login and email it: the person gets their email and a generated password, and chooses their
+  // own password and personal-or-business the first time they log in.
+  async function sendLogin() {
+    setErr('');
+    if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) { setErr('Enter a valid email address.'); return; }
+    setBusy(true);
+    try {
+      const token = await ensureToken();
+      const r = await fetch(syncCfg.url.replace(/\/+$/, '') + '/functions/v1/' + CREATE_ACCOUNT_FN, {
+        method: 'POST',
+        headers: { apikey: syncCfg.key, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_login', email: f.email.trim(), name: f.name.trim() }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error || `Could not create the login (${r.status})`);
+      setDone({ login: true, ...body, email: f.email.trim().toLowerCase(), name: f.name.trim() });
+      setF(x => ({ ...x, email: '', name: '' }));
+      onCreated();
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  }
+
   async function submit() {
+    if (kind === 'login') return sendLogin();
     setErr('');
     if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) { setErr('Enter a valid email address.'); return; }
     if (kind === 'business' && !f.bizName.trim()) { setErr('Give the business a name.'); return; }
@@ -871,8 +911,9 @@ function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
       <div className="op-grid c3">
         <div className="op-card">
           <div className="op-card-h">
-            <h2>New account</h2>
+            <h2>{kind === 'login' ? 'Email a login' : 'New account'}</h2>
             <div className="op-seg">
+              <button className={kind === 'login' ? 'on' : ''} onClick={() => { setKind('login'); setErr(''); }}>Email a login</button>
               <button className={kind === 'person' ? 'on' : ''} onClick={() => setKind('person')}>Person</button>
               <button className={kind === 'business' ? 'on' : ''} onClick={() => setKind('business')}>Business</button>
             </div>
@@ -908,11 +949,27 @@ function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
             )}
             {err && <div className="op-msg e">{err}</div>}
             <div style={{ height: 16 }} />
-            <button className="op-btn primary" disabled={busy} onClick={submit}>{busy ? 'Creating…' : kind === 'business' ? 'Create account and business' : 'Create account'}</button>
+            <button className="op-btn primary" disabled={busy} onClick={submit}>{busy ? 'Working…' : kind === 'login' ? 'Create login and email it' : kind === 'business' ? 'Create account and business' : 'Create account'}</button>
           </div>
         </div>
         <div>
-          {done ? (
+          {done && done.login ? (
+            <div className="op-card">
+              <div className="op-card-h"><h2>{done.emailed ? 'Login emailed' : 'Login made, not emailed'}</h2><span className={'op-pill ' + (done.emailed ? 'good' : 'warn')}>{done.emailed ? 'Sent' : 'Send it yourself'}</span></div>
+              <div className="op-card-b">
+                <div><b>{done.email}</b></div>
+                {done.emailed ? (
+                  <div className="op-note" style={{ marginTop: 6 }}>We emailed them their email and password. The first time they log in they choose their own password, and whether they are setting up for themselves or for a business. You never need to see it.</div>
+                ) : (
+                  <>
+                    <div className="op-msg e" style={{ marginTop: 8 }}>The email did not go out: {done.emailError}</div>
+                    <div className="op-note">The account exists. Send them these details yourself. This is the only time the password is shown, so copy it now.</div>
+                    <LoginMessage done={done} />
+                  </>
+                )}
+              </div>
+            </div>
+          ) : done ? (
             <div className="op-card">
               <div className="op-card-h"><h2>Account ready</h2><span className="op-pill good">Created</span></div>
               <div className="op-card-b">
@@ -925,6 +982,15 @@ function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
           ) : (
             <div className="op-card">
               <div className="op-card-h"><h2>How it works</h2></div>
+              {kind === 'login' ? (
+                <div className="op-card-b op-note" style={{ marginTop: 0 }}>
+                  <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+                    <li>You type their email address (and name, if you like).</li>
+                    <li>We make the account with a strong, generated password and email them both.</li>
+                    <li>When they log in they choose their own password, then say whether they are setting up for themselves or for a business.</li>
+                  </ol>
+                </div>
+              ) : (
               <div className="op-card-b op-note" style={{ marginTop: 0 }}>
                 <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
                   <li>You create the account{kind === 'business' ? ' and their business, with the right tools switched on' : ''}.</li>
@@ -932,6 +998,7 @@ function SignUp({ onCreated, initialKind = 'person', initialEmail = '' }) {
                   <li>They open it and choose their own password - you never see it.</li>
                 </ol>
               </div>
+              )}
             </div>
           )}
           {kind === 'business' && features.length > 0 && !done && (
@@ -1181,7 +1248,7 @@ const PAGES = [['dashboard', 'Dashboard', I.dash], ['retention', 'Retention', I.
 export default function AdminApp({ onExit }) {
   const { syncCfg, ensureToken } = useBudget();
   const [page, setPage] = useState(() => { try { return sessionStorage.getItem('wnOwnerPage') || 'dashboard'; } catch { return 'dashboard'; } });
-  const [signupKind, setSignupKind] = useState('person');
+  const [signupKind, setSignupKind] = useState('login');
   const [signupEmail, setSignupEmail] = useState('');
   const [data, setData] = useState(null);
   const [db, setDb] = useState(null);

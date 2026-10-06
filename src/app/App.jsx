@@ -27,6 +27,8 @@ import { isDemo } from '../lib/demo.js';
 import { useHashTab } from './useHashTab.js';
 import { useSubscription } from '../lib/subscription.js';
 import Paywall, { TrialBar } from '../components/Paywall.jsx';
+import FirstLogin from '../components/FirstLogin.jsx';
+import { useAccountFlags } from '../lib/accountFlags.js';
 
 const TAB_COMPONENTS = {
   today: Home, spending: Spending, setup: Budget, receipts: Receipts, insight: Reports, snap: Snap, stmt: Statement,
@@ -169,6 +171,7 @@ export default function App() {
   const { hasBusiness, checked } = useBusiness();
   const isAdmin = useIsAppAdmin();
   const { b: billing } = useSubscription();
+  const account = useAccountFlags();
   // The owner console is an in-session view only - it's never remembered
   // as the mode to reopen into, so the app always starts on a real budget.
   const [adminOpen, setAdminOpen] = useState(() => {
@@ -215,6 +218,14 @@ export default function App() {
   // signed-in device still opens offline.
   if (!syncCfg.token) {
     return <SignInRequired hasLocalData={!!(S && ((S.tx && S.tx.length) || S.income))} />;
+  }
+
+  // Someone the owner set up with emailed login details: choose a password and personal-or-business first.
+  if (syncCfg.token && account.flags === null) {
+    return <div className="light-tab" style={{ padding: 40, textAlign: 'center' }}><div className="mini">Loading…</div></div>;
+  }
+  if (account.needsSetup) {
+    return <SheetProvider><FirstLogin flags={account.flags} setFlags={account.setFlags} save={account.save} /></SheetProvider>;
   }
 
   // After the free month, and nobody paying: the app is locked (the person's data is kept).

@@ -15,6 +15,7 @@
 // token must belong to a real signed-in user, and that user must be in
 // app_admins.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { loginEmail, makePassword } from "./loginLogic.ts";
 
 const SITE = "https://tothecent.co.za/";
 const KNOWN_FEATURES = new Set(["quotes", "reminders", "time", "taxSavings", "jobs", "mileage", "stock", "cashup", "bookings", "payroll", "vat", "vehicles"]);
@@ -50,6 +51,9 @@ Deno.serve(async (req: Request) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json(400, { error: "Bad request" }); }
+
+  // create_login: make the account with a generated password and email the details to the person.
+  if (body.action === "create_login") return createLogin(admin, caller.user, body);
 
   // Account actions on an existing person. No "action" means the original
   // behaviour below: create a new account.
@@ -115,6 +119,50 @@ Deno.serve(async (req: Request) => {
 
   return json(200, { link: link.properties?.action_link, user_id: userId, business_id: businessId });
 });
+
+// ---------- login details by email ----------
+// The owner types an email address. We create the account (already confirmed, so no confirmation email
+// is needed) with a strong generated password, and email the person their login. The account is marked
+// so the app makes them choose their own password and say whether they are setting up for themselves or
+// for a business the first time they log in. Emailing needs the Edge Function secret RESEND_API_KEY
+// (a Resend key with sending access); without it the password is handed back to the owner to pass on.
+async function createLogin(admin: Admin, actor: Person, body: Record<string, unknown>) {
+  const email = String(body.email || "").trim().toLowerCase();
+  const name = String(body.name || "").trim().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(400, { error: "Enter a valid email address." });
+
+  const password = makePassword(12);
+  const { data: made, error: mkErr } = await admin.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: { full_name: name || null, created_by_owner: true, must_change_password: true, setup_pending: true },
+  });
+  if (mkErr || !made?.user) {
+    const msg = mkErr?.message || "Could not create the account.";
+    const exists = /already|registered|exists/i.test(msg);
+    return json(exists ? 409 : 400, { error: exists ? "Someone with that email already has an account. Use \"Create sign-in link\" on the People page instead." : msg });
+  }
+  await admin.from("app_invites").insert({ email, name: name || null, invited_by: actor.id, note: "Login details created from the owner portal" });
+
+  let emailed = false, emailError = "";
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (key) {
+    const m = loginEmail({ name, email, password, site: SITE });
+    try {
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: "To The Cent <no-reply@tothecent.co.za>", to: [email], subject: m.subject, html: m.html, text: m.text }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (r.ok) emailed = true;
+      else emailError = ((await r.json().catch(() => ({}))) as { message?: string }).message || `Email service said ${r.status}`;
+    } catch (e) { emailError = (e as Error).message || "Could not reach the email service."; }
+  } else emailError = "Emailing isn't switched on yet (the RESEND_API_KEY secret is missing).";
+
+  await logAction(admin, actor, "login_sent", { id: made.user.id, email }, emailed ? "Login details emailed" : "Account made; login details not emailed");
+  // the password only travels back to the owner when it could not be emailed
+  return json(200, { ok: true, user_id: made.user.id, emailed, emailError: emailed ? "" : emailError, ...(emailed ? {} : { password }) });
+}
 
 // ---------- account actions on an existing person ----------
 // signin_link: one-time link where they set a (new) password - works for
